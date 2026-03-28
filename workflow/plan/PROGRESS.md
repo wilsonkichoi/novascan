@@ -107,6 +107,10 @@ Last updated: 2026-03-28
 | M6        | 4          | 3              | 1    | 0            |
 | **Total** | **45**     | **32**         | **11** | **2**      |
 
+## Wave 1 Review Fixes
+
+All 6 issues from the Wave 1 scaffolding review have been fixed. See [wave-1-fixes](reviews/wave-1-fixes.md) for details. Completed 2026-03-28.
+
 ## Spec Gaps Discovered
 1. **System architecture diagram stale** — `system-architecture.mmd` shows separate LRank/LFin Lambdas and omits LoadCustomCategories. Needs update to match SPEC Section 3/4. (cosmetic — doesn't affect implementation)
 2. **User Profile entity not created** — SPEC defines `PK=USER#{userId}, SK=PROFILE` but no API endpoint uses it. Skipped for MVP — email/sub available from JWT. Lazy-create if needed later.

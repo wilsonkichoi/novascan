@@ -4,8 +4,6 @@ Sets up AWS credential mocking and moto-based service fixtures
 for DynamoDB and S3.
 """
 
-import os
-
 import boto3
 import pytest
 from moto import mock_aws

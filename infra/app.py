@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+
 import aws_cdk as cdk
 
 from stacks.novascan_stack import NovascanStack
@@ -21,8 +23,8 @@ NovascanStack(
     stage=stage,
     config=stage_config,
     env=cdk.Environment(
-        account="<YOUR-AWS-ACCOUNT-ID>",
-        region="us-east-1",
+        account=os.environ.get("CDK_DEFAULT_ACCOUNT"),
+        region=os.environ.get("CDK_DEFAULT_REGION", "us-east-1"),
     ),
 )
 
