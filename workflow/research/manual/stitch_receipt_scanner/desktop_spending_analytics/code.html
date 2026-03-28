@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-variant": "#dbe4e7",
+              "on-tertiary-fixed": "#004a3c",
+              "on-surface": "#2b3437",
+              "primary-container": "#e2e2e5",
+              "tertiary-container": "#6cfdda",
+              "on-tertiary-container": "#005f4e",
+              "outline": "#737c7f",
+              "error-dim": "#4e0309",
+              "outline-variant": "#abb3b7",
+              "secondary-container": "#e1e3e4",
+              "on-surface-variant": "#586064",
+              "surface-container-highest": "#dbe4e7",
+              "secondary": "#5c6061",
+              "error": "#9f403d",
+              "surface-container-high": "#e3e9ec",
+              "surface": "#f8f9fa",
+              "on-tertiary": "#e4fff4",
+              "on-primary-container": "#505254",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed-dim": "#d4d4d7",
+              "secondary-fixed-dim": "#d2d5d6",
+              "on-error": "#fff7f6",
+              "on-secondary": "#f7f9fa",
+              "on-secondary-fixed-variant": "#595c5d",
+              "primary-dim": "#515255",
+              "on-primary-fixed": "#3e3f42",
+              "error-container": "#fe8983",
+              "on-tertiary-fixed-variant": "#006a57",
+              "tertiary-dim": "#005f4d",
+              "inverse-primary": "#f9f9fc",
+              "inverse-on-surface": "#9b9d9e",
+              "tertiary-fixed": "#6cfdda",
+              "surface-container-low": "#f1f4f6",
+              "on-background": "#2b3437",
+              "primary-fixed": "#e2e2e5",
+              "on-error-container": "#752121",
+              "surface-container": "#eaeff1",
+              "primary": "#5d5e61",
+              "surface-tint": "#5d5e61",
+              "surface-bright": "#f8f9fa",
+              "on-secondary-fixed": "#3c4041",
+              "inverse-surface": "#0c0f10",
+              "background": "#f8f9fa",
+              "secondary-dim": "#505455",
+              "tertiary-fixed-dim": "#5ceecc",
+              "secondary-fixed": "#e1e3e4",
+              "tertiary": "#006c59",
+              "on-primary": "#f7f7fa",
+              "surface-dim": "#d1dce0",
+              "on-secondary-container": "#4f5253",
+              "on-primary-fixed-variant": "#5a5c5e"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #2b3437;
+        }
+        .headline-font { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 z-50 bg-slate-50 dark:bg-slate-950 flex flex-col py-8 px-4 border-r border-slate-200 dark:border-slate-800 font-manrope text-sm font-medium">
+<div class="mb-10 px-2">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<div>
+<h1 class="text-lg font-extrabold tracking-tighter text-slate-900 dark:text-white">Lumina Ledger</h1>
+<p class="text-xs text-on-surface-variant/70">The Digital Curator</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span>Receipts</span>
+</a>
+<!-- Active Tab: Analytics -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-900 dark:text-white font-bold border-r-2 border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-900 transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="analytics" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span>Expenses</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-2">
+<button class="w-full py-4 rounded-full bg-gradient-to-r from-primary to-primary-dim text-on-primary font-bold shadow-lg flex items-center justify-center gap-2 active:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" data-icon="add_a_photo">add_a_photo</span>
+<span>Upload Receipt</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar -->
+<header class="w-full h-16 sticky top-0 z-40 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none flex items-center justify-between px-8 font-manrope text-sm font-medium tracking-tight">
+<div class="flex items-center gap-6 w-1/3">
+<div class="relative w-full max-w-sm">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-1 focus:ring-primary text-sm" placeholder="Search analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer">
+<img alt="User profile" class="w-8 h-8 rounded-full border border-slate-200" data-alt="professional headshot of a person with a clean minimal background, soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHtIBu3hRq8_ynTn_6pRbASP4VhCQJdOEvQd3X46isHJNbFZJRAmDDhCCjqVnr5t7t6E-715Eowx0UuVrsT49_uLPtB02LM68n-tK8i9p_sdFugxNa_x57msrUz7izX_fcWatOaSdJG_UIWlp-_YOypU-3Ma1X8oAmlOS677aP1T9Nri65wnY8TSg87NlN8kxGzJTmhwd5cLxhqmHlRf4e1Nqu-SbQsRUk0aTpjKKyL0j-s2JhdpFKNXqy75wA2Nz8MunCSp_N618"/>
+<span class="text-slate-900 dark:text-white font-semibold">Alex Rivers</span>
+</div>
+</div>
+</header>
+<!-- Analytics Dashboard Content -->
+<div class="p-10 space-y-10">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-end gap-4">
+<div class="space-y-1">
+<h2 class="text-3xl font-extrabold tracking-tight headline-font text-on-surface">Financial Insights</h2>
+<p class="text-on-surface-variant font-medium">Monthly performance and spending distribution</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface-container-high text-on-surface rounded-lg font-semibold text-xs flex items-center gap-2 hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="calendar_today">calendar_today</span>
+                        Last 30 Days
+                    </button>
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-semibold text-xs flex items-center gap-2 hover:bg-primary-dim transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="download">download</span>
+                        Export PDF
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Large 'Daily Spending' Bar Chart -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="headline-font font-bold text-lg text-on-surface">Daily Spending</h3>
+<p class="text-xs text-on-surface-variant">Transaction volume over the current month</p>
+</div>
+<div class="flex items-center gap-4 text-xs font-semibold">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-on-surface-variant">Essential</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-surface-variant"></span>
+<span class="text-on-surface-variant">Lifestyle</span>
+</div>
+</div>
+</div>
+<!-- Simulated Bar Chart -->
+<div class="h-64 flex items-end justify-between gap-2 px-2">
+<!-- Bars -->
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-variant rounded-t-sm h-[40%] group-hover:bg-primary transition-colors cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">01</span>
+<!-- Hover Tooltip -->
+<div class="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-inverse-surface text-inverse-on-surface text-[10px] py-1 px-2 rounded whitespace-nowrap z-10">$142.50</div>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary rounded-t-sm h-[65%] cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">03</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-variant rounded-t-sm h-[30%] group-hover:bg-primary transition-colors cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">05</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary rounded-t-sm h-[85%] cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">07</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-variant rounded-t-sm h-[50%] group-hover:bg-primary transition-colors cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">09</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary rounded-t-sm h-[45%] cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">11</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary rounded-t-sm h-[95%] cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">13</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-variant rounded-t-sm h-[40%] group-hover:bg-primary transition-colors cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">15</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary rounded-t-sm h-[60%] cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">17</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-variant rounded-t-sm h-[55%] group-hover:bg-primary transition-colors cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">19</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary rounded-t-sm h-[70%] cursor-pointer"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">21</span>
+</div>
+<div class="group relative flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary-dim rounded-t-sm h-[100%] cursor-pointer"></div>
+<span class="text-[10px] font-bold text-on-surface">Today</span>
+</div>
+</div>
+</div>
+<!-- Monthly Trend Line Chart (Tall Sidebar) -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-low rounded-xl p-6 flex flex-col">
+<h3 class="headline-font font-bold text-lg text-on-surface mb-1">Monthly Trend</h3>
+<p class="text-xs text-on-surface-variant mb-6">Cumulative growth vs. previous month</p>
+<div class="flex-1 flex flex-col justify-center items-center">
+<div class="relative w-full h-40">
+<!-- SVG Path for Trendline -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M0,80 Q20,70 40,85 T80,40 T100,20" fill="none" stroke="#5d5e61" stroke-width="2"></path>
+<path d="M0,90 Q20,85 40,95 T80,70 T100,60" fill="none" stroke="#abb3b7" stroke-dasharray="4" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="mt-6 w-full space-y-4">
+<div class="flex justify-between items-center p-3 bg-white rounded-lg">
+<span class="text-xs font-medium text-on-surface-variant">Growth Rate</span>
+<span class="text-sm font-bold text-tertiary">+12.4%</span>
+</div>
+<div class="flex justify-between items-center p-3 bg-white rounded-lg">
+<span class="text-xs font-medium text-on-surface-variant">Projected Spend</span>
+<span class="text-sm font-bold text-on-surface">$4,280</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Top Allocations Breakdown -->
+<div class="col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<div class="flex flex-col md:flex-row gap-12">
+<!-- Pie Chart Visualization -->
+<div class="relative w-48 h-48 flex-shrink-0 mx-auto md:mx-0">
+<!-- Conic Gradient CSS Pie Chart -->
+<div class="w-full h-full rounded-full" style="background: conic-gradient(#5d5e61 0% 35%, #abb3b7 35% 60%, #dbe4e7 60% 80%, #eaeff1 80% 100%);"></div>
+<!-- Hole for Donut effect -->
+<div class="absolute inset-4 bg-surface-container-lowest rounded-full flex flex-col items-center justify-center">
+<span class="text-xs font-bold text-on-surface-variant">TOTAL</span>
+<span class="text-xl font-extrabold headline-font">$8,942</span>
+</div>
+</div>
+<!-- Detailed Breakdown List -->
+<div class="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="space-y-2 group transition-all">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="text-xs font-bold headline-font uppercase tracking-wider text-on-surface">Fixed Costs</span>
+</div>
+<div class="p-4 bg-surface-container rounded-xl group-hover:bg-primary-container transition-colors">
+<span class="block text-2xl font-bold headline-font">$3,129.00</span>
+<span class="text-[10px] text-on-surface-variant font-medium">35% of total wallet</span>
+</div>
+</div>
+<div class="space-y-2 group transition-all">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-3 h-3 rounded-full bg-outline-variant"></div>
+<span class="text-xs font-bold headline-font uppercase tracking-wider text-on-surface">Dining &amp; Food</span>
+</div>
+<div class="p-4 bg-surface-container rounded-xl group-hover:bg-primary-container transition-colors">
+<span class="block text-2xl font-bold headline-font">$2,235.50</span>
+<span class="text-[10px] text-on-surface-variant font-medium">25% of total wallet</span>
+</div>
+</div>
+<div class="space-y-2 group transition-all">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-3 h-3 rounded-full bg-surface-variant"></div>
+<span class="text-xs font-bold headline-font uppercase tracking-wider text-on-surface">Entertainment</span>
+</div>
+<div class="p-4 bg-surface-container rounded-xl group-hover:bg-primary-container transition-colors">
+<span class="block text-2xl font-bold headline-font">$1,788.40</span>
+<span class="text-[10px] text-on-surface-variant font-medium">20% of total wallet</span>
+</div>
+</div>
+<div class="space-y-2 group transition-all">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-3 h-3 rounded-full bg-surface"></div>
+<span class="text-xs font-bold headline-font uppercase tracking-wider text-on-surface">Others</span>
+</div>
+<div class="p-4 bg-surface-container rounded-xl group-hover:bg-primary-container transition-colors">
+<span class="block text-2xl font-bold headline-font">$1,788.40</span>
+<span class="text-[10px] text-on-surface-variant font-medium">20% of total wallet</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Anomalies / OCR Insights -->
+<div class="col-span-12 lg:col-span-6 bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6">
+<h3 class="headline-font font-bold text-lg text-on-surface mb-4">Detected Anomalies</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-4 p-4 rounded-lg bg-error-container/10 border-l-4 border-error">
+<span class="material-symbols-outlined text-error" data-icon="warning">warning</span>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Duplicate Receipt</h4>
+<p class="text-xs text-on-surface-variant">Starbucks Corp - $12.50 detected twice on Mar 12</p>
+</div>
+<button class="text-xs font-bold text-error underline">Resolve</button>
+</div>
+<div class="flex items-center gap-4 p-4 rounded-lg bg-surface-container-low">
+<span class="material-symbols-outlined text-tertiary" data-icon="auto_awesome">auto_awesome</span>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Subscription Spike</h4>
+<p class="text-xs text-on-surface-variant">Cloud Storage increased by 15% this billing cycle</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Subscription Management Preview -->
+<div class="col-span-12 lg:col-span-6 bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="headline-font font-bold text-lg text-on-surface">Active Subscriptions</h3>
+<a class="text-xs font-bold text-primary" href="#">View All</a>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+<img alt="Adobe Logo" data-alt="minimal monochromatic logo of creative software company on light gray background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBb_5hgXzhzuD-VuR38wbIkj72WwqJTaz9HSTbaS3nxG1JPw2HgT4riPoer4gOwuJJY5dsrsruT3JOzQGN3M7Dvm10Vp_-uaF_g01wD-GL6KcQ9SVkb71TqIjBsFMasb2wf_5R2EDBmPTGOXcLYNpsBOi78EMSZzxfwPt7UxW1ug_v_0owLq6T08ht1rtZG-OSjKMqZF55VDuCUSLhs5GcMXFnsPIty3Zj_bagf9brdZCLxKQTne8GwYp-3PYmnNx7fTjOISg77KCs"/>
+</div>
+<div>
+<h4 class="text-xs font-bold">Adobe CC</h4>
+<p class="text-[10px] text-on-surface-variant">$52.99 / mo</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+<img alt="Spotify Logo" data-alt="minimal circular logo of music streaming service in a clean monochrome style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgtaPJ5m_DCkMaKbWxWJ9cAhCAj-HMeAR7I8h9iExx63Qppzc1i10bHUMWDK88zIO1m4eYtD6CfhWz43St9HW1QJ3TIsftXqdUWr7Y1o-PNasVGtHEAnPlMFW56A4vOBCT9An56mVuWPzj-gMo0EgBTcoGptCXPqskdMMA7HmjtpKxlblGxK89zo4QkK64TA6us6lvl_rHXOthAIa1ssalCMfALmDTw31gkmEjPahpAtpAdNThVjtA0N0mRoVRZPLyzQOud0-s_78"/>
+</div>
+<div>
+<h4 class="text-xs font-bold">Spotify</h4>
+<p class="text-[10px] text-on-surface-variant">$10.99 / mo</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+<img alt="Netflix Logo" data-alt="minimal letter N logo of a video streaming service on a gray background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBd0QiTwbmVHKpiNiBcJ2v2LdgLQOyu29pOQC53uKTF1WsMRUYerdOkZaZwBzYbWwmGt38iJI3TdExLhMITWW9_6axXg7qzmXP-6--TLGe8oaAnINA_JMJ_f68aAQ_yG-pTg4UqlCSbO8M7kudB12zSszcdIKov6pUTSJ1AYsNvsGnfVFjMx1UtNyxGzc9wsosEEaZkydREF29cOP-jZGgP_qhNFf8rKh71AhvO9P6uNjllFGTXmEVUb_W5mKwrUdlWvGyUhpd-Vw"/>
+</div>
+<div>
+<h4 class="text-xs font-bold">Netflix</h4>
+<p class="text-[10px] text-on-surface-variant">$19.99 / mo</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+<img alt="AWS Logo" data-alt="stylized cloud service logo in deep gray scale on light background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsr2Z8ao1hekSbTVEo3nn5YBDUNWJwMdJKbIk0F2fT6CfHeUKD-N0weDBxHIP2OqDWAJDlhNiTX8G_xJh3TMo9yGKQfHVI_YAaDkGf18YYHODcFSTSOBGDYm73n_df3I26jAl3YyDOi--FCcFw1QQkkMUmpPBmMCtIXu1nPtg7Adpvz5sU-DLSbcf79HGBA91EhhOAM_0UO5dS56fNrT66BWLE0QHNYDsg98DJZ8Xm7AFuDCq-PRRAAt9tVByLg6qGxyzPoGHIJSk"/>
+</div>
+<div>
+<h4 class="text-xs font-bold">AWS</h4>
+<p class="text-[10px] text-on-surface-variant">Pay-as-you-go</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

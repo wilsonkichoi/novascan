@@ -1,0 +1,32 @@
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant Cog as Cognito
+    participant PSU as Pre-Sign-Up Lambda
+    participant PCL as Post-Confirmation Lambda
+    participant APIGW as API Gateway
+
+    User->>FE: Enter email
+    FE->>Cog: InitiateAuth (USER_AUTH, email)
+
+    alt New user (UserNotFoundException)
+        Cog-->>FE: Error: UserNotFoundException
+        FE->>Cog: SignUp (email, no password)
+        Cog->>PSU: Pre-Sign-Up trigger
+        PSU-->>Cog: Auto-confirm + auto-verify
+        Cog->>PCL: Post-Confirmation trigger
+        PCL->>Cog: Add user to 'user' group
+        Cog-->>FE: SignUp success
+        FE->>Cog: InitiateAuth (USER_AUTH, email)
+    end
+
+    Cog-->>FE: Challenge: EMAIL_OTP
+    Cog->>User: Send OTP email
+    User->>FE: Enter OTP code
+    FE->>Cog: RespondToAuthChallenge (OTP)
+    Cog-->>FE: JWT tokens (ID, access, refresh)
+
+    FE->>APIGW: GET /api/receipts (Authorization: Bearer token)
+    APIGW->>Cog: Validate JWT
+    Cog-->>APIGW: Valid
+    APIGW-->>FE: 200 OK

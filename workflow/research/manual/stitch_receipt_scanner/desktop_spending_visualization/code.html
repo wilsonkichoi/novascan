@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina Ledger | Spending Visuals</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#d1dce0",
+              "on-primary-fixed-variant": "#5a5c5e",
+              "tertiary-dim": "#005f4d",
+              "surface-container-high": "#e3e9ec",
+              "on-tertiary-container": "#005f4e",
+              "on-primary": "#f7f7fa",
+              "outline": "#737c7f",
+              "secondary-dim": "#505455",
+              "primary-container": "#e2e2e5",
+              "secondary-container": "#e1e3e4",
+              "on-secondary-fixed-variant": "#595c5d",
+              "on-secondary": "#f7f9fa",
+              "on-tertiary-fixed": "#004a3c",
+              "surface-container": "#eaeff1",
+              "on-background": "#2b3437",
+              "tertiary": "#006c59",
+              "inverse-primary": "#f9f9fc",
+              "tertiary-fixed-dim": "#5ceecc",
+              "primary-fixed-dim": "#d4d4d7",
+              "background": "#f8f9fa",
+              "surface-container-lowest": "#ffffff",
+              "secondary": "#5c6061",
+              "on-surface-variant": "#586064",
+              "on-secondary-fixed": "#3c4041",
+              "on-tertiary-fixed-variant": "#006a57",
+              "surface-tint": "#5d5e61",
+              "on-error-container": "#752121",
+              "inverse-on-surface": "#9b9d9e",
+              "secondary-fixed-dim": "#d2d5d6",
+              "error": "#9f403d",
+              "on-primary-fixed": "#3e3f42",
+              "on-surface": "#2b3437",
+              "tertiary-container": "#6cfdda",
+              "on-primary-container": "#505254",
+              "on-tertiary": "#e4fff4",
+              "surface-container-highest": "#dbe4e7",
+              "on-error": "#fff7f6",
+              "tertiary-fixed": "#6cfdda",
+              "primary": "#5d5e61",
+              "surface-container-low": "#f1f4f6",
+              "surface-variant": "#dbe4e7",
+              "secondary-fixed": "#e1e3e4",
+              "on-secondary-container": "#4f5253",
+              "primary-fixed": "#e2e2e5",
+              "inverse-surface": "#0c0f10",
+              "surface": "#f8f9fa",
+              "outline-variant": "#abb3b7",
+              "primary-dim": "#515255",
+              "error-dim": "#4e0309",
+              "error-container": "#fe8983",
+              "surface-bright": "#f8f9fa"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .headline-font { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f1f4f6] dark:bg-[#2b3437] flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#5d5e61] dark:text-[#f8f9fa]">menu</span>
+<h1 class="font-['Manrope'] font-bold tracking-tight text-[#2b3437] dark:text-[#f8f9fa] text-xl uppercase tracking-widest">Lumina Ledger</h1>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Close-up portrait of a professional man with a neutral expression, soft studio lighting, high-end editorial photography style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAq91TrjiWgKxfO2wRAjwiAngT24ZQoWZOK7Sk0E0hD3otGvL-CA5B8MsBxQD-W1yAerZVxECeYeKW3l_kfCVcsfcFtg40Qk6oPwSSvjs9_qW9oXHIK3NQNt35Q2Q6r_Aih-xRw1kEhnDVKlfg8hqPbCJZjsRnWtaVwYGbfLjgzt-XYvIgk5dko3izxmxkxclbiRajJDjUIqZ-L4tYV4phywcRpsob82X-pB-BaIegcjqSe_fnY_d47fHnA5MnNK2m9RkUvZ4ZFb8"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-6 max-w-md mx-auto space-y-8">
+<!-- Period Selector (Asymmetric Tabs) -->
+<section class="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
+<button class="px-5 py-2 rounded-full bg-primary text-on-primary font-medium text-sm transition-transform active:scale-95 duration-200">Weekly</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-low text-on-surface-variant font-medium text-sm hover:bg-surface-container-high transition-colors">Monthly</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-low text-on-surface-variant font-medium text-sm hover:bg-surface-container-high transition-colors">Yearly</button>
+</section>
+<!-- Insights Summary Card (Editorial Style) -->
+<section class="space-y-1">
+<p class="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant ml-1">Total Expenditure</p>
+<div class="flex items-baseline gap-2">
+<h2 class="font-headline text-5xl font-extrabold tracking-tighter text-on-surface">$2,840</h2>
+<span class="text-tertiary font-bold text-sm">↓ 12%</span>
+</div>
+</section>
+<!-- Interactive Bento Chart Container -->
+<section class="grid grid-cols-6 gap-4">
+<!-- Main Bar Chart Card -->
+<div class="col-span-6 bg-surface-container-lowest rounded-xl p-6 shadow-[0_4px_40px_rgba(43,52,55,0.04)] space-y-6">
+<div class="flex justify-between items-center">
+<h3 class="font-headline font-bold text-on-surface">Daily Spending</h3>
+<span class="material-symbols-outlined text-outline">more_horiz</span>
+</div>
+<div class="flex items-end justify-between h-40 gap-2 px-2">
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="w-full bg-surface-container rounded-t-lg h-[40%] transition-all hover:bg-primary-container"></div>
+<span class="text-[10px] font-label text-on-surface-variant">M</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="w-full bg-surface-container rounded-t-lg h-[65%] transition-all hover:bg-primary-container"></div>
+<span class="text-[10px] font-label text-on-surface-variant">T</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="w-full bg-primary rounded-t-lg h-[90%] transition-all"></div>
+<span class="text-[10px] font-label text-on-surface-variant">W</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="w-full bg-surface-container rounded-t-lg h-[55%] transition-all hover:bg-primary-container"></div>
+<span class="text-[10px] font-label text-on-surface-variant">T</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="w-full bg-surface-container rounded-t-lg h-[75%] transition-all hover:bg-primary-container"></div>
+<span class="text-[10px] font-label text-on-surface-variant">F</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="w-full bg-surface-container rounded-t-lg h-[30%] transition-all hover:bg-primary-container"></div>
+<span class="text-[10px] font-label text-on-surface-variant">S</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="w-full bg-surface-container rounded-t-lg h-[45%] transition-all hover:bg-primary-container"></div>
+<span class="text-[10px] font-label text-on-surface-variant">S</span>
+</div>
+</div>
+</div>
+<!-- Category Breakdown (Circular Focus) -->
+<div class="col-span-3 bg-surface-container-low rounded-xl p-5 flex flex-col justify-between">
+<span class="material-symbols-outlined text-tertiary text-3xl">restaurant</span>
+<div>
+<p class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Food &amp; Drink</p>
+<p class="font-headline font-bold text-xl">$842.00</p>
+</div>
+</div>
+<div class="col-span-3 bg-surface-container-low rounded-xl p-5 flex flex-col justify-between">
+<span class="material-symbols-outlined text-primary text-3xl">directions_car</span>
+<div>
+<p class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Travel</p>
+<p class="font-headline font-bold text-xl">$415.50</p>
+</div>
+</div>
+</section>
+<!-- Editorial List: Top Merchants (No Dividers) -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<h3 class="font-headline font-extrabold text-2xl tracking-tight">Top Allocations</h3>
+<p class="text-xs font-label text-tertiary font-bold cursor-pointer">View All</p>
+</div>
+<div class="space-y-4">
+<!-- Merchant Item 1 -->
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl shadow-[0_2px_20px_rgba(43,52,55,0.03)]">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">shopping_bag</span>
+</div>
+<div>
+<p class="font-body font-bold text-on-surface">Whole Foods Market</p>
+<p class="text-xs font-label text-on-surface-variant">Grocery • 12 Oct</p>
+</div>
+</div>
+<p class="font-headline font-bold text-on-surface">-$184.20</p>
+</div>
+<!-- Merchant Item 2 -->
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl shadow-[0_2px_20px_rgba(43,52,55,0.03)]">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">flight</span>
+</div>
+<div>
+<p class="font-body font-bold text-on-surface">Delta Airlines</p>
+<p class="text-xs font-label text-on-surface-variant">Travel • 10 Oct</p>
+</div>
+</div>
+<p class="font-headline font-bold text-on-surface">-$312.00</p>
+</div>
+<!-- Merchant Item 3 -->
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl shadow-[0_2px_20px_rgba(43,52,55,0.03)]">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">stadia_controller</span>
+</div>
+<div>
+<p class="font-body font-bold text-on-surface">Steam Games</p>
+<p class="text-xs font-label text-on-surface-variant">Entertainment • 08 Oct</p>
+</div>
+</div>
+<p class="font-headline font-bold text-on-surface">-$59.99</p>
+</div>
+</div>
+</section>
+<!-- Glassmorphism Scanning Prompt (Floating) -->
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full h-20 flex justify-around items-center px-4 pb-safe bg-[#ffffff]/80 dark:bg-[#1A1C1E]/80 backdrop-blur-xl rounded-t-[2rem] z-50 shadow-[0_-4px_40px_rgba(43,52,55,0.06)]">
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined">camera_enhance</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Scan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Review</span>
+</a>
+<!-- Active Tab: Charts -->
+<a class="flex flex-col items-center justify-center bg-[#5d5e61] dark:bg-[#f8f9fa] text-white dark:text-[#1A1C1E] rounded-full p-3 scale-110 -translate-y-2 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Charts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">History</span>
+</a>
+</nav>
+</body></html>

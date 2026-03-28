@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#d1dce0",
+              "on-primary-fixed-variant": "#5a5c5e",
+              "tertiary-dim": "#005f4d",
+              "surface-container-high": "#e3e9ec",
+              "on-tertiary-container": "#005f4e",
+              "on-primary": "#f7f7fa",
+              "outline": "#737c7f",
+              "secondary-dim": "#505455",
+              "primary-container": "#e2e2e5",
+              "secondary-container": "#e1e3e4",
+              "on-secondary-fixed-variant": "#595c5d",
+              "on-secondary": "#f7f9fa",
+              "on-tertiary-fixed": "#004a3c",
+              "surface-container": "#eaeff1",
+              "on-background": "#2b3437",
+              "tertiary": "#006c59",
+              "inverse-primary": "#f9f9fc",
+              "tertiary-fixed-dim": "#5ceecc",
+              "primary-fixed-dim": "#d4d4d7",
+              "background": "#f8f9fa",
+              "surface-container-lowest": "#ffffff",
+              "secondary": "#5c6061",
+              "on-surface-variant": "#586064",
+              "on-secondary-fixed": "#3c4041",
+              "on-tertiary-fixed-variant": "#006a57",
+              "surface-tint": "#5d5e61",
+              "on-error-container": "#752121",
+              "inverse-on-surface": "#9b9d9e",
+              "secondary-fixed-dim": "#d2d5d6",
+              "error": "#9f403d",
+              "on-primary-fixed": "#3e3f42",
+              "on-surface": "#2b3437",
+              "tertiary-container": "#6cfdda",
+              "on-primary-container": "#505254",
+              "on-tertiary": "#e4fff4",
+              "surface-container-highest": "#dbe4e7",
+              "on-error": "#fff7f6",
+              "tertiary-fixed": "#6cfdda",
+              "primary": "#5d5e61",
+              "surface-container-low": "#f1f4f6",
+              "surface-variant": "#dbe4e7",
+              "secondary-fixed": "#e1e3e4",
+              "on-secondary-container": "#4f5253",
+              "primary-fixed": "#e2e2e5",
+              "inverse-surface": "#0c0f10",
+              "surface": "#f8f9fa",
+              "outline-variant": "#abb3b7",
+              "primary-dim": "#515255",
+              "error-dim": "#4e0309",
+              "error-container": "#fe8983",
+              "surface-bright": "#f8f9fa"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .viewfinder-mask {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+        }
+        .viewfinder-cutout {
+            background: transparent;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(93, 94, 97, 0.2);
+        border-radius: 10px;
+    }
+</style></head>
+<body class="bg-surface text-on-surface font-body overflow-hidden">
+<!-- Top Navigation Anchor (Suppressing SideNav for focused task) -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 py-4 w-full bg-[#f1f4f6] dark:bg-[#2b3437]">
+<div class="flex items-center gap-4">
+<button class="text-[#5d5e61] dark:text-[#f8f9fa] hover:bg-[#f1f4f6] dark:hover:bg-[#3e474a] transition-colors p-2 rounded-full active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<h1 class="font-['Manrope'] font-bold tracking-tight text-[#2b3437] dark:text-[#f8f9fa] text-lg">Lumina Ledger</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-[#5d5e61] dark:text-[#f8f9fa] p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="flash_on">flash_on</span>
+</button>
+</div>
+</header>
+<!-- Main Scanning Canvas -->
+<main class="relative h-screen w-full flex flex-col items-center justify-center pt-16">
+<!-- Camera Background Simulation -->
+<div class="absolute inset-0 z-0">
+<img alt="High-angle shot of a paper receipt on a dark wooden table with soft natural window lighting" class="w-full h-full object-cover" data-alt="Close-up overhead view of a textured paper receipt resting on a dark walnut wood surface with directional soft lighting and deep shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2A2LeLL-bW3ChTs5yUX1XvM2v1WgBzZJp7kLzKzbcvd_XnBXe0hCaadVu0G9ALLVpHp1joYSDOj5zRNifMI2kohikU9t0GE-GeeuhBtdEcpmCngphWmiaaiKbKUOmZF-S-4FCcFBKlxGYvPHq2fRqlsSFQ_3qvki5lHcZ-9tzs5gbmHOZ4gROIwJMeLjOJbZ_yYg30ho1UTnCYDhfOrBIkeFkdz7ndnlQo8OZ0LRGiOy8BiMw_M8sKS1Im3TLVmnz7uPOWygckX0"/>
+</div>
+<!-- Viewfinder Overlay -->
+<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+<div class="relative w-[85%] h-[60%] max-w-md">
+<!-- Corner Guides (Ghost Borders) -->
+<div class="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white/80 rounded-tl-2xl"></div>
+<div class="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white/80 rounded-tr-2xl"></div>
+<div class="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white/80 rounded-bl-2xl"></div>
+<div class="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white/80 rounded-br-2xl"></div>
+<!-- Scanning Line -->
+<div class="absolute left-0 right-0 h-[2px] bg-tertiary-fixed shadow-[0_0_15px_rgba(108,253,218,0.8)] top-1/2 -translate-y-1/2"></div>
+</div>
+</div>
+<!-- Live Status Floating Chip -->
+<div class="absolute top-24 z-20">
+<div class="bg-surface-container-lowest/70 backdrop-blur-xl px-4 py-2 rounded-full border border-outline-variant/15 flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+<span class="font-label text-sm font-medium tracking-tight text-on-surface">Scanning Receipt...</span>
+</div>
+</div>
+<!-- Success Toast / Result Card -->
+<div class="absolute bottom-32 px-6 w-full max-w-md z-30">
+<div class="bg-surface-container-lowest/80 backdrop-blur-2xl rounded-[2rem] p-6 shadow-[0_-4px_40px_rgba(43,52,55,0.06)] border border-outline-variant/10">
+<div class="flex items-start gap-4 mb-4">
+<div class="bg-tertiary-container p-3 rounded-full text-on-tertiary-container">
+<span class="material-symbols-outlined" data-icon="fact_check" style="font-variation-settings: 'FILL' 1;">fact_check</span>
+</div>
+<div>
+<h2 class="font-headline font-bold text-on-surface text-lg">Whole Foods Market</h2>
+<p class="font-body text-sm text-on-surface-variant mt-1">Receipt scanned successfully. Ready to split?</p>
+</div>
+</div>
+<!-- Detected Metadata Chips -->
+<div class="space-y-3 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="water_drop">water_drop</span>
+<span class="text-sm font-body text-on-surface">Organic Whole Milk</span>
+</div>
+<span class="text-sm font-label font-bold text-on-surface">$5.99</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="nutrition">nutrition</span>
+<span class="text-sm font-body text-on-surface">Avocado (Bag of 5)</span>
+</div>
+<span class="text-sm font-label font-bold text-on-surface">$6.50</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="restaurant">restaurant</span>
+<span class="text-sm font-body text-on-surface">Chicken Breast (1.2lb)</span>
+</div>
+<span class="text-sm font-label font-bold text-on-surface">$11.40</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="cookie">cookie</span>
+<span class="text-sm font-body text-on-surface">Sea Salt Crackers</span>
+</div>
+<span class="text-sm font-label font-bold text-on-surface">$4.25</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="local_drink">local_drink</span>
+<span class="text-sm font-body text-on-surface">Sparkling Water (6pk)</span>
+</div>
+<span class="text-sm font-label font-bold text-on-surface">$5.50</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="eco">eco</span>
+<span class="text-sm font-body text-on-surface">Gala Apples (2lb)</span>
+</div>
+<span class="text-sm font-label font-bold text-on-surface">$4.00</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="text-xs font-label uppercase tracking-widest text-on-surface-variant">Estimated Total</span>
+<span class="text-sm font-label font-bold text-on-surface">$37.64</span>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex gap-3">
+<button class="flex-1 py-4 px-6 bg-surface-container-high text-on-surface font-label font-bold rounded-full hover:bg-surface-container-highest transition-colors active:scale-95 duration-200">
+                        Edit
+                    </button>
+<button class="flex-1 py-4 px-6 bg-gradient-to-r from-primary to-primary-dim text-on-primary font-label font-bold rounded-full shadow-[0_4px_20px_rgba(93,94,97,0.2)] active:scale-95 duration-200">
+                        Continue
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Contextual) -->
+<nav class="fixed bottom-0 left-0 w-full h-20 flex justify-around items-center px-4 pb-safe bg-[#ffffff]/80 dark:bg-[#1A1C1E]/80 backdrop-blur-xl rounded-t-[2rem] z-50 shadow-[0_-4px_40px_rgba(43,52,55,0.06)]">
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#5d5e61] dark:bg-[#f8f9fa] text-white dark:text-[#1A1C1E] rounded-full p-3 scale-110 -translate-y-2 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="camera_enhance" style="font-variation-settings: 'FILL' 1;">camera_enhance</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter mt-1">Scan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter mt-1">Review</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter mt-1">Charts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter mt-1">History</span>
+</a>
+</nav>
+</body></html>

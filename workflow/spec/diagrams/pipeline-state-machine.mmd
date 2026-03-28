@@ -1,0 +1,36 @@
+stateDiagram-v2
+    [*] --> LoadCustomCategories
+
+    LoadCustomCategories --> Parallel
+
+    state Parallel {
+        [*] --> Main_Pipeline
+        [*] --> Shadow_Pipeline
+
+        state "OCR-AI (Main)" as Main_Pipeline {
+            [*] --> TextractExtract
+            TextractExtract --> NovaStructure
+            NovaStructure --> [*]
+            TextractExtract --> Main_Failed: Catch
+            NovaStructure --> Main_Failed: Catch
+            Main_Failed --> [*]
+        }
+
+        state "AI-Multimodal (Shadow)" as Shadow_Pipeline {
+            [*] --> BedrockExtract
+            BedrockExtract --> [*]
+            BedrockExtract --> Shadow_Failed: Catch
+            Shadow_Failed --> [*]
+        }
+    }
+
+    state Finalize {
+        [*] --> ApplyMainShadowLogic
+        ApplyMainShadowLogic --> RankResults
+        RankResults --> UpdateReceipt
+        UpdateReceipt --> UpdateS3Metadata
+        UpdateS3Metadata --> [*]
+    }
+
+    Parallel --> Finalize
+    Finalize --> [*]

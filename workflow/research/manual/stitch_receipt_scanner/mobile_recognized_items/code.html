@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#d1dce0",
+              "on-primary-fixed-variant": "#5a5c5e",
+              "tertiary-dim": "#005f4d",
+              "surface-container-high": "#e3e9ec",
+              "on-tertiary-container": "#005f4e",
+              "on-primary": "#f7f7fa",
+              "outline": "#737c7f",
+              "secondary-dim": "#505455",
+              "primary-container": "#e2e2e5",
+              "secondary-container": "#e1e3e4",
+              "on-secondary-fixed-variant": "#595c5d",
+              "on-secondary": "#f7f9fa",
+              "on-tertiary-fixed": "#004a3c",
+              "surface-container": "#eaeff1",
+              "on-background": "#2b3437",
+              "tertiary": "#006c59",
+              "inverse-primary": "#f9f9fc",
+              "tertiary-fixed-dim": "#5ceecc",
+              "primary-fixed-dim": "#d4d4d7",
+              "background": "#f8f9fa",
+              "surface-container-lowest": "#ffffff",
+              "secondary": "#5c6061",
+              "on-surface-variant": "#586064",
+              "on-secondary-fixed": "#3c4041",
+              "on-tertiary-fixed-variant": "#006a57",
+              "surface-tint": "#5d5e61",
+              "on-error-container": "#752121",
+              "inverse-on-surface": "#9b9d9e",
+              "secondary-fixed-dim": "#d2d5d6",
+              "error": "#9f403d",
+              "on-primary-fixed": "#3e3f42",
+              "on-surface": "#2b3437",
+              "tertiary-container": "#6cfdda",
+              "on-primary-container": "#505254",
+              "on-tertiary": "#e4fff4",
+              "surface-container-highest": "#dbe4e7",
+              "on-error": "#fff7f6",
+              "tertiary-fixed": "#6cfdda",
+              "primary": "#5d5e61",
+              "surface-container-low": "#f1f4f6",
+              "surface-variant": "#dbe4e7",
+              "secondary-fixed": "#e1e3e4",
+              "on-secondary-container": "#4f5253",
+              "primary-fixed": "#e2e2e5",
+              "inverse-surface": "#0c0f10",
+              "surface": "#f8f9fa",
+              "outline-variant": "#abb3b7",
+              "primary-dim": "#515255",
+              "error-dim": "#4e0309",
+              "error-container": "#fe8983",
+              "surface-bright": "#f8f9fa"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body text-on-surface antialiased mb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f1f4f6] dark:bg-[#2b3437] flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#5d5e61] dark:text-[#f8f9fa]">menu</span>
+<h1 class="font-['Manrope'] font-bold tracking-tight text-[#2b3437] dark:text-[#f8f9fa] text-xl">Lumina Ledger</h1>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="close-up portrait of a professional man with a friendly expression in a modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCv0DKLDlohfKBX_AR6PbOgdf_3hbJ9fteT3ozxL4uySMobUXNM1KldJ4YDEFR1JS0n06ZTyHea5Sz9PlFQbpQ4RplEJf26ncxGSs8X6i5m-Noc_WmKYY7GOFlVxhMR3dgeGewY9dEL-Em_yrTZv2lO7Y_73P320Cx20IkjV8KieEHgxQYeWiAIsjoDIcKcDAhzR1Nj5TgRCupJeEMxCoxJpMxI4C-aKzFo0nBv43Rc-o_7ryJvDc2vhCLcoR7SK7NIC6mz89w13I8"/>
+</div>
+</header>
+<main class="pt-20 px-6 pb-8">
+<!-- OCR Status Header -->
+<div class="mt-4 mb-8 flex justify-between items-end">
+<div>
+<p class="font-label text-xs uppercase tracking-widest text-on-surface-variant mb-1">OCR Confidence: 98%</p>
+<h2 class="font-headline text-3xl font-extrabold tracking-tight">Review Items</h2>
+</div>
+<div class="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                Verified
+            </div>
+</div>
+<!-- Bento Receipt Layout -->
+<div class="grid grid-cols-1 gap-4">
+<!-- Main Items List -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-[0_-4px_40px_rgba(43,52,55,0.06)]">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline text-lg font-bold">Line Items</h3>
+<span class="font-label text-xs text-on-surface-variant">4 Items Scanned</span>
+</div>
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="flex items-start justify-between group">
+<div class="flex gap-4">
+<div class="w-10 h-10 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">restaurant</span>
+</div>
+<div>
+<h4 class="font-body font-semibold text-sm">Grilled Salmon Fillet</h4>
+<p class="font-label text-xs text-on-surface-variant">Main Course • Qty: 1</p>
+</div>
+</div>
+<span class="font-headline font-bold text-sm">$24.50</span>
+</div>
+<!-- Item 2 -->
+<div class="flex items-start justify-between">
+<div class="flex gap-4">
+<div class="w-10 h-10 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">local_bar</span>
+</div>
+<div>
+<h4 class="font-body font-semibold text-sm">Cabernet Sauvignon</h4>
+<p class="font-label text-xs text-on-surface-variant">Beverage • Qty: 2</p>
+</div>
+</div>
+<span class="font-headline font-bold text-sm">$32.00</span>
+</div>
+<!-- Item 3 -->
+<div class="flex items-start justify-between">
+<div class="flex gap-4">
+<div class="w-10 h-10 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">flatware</span>
+</div>
+<div>
+<h4 class="font-body font-semibold text-sm">Truffle Fries</h4>
+<p class="font-label text-xs text-on-surface-variant">Appetizer • Qty: 1</p>
+</div>
+</div>
+<span class="font-headline font-bold text-sm">$12.50</span>
+</div>
+<!-- Item 4 -->
+<div class="flex items-start justify-between">
+<div class="flex gap-4">
+<div class="w-10 h-10 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">icecream</span>
+</div>
+<div>
+<h4 class="font-body font-semibold text-sm">Artisan Gelato</h4>
+<p class="font-label text-xs text-on-surface-variant">Dessert • Qty: 1</p>
+</div>
+</div>
+<span class="font-headline font-bold text-sm">$8.00</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-dashed border-outline-variant/30 space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Subtotal</span>
+<span class="font-semibold">$77.00</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Tax (8.5%)</span>
+<span class="font-semibold">$6.55</span>
+</div>
+<div class="flex justify-between items-center mt-2 pt-2">
+<span class="font-headline font-extrabold text-lg">Total</span>
+<span class="font-headline font-extrabold text-2xl text-on-surface">$83.55</span>
+</div>
+</div>
+</div>
+<!-- Members Section -->
+<div class="bg-surface-container-low rounded-xl p-6">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline text-lg font-bold">Split Bill</h3>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-sm">person_add</span>
+</button>
+</div>
+</div>
+<div class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+<!-- Member 1 - Active -->
+<div class="min-w-[120px] bg-surface-container-lowest p-3 rounded-xl border border-primary/10 shadow-sm">
+<div class="relative w-10 h-10 mb-2">
+<img alt="Member" class="w-full h-full rounded-full object-cover" data-alt="portrait of a young man with glasses smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDArweIXnLiXJP6NPCfW8Lxi7hfhd0yzb7aBpWzL9vQry8TDliW4pKGNQWDhbwJWNSrd9UAx5MP4N8mq-yzirCK940Q4cJp9VPEq-1oPemB3Na4g8PN42Ef9IHd-zqQ2bpOUvLEU9Y_-sg0BBeDyVa0ukw0Rvi4t51C7EoJrK4kDSv-5L675lo9MY1iY8HzSdodmbr7P-hylvRVVfZ7NpmbwYhj186MptYFPtutIJaFYVgXMM4HvSbVXVDkJumRaSOm0cos0iDifAU"/>
+<div class="absolute -bottom-1 -right-1 bg-tertiary w-4 h-4 rounded-full border-2 border-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[8px] text-white" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</div>
+<p class="font-body text-xs font-bold truncate">Alex (Me)</p>
+<p class="font-headline text-sm font-black mt-1">$27.85</p>
+</div>
+<!-- Member 2 -->
+<div class="min-w-[120px] bg-white/40 p-3 rounded-xl">
+<div class="w-10 h-10 mb-2">
+<img alt="Member" class="w-full h-full rounded-full object-cover grayscale opacity-60" data-alt="smiling woman with brown hair in a bright outdoor setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtZi3zoF12toUDzlT7ASDoUn1rmJKkf4TnTrkzbo7dqoUesILAf0psJ-vtzk5hjZJpSOPg5Olco1OyWkcq19ZolajygRdy6p_gx-32S46CRhol-P23ad3Xucr-rjb2V9jF9U8r4flmCP713tmcGZ7-Pv6CMsjivEUBZrP9OvNFeewl8JD6uc0x_zUZ7ZJmG2-Ob71WT4Hr7NGqDFFOglRTsJosDYIh9CcbaPjha3J4lbbAT15ZlEzzrsrrqQMPtVjmkKtIhVYg-XE"/>
+</div>
+<p class="font-body text-xs font-medium text-on-surface-variant truncate">Sarah L.</p>
+<p class="font-headline text-sm font-bold mt-1 text-on-surface-variant">$27.85</p>
+</div>
+<!-- Member 3 -->
+<div class="min-w-[120px] bg-white/40 p-3 rounded-xl">
+<div class="w-10 h-10 mb-2">
+<img alt="Member" class="w-full h-full rounded-full object-cover grayscale opacity-60" data-alt="man with a beard looking thoughtfully at the camera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClbbLPZFrbVw9qwGe-JVVxj-53iA8ibfO3VPdZIGm0NIwCWA88q85Sbs58R1oyrykaR8glDYtNYz8YJ65sbsa83v3j5Mw-iDtZqa-tjUT0XiWpH1_PyTeFSk0TNWy9kYx738vq8AeRhLC2XWGMFKMvW1CHvqizA2XrngM1zY5HaekkZPmfj7bfd-oWX7czOFfYNgeDN-ytuEut_eIldchesYNP_y3ozkF7dKdOepSx1MqW5e4uktlnO-WSrG99kgM6beKNQYiuslU"/>
+</div>
+<p class="font-body text-xs font-medium text-on-surface-variant truncate">Marcus V.</p>
+<p class="font-headline text-sm font-bold mt-1 text-on-surface-variant">$27.85</p>
+</div>
+</div>
+<div class="mt-6 flex gap-4">
+<button class="flex-1 py-3 px-4 bg-surface-container-lowest rounded-full font-body text-xs font-bold uppercase tracking-wider text-on-surface-variant hover:bg-white transition-all">Split Equally</button>
+<button class="flex-1 py-3 px-4 bg-primary text-on-primary rounded-full font-body text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all">By Item</button>
+</div>
+</div>
+<!-- Action Button -->
+<button class="mt-4 w-full py-5 bg-gradient-to-r from-primary to-primary-dim text-on-primary rounded-full font-headline font-bold text-lg shadow-xl active:scale-95 transition-transform duration-200">
+                Confirm &amp; Archive Receipt
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full h-20 bg-[#ffffff]/80 dark:bg-[#1A1C1E]/80 backdrop-blur-xl flex justify-around items-center px-4 pb-safe z-50 rounded-t-[2rem] shadow-[0_-4px_40px_rgba(43,52,55,0.06)]">
+<div class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-[#5d5e61] dark:bg-[#f8f9fa] text-white dark:text-[#1A1C1E] rounded-full p-3 scale-110 -translate-y-2 transition-all">
+<span class="material-symbols-outlined" data-icon="camera_enhance">camera_enhance</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Scan</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Review</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">Charts</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#586064] dark:text-[#abb3b7] opacity-60 p-2 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-tighter">History</span>
+</div>
+</nav>
+</body></html>

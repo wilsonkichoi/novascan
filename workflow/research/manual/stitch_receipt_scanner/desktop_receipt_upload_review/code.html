@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina Ledger | Desktop Scanner &amp; Review</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-variant": "#dbe4e7",
+              "on-tertiary-fixed": "#004a3c",
+              "on-surface": "#2b3437",
+              "primary-container": "#e2e2e5",
+              "tertiary-container": "#6cfdda",
+              "on-tertiary-container": "#005f4e",
+              "outline": "#737c7f",
+              "error-dim": "#4e0309",
+              "outline-variant": "#abb3b7",
+              "secondary-container": "#e1e3e4",
+              "on-surface-variant": "#586064",
+              "surface-container-highest": "#dbe4e7",
+              "secondary": "#5c6061",
+              "error": "#9f403d",
+              "surface-container-high": "#e3e9ec",
+              "surface": "#f8f9fa",
+              "on-tertiary": "#e4fff4",
+              "on-primary-container": "#505254",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed-dim": "#d4d4d7",
+              "secondary-fixed-dim": "#d2d5d6",
+              "on-error": "#fff7f6",
+              "on-secondary": "#f7f9fa",
+              "on-secondary-fixed-variant": "#595c5d",
+              "primary-dim": "#515255",
+              "on-primary-fixed": "#3e3f42",
+              "error-container": "#fe8983",
+              "on-tertiary-fixed-variant": "#006a57",
+              "tertiary-dim": "#005f4d",
+              "inverse-primary": "#f9f9fc",
+              "inverse-on-surface": "#9b9d9e",
+              "tertiary-fixed": "#6cfdda",
+              "surface-container-low": "#f1f4f6",
+              "on-background": "#2b3437",
+              "primary-fixed": "#e2e2e5",
+              "on-error-container": "#752121",
+              "surface-container": "#eaeff1",
+              "primary": "#5d5e61",
+              "surface-tint": "#5d5e61",
+              "surface-bright": "#f8f9fa",
+              "on-secondary-fixed": "#3c4041",
+              "inverse-surface": "#0c0f10",
+              "background": "#f8f9fa",
+              "secondary-dim": "#505455",
+              "tertiary-fixed-dim": "#5ceecc",
+              "secondary-fixed": "#e1e3e4",
+              "tertiary": "#006c59",
+              "on-primary": "#f7f7fa",
+              "surface-dim": "#d1dce0",
+              "on-secondary-container": "#4f5253",
+              "on-primary-fixed-variant": "#5a5c5e"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #abb3b7;
+            border-radius: 10px;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased overflow-hidden">
+<!-- SideNavBar (The Anchor) -->
+<aside class="h-screen w-64 fixed left-0 top-0 z-50 flex flex-col py-8 px-4 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-manrope text-sm font-medium transition-all duration-200 ease-in-out">
+<div class="mb-10 px-2">
+<h1 class="text-lg font-extrabold tracking-tighter text-slate-900 dark:text-white uppercase">Lumina Ledger</h1>
+<p class="text-xs text-slate-500">The Digital Curator</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-900 dark:text-white font-bold border-r-2 border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-900" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span>Receipts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 transition-colors" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span>Expenses</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-2">
+<button class="w-full py-4 bg-primary text-on-primary rounded-full font-bold flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-opacity"><span class="material-symbols-outlined">upload</span>
+                Upload Receipt</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex flex-col h-screen">
+<!-- TopAppBar -->
+<header class="w-full h-16 sticky top-0 z-40 flex items-center justify-between px-8 bg-white dark:bg-slate-900 shadow-sm transition-all duration-200 font-manrope text-sm font-medium">
+<div class="flex items-center bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-lg w-96">
+<span class="material-symbols-outlined text-slate-400 mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full text-slate-700" placeholder="Search curated records..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4 text-slate-500">
+<span class="material-symbols-outlined cursor-pointer hover:text-slate-900 transition-colors">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-slate-900 transition-colors">help_outline</span>
+</div>
+<div class="h-8 w-8 rounded-full overflow-hidden bg-slate-200">
+<img alt="User profile" data-alt="Close-up portrait of a professional woman with a clean minimal background, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWc-F2QBC3LVlljKrBkWmE6Xq4oC2TnHqLcMyJ3AijFdxnbFFfmtKJcmoc_JSytjVlqyR3FniJAY_XPXSYbhi-2MYHWe_w8fUYTd3J9les27E2UfqqN7WY_lf5If8SFSEm11sxduplQuehNrKBnhB3dVwVtBQyiwCflChYAJ2FaWLKyqrO8TnOQUVrL5cf7EA4haVHV5LqPxMnYaeikHGPt09VjzbT0UR4z2YzlLx5lv76AguUbWqjM2cmhT4leFcMTcqhRqeOB2I"/>
+</div>
+</div>
+</header>
+<!-- Scanner & Review Workspace -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Panel: Live Scanner / Upload Feed -->
+<section class="w-1/2 p-6 bg-surface-container flex flex-col">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline text-xl font-bold tracking-tight text-on-surface">Curator Viewfinder</h2>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg bg-surface-container-lowest text-on-surface-variant hover:bg-white transition-colors">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+<button class="p-2 rounded-lg bg-surface-container-lowest text-on-surface-variant hover:bg-white transition-colors">
+<span class="material-symbols-outlined">rotate_right</span>
+</button>
+</div>
+</div>
+<!-- Receipt Preview Canvas -->
+<div class="flex-1 relative rounded-xl overflow-hidden bg-black group">
+<img class="w-full h-full object-cover opacity-80" data-alt="Close up of a supermarket grocery receipt on a dark slate background, sharp focus on itemized list and prices" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfaZTcufjfLCbDMWVa0SkO5H3pU6eD3BB3jFOZjMIR_C7STwU_MAWYGNfyjyIugPMKt9NkBkov4nKihwXCP5m5HgXrNf0UXHTQfNX0dkfPcNNinrwSSHT1AMsmY91h8yRWm6-qOk9nJnNUzyXomWFmrCZEGJtHFeSsAl12dJKnqCh2rmu_ExaNr39I1G1hhWJeqJXGZoqsdJJ5CV6CVRFekV-uZDBnzMqwrpNfhSv8W3dNSajxjdj2rRB2azWd81-7gdyfiXE1NnQ"/>
+<!-- OCR Viewfinder Overlays -->
+<div class="absolute inset-0 border-[32px] border-black/40"></div>
+<div class="absolute top-1/4 left-1/4 right-1/4 bottom-1/4 border-2 border-white/30 rounded-lg">
+<div class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-white"></div>
+<div class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-white"></div>
+<div class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-white"></div>
+<div class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-white"></div>
+</div>
+<!-- Live Tags Popups -->
+<div class="absolute top-[35%] left-[55%] glass-panel px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-xl">
+<span class="text-[10px] font-bold text-tertiary uppercase tracking-widest">Detected</span>
+<span class="text-xs font-semibold">Organic Milk $4.99</span>
+</div>
+<div class="absolute top-[48%] left-[45%] glass-panel px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-xl">
+<span class="text-[10px] font-bold text-tertiary uppercase tracking-widest">Detected</span>
+<span class="text-xs font-semibold">Avocado (3x) $6.00</span>
+</div>
+<!-- Scanning Status -->
+<div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-inverse-surface/90 text-on-primary px-6 py-3 rounded-full">
+<div class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+<span class="text-sm font-medium">Extracting metadata... 84% confidence</span>
+</div>
+</div>
+</section>
+<!-- Right Panel: Data Entry & Curation -->
+<section class="w-1/2 bg-surface-container-low flex flex-col border-l border-outline-variant/10">
+<div class="p-8 pb-4">
+<div class="flex items-end justify-between mb-2">
+<div>
+<span class="label-sm text-on-surface-variant uppercase tracking-widest font-bold text-[10px]">Merchant</span>
+<h3 class="font-headline text-2xl font-extrabold text-on-surface">Whole Foods Market</h3>
+</div>
+<div class="text-right">
+<span class="label-sm text-on-surface-variant uppercase tracking-widest font-bold text-[10px]">Total Amount</span>
+<p class="font-headline text-3xl font-bold text-on-surface">$142.85</p>
+</div>
+</div>
+<div class="flex gap-4 mt-6">
+<div class="flex-1 px-4 py-3 bg-surface-container-lowest rounded-lg">
+<span class="block text-[10px] text-on-surface-variant uppercase font-bold mb-1">Date</span>
+<p class="text-sm font-medium">Oct 24, 2023</p>
+</div>
+<div class="flex-1 px-4 py-3 bg-surface-container-lowest rounded-lg">
+<span class="block text-[10px] text-on-surface-variant uppercase font-bold mb-1">Category</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">restaurant</span>
+<p class="text-sm font-medium">Groceries</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Itemized List -->
+<div class="flex-1 overflow-y-auto px-8 custom-scrollbar space-y-3">
+<div class="flex items-center justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-wider py-2">
+<span class="w-1/2">Line Item</span>
+<span class="w-1/4 text-center">Qty</span>
+<span class="w-1/4 text-right">Price</span>
+</div>
+<!-- Item Row -->
+<div class="group flex items-center p-4 bg-surface-container-lowest rounded-xl hover:shadow-sm transition-all border border-transparent hover:border-outline-variant/20">
+<div class="w-1/2 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">lunch_dining</span>
+</div>
+<input class="bg-transparent border-none p-0 text-sm font-semibold focus:ring-0 w-full" type="text" value="Organic Whole Milk"/>
+</div>
+<div class="w-1/4 text-center">
+<input class="bg-transparent border-none p-0 text-sm text-center focus:ring-0 w-8" type="text" value="1"/>
+</div>
+<div class="w-1/4 text-right flex items-center justify-end gap-2">
+<span class="text-sm font-bold">$4.99</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">groups</span>
+</button>
+</div>
+</div>
+<!-- Item Row -->
+<div class="group flex items-center p-4 bg-surface-container-lowest rounded-xl hover:shadow-sm transition-all border border-transparent hover:border-outline-variant/20">
+<div class="w-1/2 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-tertiary-container/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm text-tertiary">eco</span>
+</div>
+<input class="bg-transparent border-none p-0 text-sm font-semibold focus:ring-0 w-full" type="text" value="Haas Avocados (Pack)"/>
+</div>
+<div class="w-1/4 text-center">
+<input class="bg-transparent border-none p-0 text-sm text-center focus:ring-0 w-8" type="text" value="2"/>
+</div>
+<div class="w-1/4 text-right flex items-center justify-end gap-2">
+<span class="text-sm font-bold">$12.00</span>
+<button class="p-1 text-tertiary bg-tertiary/10 rounded-full">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">groups</span>
+</button>
+</div>
+</div>
+<!-- Item Row -->
+<div class="group flex items-center p-4 bg-surface-container-lowest rounded-xl hover:shadow-sm transition-all border border-transparent hover:border-outline-variant/20">
+<div class="w-1/2 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">bakery_dining</span>
+</div>
+<input class="bg-transparent border-none p-0 text-sm font-semibold focus:ring-0 w-full" type="text" value="Sourdough Loaf"/>
+</div>
+<div class="w-1/4 text-center">
+<input class="bg-transparent border-none p-0 text-sm text-center focus:ring-0 w-8" type="text" value="1"/>
+</div>
+<div class="w-1/4 text-right flex items-center justify-end gap-2">
+<span class="text-sm font-bold">$6.50</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">groups</span>
+</button>
+</div>
+</div>
+<!-- Item Row -->
+<div class="group flex items-center p-4 bg-surface-container-lowest rounded-xl hover:shadow-sm transition-all border border-transparent hover:border-outline-variant/20">
+<div class="w-1/2 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">local_cafe</span>
+</div>
+<input class="bg-transparent border-none p-0 text-sm font-semibold focus:ring-0 w-full" type="text" value="Intelligentsia Coffee"/>
+</div>
+<div class="w-1/4 text-center">
+<input class="bg-transparent border-none p-0 text-sm text-center focus:ring-0 w-8" type="text" value="1"/>
+</div>
+<div class="w-1/4 text-right flex items-center justify-end gap-2">
+<span class="text-sm font-bold">$18.90</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">groups</span>
+</button>
+</div>
+</div>
+<!-- Split Bill Widget (Collapsed state) -->
+<div class="p-4 bg-white rounded-xl border-dashed border-2 border-outline-variant/30 flex items-center justify-between mt-6 cursor-pointer hover:bg-slate-50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="flex -space-x-2">
+<img alt="Member 1" class="w-6 h-6 rounded-full border-2 border-white" data-alt="Close-up portrait of a man with clean minimal background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfI3RdajjMBEw9jXCAnGmYHu2SymnmYkokfLzoNdN7FVM2DSQRjhO1_BwKUYI5F71ZSwzO0gMxP3gmyeCQIfXhv0cA3gy5LFRcyYOV1JpCIv1rOMOyC-lDxPbHh1ln8CigOhHHtbsWnv6qaMDGEAsDaYMY2OCvPOEyNSCAzTXphO_6wa9maRYSUvIuPa7jfM0-3AuFalrL4qJYAXTGRK9Y7ldzE4ZXbmXfwJvmC1tcbwi64RbwVEKtZm1VHUaxtHs9nEuEAEzay7Q"/>
+<img alt="Member 2" class="w-6 h-6 rounded-full border-2 border-white" data-alt="Close-up portrait of a woman with clean minimal background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuHGe4CZp7UvcM4Nob07DxW5qpo_CfJT5KJxkOYCK0_5exyUK20MGIvU3q4wg24sIqk_bNgHbF5xjUETaYU7Uadz5CnzPJagbs0eTv0EX0zbmOUgHTG8R4oBoiR-GJWThnKoYigLZN7ZquX9OomnmJaW-lsEgh5dv7naDBWuEoNRaX_NYgchhg3k3LvBEV9qdU36MxW3wuQxDb5ymRygrFVn0_gSNZfccZ5ThwxY5YybfG6pGtdNDlmRj9w3nqHHsMJxQvLFM_8JE"/>
+<div class="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[8px] font-bold">+2</div>
+</div>
+<span class="text-xs font-semibold text-on-surface-variant italic">Splitting $12.00 (Avocados) with Housemates</span>
+</div>
+<span class="material-symbols-outlined text-sm text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-8 bg-surface-container-lowest shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+<div class="flex gap-4">
+<button class="flex-1 py-4 px-6 rounded-full border border-outline-variant text-on-surface font-bold hover:bg-surface-container transition-colors">
+                            Save as Draft
+                        </button>
+<button class="flex-[2] py-4 px-6 rounded-full bg-gradient-to-r from-primary to-primary-dim text-on-primary font-bold shadow-xl shadow-primary/20 hover:opacity-90 transition-opacity">
+                            Commit to Ledger
+                        </button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

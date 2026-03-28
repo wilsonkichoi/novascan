@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina Ledger - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#dbe4e7",
+                        "on-tertiary-fixed": "#004a3c",
+                        "on-surface": "#2b3437",
+                        "primary-container": "#e2e2e5",
+                        "tertiary-container": "#6cfdda",
+                        "on-tertiary-container": "#005f4e",
+                        "outline": "#737c7f",
+                        "error-dim": "#4e0309",
+                        "outline-variant": "#abb3b7",
+                        "secondary-container": "#e1e3e4",
+                        "on-surface-variant": "#586064",
+                        "surface-container-highest": "#dbe4e7",
+                        "secondary": "#5c6061",
+                        "error": "#9f403d",
+                        "surface-container-high": "#e3e9ec",
+                        "surface": "#f8f9fa",
+                        "on-tertiary": "#e4fff4",
+                        "on-primary-container": "#505254",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#d4d4d7",
+                        "secondary-fixed-dim": "#d2d5d6",
+                        "on-error": "#fff7f6",
+                        "on-secondary": "#f7f9fa",
+                        "on-secondary-fixed-variant": "#595c5d",
+                        "primary-dim": "#515255",
+                        "on-primary-fixed": "#3e3f42",
+                        "error-container": "#fe8983",
+                        "on-tertiary-fixed-variant": "#006a57",
+                        "tertiary-dim": "#005f4d",
+                        "inverse-primary": "#f9f9fc",
+                        "inverse-on-surface": "#9b9d9e",
+                        "tertiary-fixed": "#6cfdda",
+                        "surface-container-low": "#f1f4f6",
+                        "on-background": "#2b3437",
+                        "primary-fixed": "#e2e2e5",
+                        "on-error-container": "#752121",
+                        "surface-container": "#eaeff1",
+                        "primary": "#5d5e61",
+                        "surface-tint": "#5d5e61",
+                        "surface-bright": "#f8f9fa",
+                        "on-secondary-fixed": "#3c4041",
+                        "inverse-surface": "#0c0f10",
+                        "background": "#f8f9fa",
+                        "secondary-dim": "#505455",
+                        "tertiary-fixed-dim": "#5ceecc",
+                        "secondary-fixed": "#e1e3e4",
+                        "tertiary": "#006c59",
+                        "on-primary": "#f7f7fa",
+                        "surface-dim": "#d1dce0",
+                        "on-secondary-container": "#4f5253",
+                        "on-primary-fixed-variant": "#5a5c5e"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-manrope { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for premium feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #dbe4e7; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- SideNavBar Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 z-50 bg-slate-50 dark:bg-slate-950 flex flex-col py-8 px-4 border-r border-slate-200 dark:border-slate-800 font-manrope text-sm font-medium">
+<div class="mb-10 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<h1 class="text-lg font-extrabold tracking-tighter text-slate-900 dark:text-white">Lumina Ledger</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant opacity-70">The Digital Curator</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-900 dark:text-white font-bold border-r-2 border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-900 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span>Receipts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span>Expenses</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto">
+<button class="w-full py-4 px-4 rounded-full bg-gradient-to-r from-primary to-primary-dim text-on-primary font-bold shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"><span class="material-symbols-outlined" data-icon="document_scanner">document_scanner</span>
+                Upload Receipt
+            </button>
+</div>
+</aside>
+<!-- TopAppBar & Content Wrapper -->
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="w-full h-16 sticky top-0 z-40 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none flex items-center justify-between px-8">
+<div class="flex items-center bg-slate-50 dark:bg-slate-800/50 rounded-full px-4 py-2 w-96 group focus-within:ring-1 ring-primary/20 transition-all">
+<span class="material-symbols-outlined text-slate-400 mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full text-slate-700 dark:text-slate-300 placeholder-slate-400 font-manrope" placeholder="Search transactions, tags, or merchants..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 border-r border-slate-100 dark:border-slate-800 pr-6">
+<button class="text-slate-500 hover:text-slate-900 transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<button class="text-slate-500 hover:text-slate-900 transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="text-right">
+<p class="text-xs font-bold text-slate-900 dark:text-white leading-none">Alexander Thorne</p>
+<p class="text-[10px] text-on-surface-variant font-medium">Premium Tier</p>
+</div>
+<img alt="User profile" class="w-10 h-10 rounded-full object-cover grayscale border-2 border-surface-container-high group-hover:grayscale-0 transition-all" data-alt="Close-up portrait of a professional man with a friendly expression in a modern office with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiBkycS0UqQ_nP1mGTtBi1MxDMJ0hgk2IOXb5_YgYOu8s2zN4LOWQGLUbFSEgQxpHj44Pc5J00mFNNDA0qbtbu12lKy12Yu8nakTUl-tEy4oJVIek-EDhMorQ7JJQE7lE1Bb5Hs_cvRNM73IHLnuyvIG3y3A1YeWvIfuBbrCXL-Hb1u70bKyRq616asCEiggsIi5BV6UEix6Nu7Ef8XQZFNcN4cvM3jbavxXxKNFiD0rvLgeCQ79c6Tc7U-GUJX_ETPLbQrcMYslA"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-10 space-y-10 max-w-7xl mx-auto w-full">
+<!-- Hero Section: Total Spent & Trend -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 bg-surface-container-lowest p-10 rounded-[2rem] shadow-[0px_40px_80px_-40px_rgba(43,52,55,0.08)] relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-20 -mt-20 z-0"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="font-manrope text-sm font-semibold tracking-widest uppercase text-on-surface-variant opacity-60 mb-2">Total Managed Capital</h3>
+<p class="font-manrope text-5xl font-extrabold tracking-tighter text-on-surface">$12,482.50</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="trending_down">trending_down</span>
+                                    12.5% decrease
+                                </span>
+<p class="text-xs text-on-surface-variant mt-2 font-medium">vs. previous month</p>
+</div>
+</div>
+<!-- Mini Trend Chart (Visual Representation) -->
+<div class="h-32 flex items-end gap-1.5 w-full mt-6">
+<div class="flex-1 bg-surface-container rounded-t-lg h-[40%] group-hover:h-[45%] transition-all duration-500"></div>
+<div class="flex-1 bg-surface-container rounded-t-lg h-[60%] group-hover:h-[65%] transition-all duration-500 delay-75"></div>
+<div class="flex-1 bg-surface-container rounded-t-lg h-[55%] group-hover:h-[50%] transition-all duration-500 delay-100"></div>
+<div class="flex-1 bg-surface-container rounded-t-lg h-[75%] group-hover:h-[80%] transition-all duration-500 delay-150"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[85%] group-hover:h-[90%] transition-all duration-500 delay-200"></div>
+<div class="flex-1 bg-primary rounded-t-lg h-[45%] group-hover:h-[40%] transition-all duration-500 delay-250"></div>
+<div class="flex-1 bg-primary rounded-t-lg h-[30%] group-hover:h-[25%] transition-all duration-500 delay-300"></div>
+</div>
+</div>
+</div>
+<div class="bg-inverse-surface text-surface p-10 rounded-[2rem] flex flex-col justify-between relative overflow-hidden">
+<div class="absolute -bottom-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl"></div>
+<div>
+<h3 class="font-manrope text-sm font-semibold tracking-widest uppercase opacity-60 mb-6">Quick Actions</h3>
+<div class="space-y-4">
+<button class="w-full py-4 px-6 rounded-xl bg-surface-container-lowest/10 hover:bg-surface-container-lowest/20 transition-colors flex items-center justify-between group">
+<span class="flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary-fixed" data-icon="upload_file">upload_file</span>
+<span class="font-semibold text-sm">Upload CSV</span>
+</span>
+<span class="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="w-full py-4 px-6 rounded-xl bg-surface-container-lowest/10 hover:bg-surface-container-lowest/20 transition-colors flex items-center justify-between group">
+<span class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="mail">mail</span>
+<span class="font-semibold text-sm">Email Fetch</span>
+</span>
+<span class="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="mt-8 pt-8 border-t border-white/10">
+<p class="text-xs opacity-50 mb-4">OCR Confidence Rating</p>
+<div class="flex items-center gap-2">
+<span class="text-2xl font-bold">98.4%</span>
+<span class="text-[10px] bg-tertiary px-2 py-0.5 rounded text-white font-bold uppercase tracking-tighter">Elite</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Grid Section -->
+<section class="grid grid-cols-1 lg:grid-cols-5 gap-10">
+<!-- Recent Activity (3 Columns) -->
+<div class="lg:col-span-3 space-y-6">
+<div class="flex justify-between items-center mb-2">
+<h2 class="font-manrope text-2xl font-bold tracking-tight">Recent Activity</h2>
+<button class="text-primary text-sm font-semibold hover:underline">View All Ledger</button>
+</div>
+<div class="space-y-4">
+<!-- Transaction Item -->
+<div class="flex items-center justify-between p-6 bg-surface-container-lowest rounded-2xl hover:bg-white transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center grayscale group-hover:grayscale-0 transition-all">
+<img alt="Merchant Logo" class="w-8 h-8 object-contain" data-alt="Minimalist black and white tech brand logo on a soft gray background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLFq7-7Zf7tkwPFEGD2-acMRsdD5ZlRXi7nARFWVNodl38kjtw19PXyz0ZkNsCCIOYiGW8SN4zHlQy-QZmCiQUdQRauWfMYlzWFrMVl3dNifbOkdGL_t_RMHKuxKMsSTX8pPu95P_jlQ5ttTxbqdt-uuUIbUkVIWbPXrUp4IQ67PoApa9J2SgmRPfH_9L7QZy567VcJd_Djxh76Wz1agMitzpz6EB3_UYGTLQzXFcZ8LIAYseI0lO1aWPtvknp4F8JPRdNecIjr0Y"/>
+</div>
+<div>
+<h4 class="font-manrope text-base font-bold text-on-surface">Apple Store Soho</h4>
+<p class="text-xs text-on-surface-variant">Technology • Today, 2:45 PM</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-manrope text-base font-extrabold text-on-surface">-$1,299.00</p>
+<span class="text-[10px] text-tertiary font-bold px-2 py-0.5 bg-tertiary/10 rounded">Verified</span>
+</div>
+</div>
+<!-- Transaction Item -->
+<div class="flex items-center justify-between p-6 bg-surface-container-lowest rounded-2xl hover:bg-white transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center grayscale group-hover:grayscale-0 transition-all">
+<img alt="Merchant Logo" class="w-8 h-8 object-contain" data-alt="Modern organic food brand leaf logo in dark shades of green" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXEH8R5G3hq_XjpWncdEZzP2eRuS9At_djNsC-gN9wvKL5irOUupUDZT5SR3TxgpvmW1dYGHZiDPBPWh8yovrRvDO75bW6JIRn-3-LHLHQ5r5mD95DQmta53C1p_zMi2rCeGCIyZ4Hj61Nfktxjw328RrE7_F2f4UKVT9AERCyMKFvEDEMT6NVAuMzKh5idAvbcdnPJML8ljrRvdBc22p944vexu4OgyMt7Lcv4o_kFJTTr8w8H0xFGThPnP6uBMEfYdGBp2FkWMs"/>
+</div>
+<div>
+<h4 class="font-manrope text-base font-bold text-on-surface">Whole Foods Market</h4>
+<p class="text-xs text-on-surface-variant">Groceries • Yesterday, 6:12 PM</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-manrope text-base font-extrabold text-on-surface">-$84.22</p>
+<span class="text-[10px] text-tertiary font-bold px-2 py-0.5 bg-tertiary/10 rounded">Verified</span>
+</div>
+</div>
+<!-- Transaction Item -->
+<div class="flex items-center justify-between p-6 bg-surface-container-lowest rounded-2xl hover:bg-white transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center grayscale group-hover:grayscale-0 transition-all">
+<img alt="Merchant Logo" class="w-8 h-8 object-contain" data-alt="Luxury fashion boutique logo featuring thin elegant serif typography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4HKmtnLL_fZg594T6W1c_GH98r_m2UtFPi5VEVHr6nhh8snzbNlhpFsnLQtz39hzLo2iLqECr1wgvh95YZ8GrUQI5EyWXWiTgo7t1TFO9viVEP9B4itxNny7J5NLKFtFk7ge6n5bqFsIycviUSV93zaugH0m1ucCrT7BxviypWdqLegoN9ImH5IBCbvjG85qQKRDG1UKEh2nJ3URRAurmRFapBSgIHQeCrC2LXIkrIxl4mOqaT87eRVkgcojJd6qbzM36funL4h8"/>
+</div>
+<div>
+<h4 class="font-manrope text-base font-bold text-on-surface">Aēsop NYC</h4>
+<p class="text-xs text-on-surface-variant">Self-care • Oct 24, 11:30 AM</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-manrope text-base font-extrabold text-on-surface">-$210.00</p>
+<span class="text-[10px] text-on-surface-variant font-bold px-2 py-0.5 bg-surface-container rounded">Pending</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Budget vs Actual (2 Columns) -->
+<div class="lg:col-span-2 space-y-6">
+<h2 class="font-manrope text-2xl font-bold tracking-tight">Active Budgets</h2>
+<div class="space-y-6">
+<!-- Budget Card -->
+<div class="bg-surface-container-low p-8 rounded-[2rem] space-y-4">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="restaurant">restaurant</span>
+<span class="font-bold font-manrope">Dining &amp; Social</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">80% used</span>
+</div>
+<div class="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-dim w-[80%] rounded-full"></div>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-xs text-on-surface-variant">Left to spend</p>
+<p class="font-manrope text-xl font-bold">$120.00 <span class="text-xs font-normal opacity-40">/ $600</span></p>
+</div>
+</div>
+<!-- Budget Card -->
+<div class="bg-surface-container-low p-8 rounded-[2rem] space-y-4">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="directions_car">directions_car</span>
+<span class="font-bold font-manrope">Travel &amp; Commute</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">35% used</span>
+</div>
+<div class="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-dim w-[35%] rounded-full"></div>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-xs text-on-surface-variant">Left to spend</p>
+<p class="font-manrope text-xl font-bold">$1,430.00 <span class="text-xs font-normal opacity-40">/ $2,200</span></p>
+</div>
+</div>
+<!-- Add Budget CTA -->
+<button class="w-full py-8 border-2 border-dashed border-outline-variant/30 rounded-[2rem] text-on-surface-variant hover:border-primary/50 hover:bg-surface-container-low/50 transition-all flex flex-col items-center justify-center gap-2 group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform" data-icon="add_circle">add_circle</span>
+<span class="font-bold text-sm tracking-tight">Create New Budget Limit</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Scanning FAB (Suppress logic applied: Only visible on Home/Dashboard) -->
+<div class="fixed bottom-10 right-10 z-50">
+<button class="w-16 h-16 rounded-full bg-inverse-surface text-surface shadow-[0px_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center hover:scale-105 transition-transform group">
+<span class="material-symbols-outlined text-3xl" data-icon="camera_alt">camera_alt</span>
+<div class="absolute right-full mr-4 bg-inverse-surface text-surface text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
+                Quick OCR Scan
+            </div>
+</button>
+</div>
+</body></html>

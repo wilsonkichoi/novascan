@@ -1,0 +1,58 @@
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant API as API Lambda
+    participant S3
+    participant DDB as DynamoDB
+    participant SQS as SQS Queue
+    participant Pipes as EventBridge Pipes
+    participant SF as Step Functions
+    participant TxtL as Textract Extract Lambda
+    participant NovL as Nova Structure Lambda
+    participant BRL as Bedrock Extract Lambda
+    participant FinL as Finalize Lambda
+    participant Txt as Amazon Textract
+    participant BR as Amazon Bedrock
+
+    User->>FE: Select image(s)
+    FE->>API: POST /api/receipts/upload-urls
+    API->>DDB: Create receipt records (status: processing)
+    API->>S3: Generate presigned PUT URLs
+    API-->>FE: { receipts: [{ id, uploadUrl }] }
+
+    loop Each file (parallel)
+        FE->>S3: PUT image via presigned URL
+    end
+
+    FE-->>User: "Receipts uploaded. Processing..."
+
+    S3->>SQS: ObjectCreated event
+    SQS->>Pipes: Poll messages
+    Pipes->>SF: Start execution (max concurrency 2)
+
+    SF->>DDB: Query user's custom categories (CUSTOMCAT#)
+    DDB-->>SF: Custom categories (may be empty)
+
+    par OCR-AI (Main)
+        SF->>TxtL: Invoke
+        TxtL->>Txt: AnalyzeExpense (sync)
+        Txt-->>TxtL: Raw Textract output
+        TxtL-->>SF: Textract result
+        SF->>NovL: Invoke with Textract output + image + taxonomy (predefined + custom)
+        NovL->>BR: Structured JSON prompt
+        BR-->>NovL: Structured extraction
+        NovL-->>SF: OCR-AI result
+    and AI-Multimodal (Shadow)
+        SF->>BRL: Invoke with image + taxonomy (predefined + custom)
+        BRL->>BR: Image + structured JSON prompt
+        BR-->>BRL: Structured extraction
+        BRL-->>SF: AI-multimodal result
+    end
+
+    SF->>FinL: Invoke with both results
+    FinL->>FinL: Apply main/shadow logic
+    FinL->>FinL: Rank both results (data point)
+    FinL->>DDB: Store pipeline results + ranking scores
+    FinL->>DDB: Update receipt (extracted data, status, rankingWinner)
+    FinL->>S3: Update object metadata (status, processed-at)
+    FinL-->>SF: Complete

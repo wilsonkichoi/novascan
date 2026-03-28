@@ -1,0 +1,83 @@
+graph TB
+    subgraph Client
+        Browser["Browser<br/>(React SPA)"]
+    end
+
+    subgraph Edge["AWS Edge"]
+        CF["CloudFront"]
+        S3F["S3<br/>Frontend Assets"]
+    end
+
+    subgraph Auth["AWS Auth"]
+        Cognito["Cognito<br/>User Pool"]
+        PreSignUp["Pre-Sign-Up<br/>Lambda"]
+        PostConfirm["Post-Confirmation<br/>Lambda"]
+    end
+
+    subgraph API["AWS API"]
+        APIGW["API Gateway<br/>HTTP API"]
+        CogAuth["Cognito<br/>Authorizer"]
+        APILambda["API Lambda<br/>(Powertools)"]
+    end
+
+    subgraph Storage["AWS Storage"]
+        S3R["S3<br/>Receipt Images"]
+        DDB["DynamoDB"]
+    end
+
+    subgraph Ingestion["AWS Ingestion"]
+        SQS["SQS Queue<br/>(Burst Buffer)"]
+        Pipes["EventBridge Pipes<br/>(Rate Limiter)"]
+    end
+
+    subgraph Pipeline["Step Functions Pipeline"]
+        LCat["Load Custom<br/>Categories Lambda"]
+        subgraph par["Parallel Branches"]
+            subgraph main_branch["OCR-AI (Main)"]
+                LTxt["Textract Extract<br/>Lambda"]
+                LNova["Nova Structure<br/>Lambda"]
+            end
+            subgraph shadow_branch["AI-Multimodal (Shadow)"]
+                LBR["Bedrock Extract<br/>Lambda"]
+            end
+        end
+        LFin["Finalize + Rank<br/>Lambda"]
+    end
+
+    subgraph AI["AWS AI Services"]
+        Textract["Amazon Textract"]
+        Bedrock["Amazon Bedrock<br/>(Nova)"]
+    end
+
+    %% Frontend & Auth flow
+    Browser -->|HTTPS| CF
+    CF --> S3F
+    Browser -->|Auth| Cognito
+    Cognito --> PreSignUp
+    Cognito --> PostConfirm
+    Browser -->|REST API| APIGW
+    APIGW --> CogAuth
+    CogAuth -.->|Validate JWT| Cognito
+    APIGW --> APILambda
+    APILambda --> DDB
+    APILambda -->|Presigned URLs| S3R
+    Browser -->|Direct upload| S3R
+
+    %% Ingestion flow
+    S3R -->|ObjectCreated| SQS
+    SQS --> Pipes
+    Pipes -->|"MaxConcurrency: 2"| LCat
+    LCat -->|Taxonomy| par
+
+    %% OCR-AI branch (sequential within branch)
+    LTxt -.->|AnalyzeExpense| Textract
+    LTxt -->|Textract output| LNova
+    LNova -.->|Structured JSON prompt| Bedrock
+
+    %% AI-multimodal branch
+    LBR -.->|Image + prompt| Bedrock
+
+    %% After parallel completes → Finalize
+    par -->|Both results| LFin
+    LFin --> DDB
+    LFin -->|Update metadata| S3R
