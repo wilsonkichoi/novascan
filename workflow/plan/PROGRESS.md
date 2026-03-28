@@ -1,15 +1,24 @@
 # Implementation Progress
 
-Last updated: 2026-03-27
+Last updated: 2026-03-28
 
 ## Prerequisites
 
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
-| 0.1  | Development Environment Verification | senior-engineer | pending | | Verify AWS, uv, node, docker |
+| 0.1  | Development Environment Verification | senior-engineer | done | [task-0.1](reviews/task-0.1.md) | Verified 2026-03-28 |
 
 ## Environment
-(populated by Task 0.1)
+
+| Tool | Version / Value |
+|------|----------------|
+| uv | 0.10.7 |
+| Python | 3.14.2 (3.13.11 also available) |
+| Node.js | v24.11.1 |
+| Docker | 28.5.1 |
+| AWS Account | <YOUR-AWS-ACCOUNT-ID> |
+| AWS Region | us-east-1 |
+| AWS Profile | <YOUR-AWS-PROFILE> |
 
 ## Milestone 1: Foundation & Authentication
 

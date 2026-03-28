@@ -646,3 +646,8 @@ HANDOFF.md M3 updated: step 7 now reads "LoadCustomCategories → Parallel (Main
 | DR-002 | Added superseded addendum noting evolved design |
 
 Total tasks: **45** (was 44, added Task 0.1)
+
+# feedback round 3 
+- task 0.1 should include
+    - uv python venv is created
+    

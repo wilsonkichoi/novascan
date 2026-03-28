@@ -51,6 +51,13 @@ cd infra && uv run cdk synth --context stage=dev    # synthesize CloudFormation
 - **Progress Tracker**: [workflow/plan/PROGRESS.md](workflow/plan/PROGRESS.md)
 - **Decisions**: [workflow/decisions/README.md](workflow/decisions/README.md)
 
+## Project Structure
+
+- `backend/` and `infra/` are independent Python subprojects, each with their own `pyproject.toml`, `uv.lock`, and `.venv`
+- `frontend/` is a Node.js project with its own `package.json` and `node_modules/`
+- Do not share venvs across subprojects — their dependency trees are separate (Lambda code vs CDK)
+- Run `uv sync` from the subproject directory to create/update its venv (e.g., `cd backend && uv sync`)
+
 ## Tooling
 
 - **Python:** 3.13+ via uv (NEVER use pip/poetry/conda)

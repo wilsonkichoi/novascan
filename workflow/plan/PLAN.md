@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-#### [ ] Task 0.1: Development Environment Verification
+#### [x] Task 0.1: Development Environment Verification
 - **Role:** senior-engineer
 - **Depends on:** none
 - **Spec reference:** SPEC.md >> Section 9 (Development Environment Setup)
