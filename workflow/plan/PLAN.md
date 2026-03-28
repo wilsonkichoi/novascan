@@ -52,7 +52,7 @@
 - **Test: inline** — `cdk synth` is the verification
 - **Test command:** `cd infra && uv run cdk synth --context stage=dev > /dev/null && echo "PASS"`
 
-#### [ ] Task 1.2: Backend Project Scaffolding
+#### [x] Task 1.2: Backend Project Scaffolding
 - **Role:** backend-engineer
 - **Depends on:** none
 - **Spec reference:** SPEC.md >> Section 9 (Project Structure, Key Dependencies)
@@ -77,7 +77,7 @@
 - **Test: inline** — import verification and linter pass
 - **Test command:** `cd backend && uv sync && uv run ruff check src/ && uv run pytest`
 
-#### [ ] Task 1.3: Frontend Project Scaffolding
+#### [x] Task 1.3: Frontend Project Scaffolding
 - **Role:** frontend-developer
 - **Depends on:** none
 - **Spec reference:** SPEC.md >> Section 9 (Project Structure, Key Dependencies)
