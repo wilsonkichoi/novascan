@@ -27,6 +27,9 @@ share/python-wheels/
 MANIFEST
 .venv
 venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 ENV/
 env/
 .vscode/

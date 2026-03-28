@@ -1,0 +1,48 @@
+[project]
+name = "novascan"
+version = "0.1.0"
+description = "NovaScan backend — AI-powered receipt scanner API"
+requires-python = ">=3.13"
+dependencies = [
+    "aws-lambda-powertools[all]",
+    "pydantic>=2.0",
+    "boto3",
+    "python-ulid",
+    "pandas",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "moto[dynamodb,s3,sqs,stepfunctions]",
+    "ruff",
+    "mypy",
+    "boto3-stubs[dynamodb,s3,sqs,stepfunctions]",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/novascan"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+src = ["src"]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
