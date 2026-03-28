@@ -27,9 +27,9 @@ Last updated: 2026-03-28
 | 1.1  | CDK Project Scaffolding | devops-engineer | done | [task-1.1](reviews/task-1.1.md) | Completed 2026-03-28 |
 | 1.2  | Backend Project Scaffolding | backend-engineer | done | [task-1.2](reviews/task-1.2.md) | Completed 2026-03-28 |
 | 1.3  | Frontend Project Scaffolding | frontend-developer | done | [task-1.3](reviews/task-1.3.md) | Completed 2026-03-28 |
-| 1.4  | Storage Construct (DynamoDB + S3) | devops-engineer | pending | | |
-| 1.5  | Auth Construct + Cognito Lambda Triggers | backend-engineer | pending | | Pre-Sign-Up + Post-Confirmation |
-| 1.6  | Frontend Auth Module | frontend-developer | pending | | |
+| 1.4  | Storage Construct (DynamoDB + S3) | devops-engineer | done | [task-1.4](reviews/task-1.4.md) | Completed 2026-03-28 |
+| 1.5  | Auth Construct + Cognito Lambda Triggers | backend-engineer | done | [task-1.5](reviews/task-1.5.md) | Completed 2026-03-28 |
+| 1.6  | Frontend Auth Module | frontend-developer | done | [task-1.6](reviews/task-1.6.md) | Completed 2026-03-28 |
 | 1.7  | API + Frontend CDK Constructs | devops-engineer | pending | | |
 | 1.8  | Login Page UI | frontend-developer | pending | | |
 | 1.9  | App Shell (Navigation + Protected Routes) | frontend-developer | pending | | |

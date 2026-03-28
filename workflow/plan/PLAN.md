@@ -110,7 +110,7 @@
 
 ### Wave 2: Core Infrastructure + Frontend Auth
 
-#### [ ] Task 1.4: Storage Construct — DynamoDB + S3 Frontend Bucket
+#### [x] Task 1.4: Storage Construct — DynamoDB + S3 Frontend Bucket
 - **Role:** devops-engineer
 - **Depends on:** 1.1
 - **Spec reference:** SPEC.md >> Section 5 (Database Schema)
@@ -127,7 +127,7 @@
   - Storage construct exports table name, table ARN, and frontend bucket references for other constructs
 - **Test command:** `cd infra && uv run cdk synth --context stage=dev | python -c "import sys,json; t=json.load(sys.stdin); resources=[v for v in t['Resources'].values()]; dynamo=[r for r in resources if r['Type']=='AWS::DynamoDB::Table']; assert len(dynamo)==1, 'Expected 1 DynamoDB table'; print('PASS')"`
 
-#### [ ] Task 1.5: Auth Construct + Cognito Lambda Triggers
+#### [x] Task 1.5: Auth Construct + Cognito Lambda Triggers
 - **Role:** backend-engineer
 - **Depends on:** 1.1, 1.2
 - **Spec reference:** SPEC.md >> Section 3 (Auth Flow, RBAC)
@@ -149,7 +149,7 @@
   - Auth construct exports User Pool ID, User Pool ARN, and App Client ID for other constructs
 - **Test command:** `cd infra && uv run cdk synth --context stage=dev | python -c "import sys,json; t=json.load(sys.stdin); r=t['Resources']; pools=[v for v in r.values() if v['Type']=='AWS::Cognito::UserPool']; assert len(pools)==1; groups=[v for v in r.values() if v['Type']=='AWS::Cognito::UserPoolGroup']; assert len(groups)==3; print('PASS')"`
 
-#### [ ] Task 1.6: Frontend Auth Module
+#### [x] Task 1.6: Frontend Auth Module
 - **Role:** frontend-developer
 - **Depends on:** 1.3
 - **Spec reference:** SPEC.md >> Section 3 (Auth Flow)
