@@ -838,7 +838,7 @@ novascan/
 │   ├── app.py
 │   ├── stacks/
 │   │   └── novascan_stack.py   # Main stack
-│   └── constructs/
+│   └── cdkconstructs/
 │       ├── __init__.py
 │       ├── auth.py             # Cognito User Pool + Pre-Sign-Up + Post-Confirmation Lambdas
 │       ├── api.py              # API Gateway + API Lambda

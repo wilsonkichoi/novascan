@@ -24,7 +24,7 @@ Last updated: 2026-03-28
 
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
-| 1.1  | CDK Project Scaffolding | devops-engineer | pending | | Test: inline |
+| 1.1  | CDK Project Scaffolding | devops-engineer | done | [task-1.1](reviews/task-1.1.md) | Completed 2026-03-28 |
 | 1.2  | Backend Project Scaffolding | backend-engineer | pending | | Test: inline |
 | 1.3  | Frontend Project Scaffolding | frontend-developer | pending | | Test: inline |
 | 1.4  | Storage Construct (DynamoDB + S3) | devops-engineer | pending | | |

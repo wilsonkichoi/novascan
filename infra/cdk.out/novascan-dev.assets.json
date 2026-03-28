@@ -1,0 +1,21 @@
+{
+  "version": "53.0.0",
+  "files": {
+    "5b0295f237634392005be08ebdab2d764870e1879d8145a627cdbf58d4f93498": {
+      "displayName": "novascan-dev Template",
+      "source": {
+        "path": "novascan-dev.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "<YOUR-AWS-ACCOUNT-ID>-us-east-1-24ec84ce": {
+          "bucketName": "cdk-hnb659fds-assets-<YOUR-AWS-ACCOUNT-ID>-us-east-1",
+          "objectKey": "5b0295f237634392005be08ebdab2d764870e1879d8145a627cdbf58d4f93498.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::<YOUR-AWS-ACCOUNT-ID>:role/cdk-hnb659fds-file-publishing-role-<YOUR-AWS-ACCOUNT-ID>-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

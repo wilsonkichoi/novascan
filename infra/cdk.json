@@ -1,0 +1,23 @@
+{
+  "app": "uv run python app.py",
+  "context": {
+    "config": {
+      "dev": {
+        "pipelineMaxConcurrency": 2,
+        "presignedUrlExpirySec": 900,
+        "maxUploadFiles": 10,
+        "maxUploadSizeMb": 10,
+        "logLevel": "DEBUG",
+        "defaultPipeline": "ocr-ai"
+      },
+      "prod": {
+        "pipelineMaxConcurrency": 2,
+        "presignedUrlExpirySec": 900,
+        "maxUploadFiles": 10,
+        "maxUploadSizeMb": 10,
+        "logLevel": "INFO",
+        "defaultPipeline": "ocr-ai"
+      }
+    }
+  }
+}

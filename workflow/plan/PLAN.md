@@ -28,7 +28,7 @@
 
 ### Wave 1: Project Scaffolding
 
-#### [ ] Task 1.1: CDK Project Scaffolding
+#### [x] Task 1.1: CDK Project Scaffolding
 - **Role:** devops-engineer
 - **Depends on:** none
 - **Spec reference:** SPEC.md >> Section 9 (Development Environment Setup), Section 3 (Architecture)
@@ -38,12 +38,12 @@
   - `infra/app.py` (create — CDK app entry point, reads stage from context)
   - `infra/stacks/__init__.py` (create)
   - `infra/stacks/novascan_stack.py` (create — main stack with stub imports for all 5 constructs: storage, auth, api, pipeline, frontend)
-  - `infra/constructs/__init__.py` (create)
-  - `infra/constructs/storage.py` (create — empty construct stub)
-  - `infra/constructs/auth.py` (create — empty construct stub)
-  - `infra/constructs/api.py` (create — empty construct stub)
-  - `infra/constructs/pipeline.py` (create — empty construct stub)
-  - `infra/constructs/frontend.py` (create — empty construct stub)
+  - `infra/cdkconstructs/__init__.py` (create)
+  - `infra/cdkconstructs/storage.py` (create — empty construct stub)
+  - `infra/cdkconstructs/auth.py` (create — empty construct stub)
+  - `infra/cdkconstructs/api.py` (create — empty construct stub)
+  - `infra/cdkconstructs/pipeline.py` (create — empty construct stub)
+  - `infra/cdkconstructs/frontend.py` (create — empty construct stub)
 - **Acceptance criteria:**
   - `cd infra && uv sync` installs dependencies without errors
   - `cd infra && uv run cdk synth --context stage=dev` produces a valid (empty) CloudFormation template without errors
@@ -115,7 +115,7 @@
 - **Depends on:** 1.1
 - **Spec reference:** SPEC.md >> Section 5 (Database Schema)
 - **Files:**
-  - `infra/constructs/storage.py` (modify — implement DynamoDB table + GSI1 + S3 frontend bucket)
+  - `infra/cdkconstructs/storage.py` (modify — implement DynamoDB table + GSI1 + S3 frontend bucket)
 - **Acceptance criteria:**
   - `cdk synth` produces a template containing a DynamoDB table named `novascan-{stage}` with:
     - Partition key `PK` (S), sort key `SK` (S)
@@ -132,7 +132,7 @@
 - **Depends on:** 1.1, 1.2
 - **Spec reference:** SPEC.md >> Section 3 (Auth Flow, RBAC)
 - **Files:**
-  - `infra/constructs/auth.py` (modify — Cognito User Pool, App Client, three groups, Pre-Sign-Up + Post-Confirmation Lambda triggers)
+  - `infra/cdkconstructs/auth.py` (modify — Cognito User Pool, App Client, three groups, Pre-Sign-Up + Post-Confirmation Lambda triggers)
   - `backend/src/novascan/auth/__init__.py` (create)
   - `backend/src/novascan/auth/pre_signup.py` (create — auto-confirm, auto-verify email only)
   - `backend/src/novascan/auth/post_confirmation.py` (create — add user to `user` Cognito group via `admin_add_user_to_group`)
@@ -176,8 +176,8 @@
 - **Depends on:** 1.2, 1.4, 1.5
 - **Spec reference:** SPEC.md >> Section 3 (Component Overview), Section 13 (Deployment Architecture, CORS)
 - **Files:**
-  - `infra/constructs/api.py` (modify — API Gateway HTTP API, Cognito authorizer, API Lambda, CORS config)
-  - `infra/constructs/frontend.py` (modify — CloudFront distribution, S3 origin, SPA error routing)
+  - `infra/cdkconstructs/api.py` (modify — API Gateway HTTP API, Cognito authorizer, API Lambda, CORS config)
+  - `infra/cdkconstructs/frontend.py` (modify — CloudFront distribution, S3 origin, SPA error routing)
   - `backend/src/novascan/api/app.py` (create — Lambda Powertools resolver, health check `/api/health` endpoint)
 - **Acceptance criteria:**
   - `cdk synth` produces template with:
@@ -310,7 +310,7 @@
 - **Depends on:** none (M1 complete)
 - **Spec reference:** SPEC.md >> Section 5 (Receipt Attributes, Line Item Attributes), api-contracts.md >> POST /api/receipts/upload-urls
 - **Files:**
-  - `infra/constructs/storage.py` (modify — add receipts S3 bucket: private, SSE-S3, BlockPublicAccess, versioning)
+  - `infra/cdkconstructs/storage.py` (modify — add receipts S3 bucket: private, SSE-S3, BlockPublicAccess, versioning)
   - `backend/src/novascan/models/receipt.py` (create — Receipt, UploadRequest, UploadResponse, ReceiptListResponse Pydantic models)
 - **Acceptance criteria:**
   - `cdk synth` includes a second S3 bucket with: SSE-S3, BlockPublicAccess, versioning enabled
@@ -542,7 +542,7 @@
 - **Depends on:** 3.2, 3.3, 3.4
 - **Spec reference:** SPEC.md >> Section 3 (Processing Flow, Pipeline State Machine diagram)
 - **Files:**
-  - `infra/constructs/pipeline.py` (modify — SQS queue, EventBridge Pipes, Step Functions state machine, Lambda functions, IAM roles)
+  - `infra/cdkconstructs/pipeline.py` (modify — SQS queue, EventBridge Pipes, Step Functions state machine, Lambda functions, IAM roles)
 - **Acceptance criteria:**
   - Configures S3 event notification on receipts bucket for `ObjectCreated` events on `receipts/` prefix → SQS queue (this notification is configured here, not in the storage construct, because the SQS destination must exist first)
   - SQS queue receives S3 `ObjectCreated` events from receipts bucket `receipts/` prefix
@@ -884,7 +884,7 @@
 - **Depends on:** none (M5 complete)
 - **Spec reference:** SPEC.md >> Section 13 (Custom Domain Setup), Milestone 6 Acceptance Criteria
 - **Files:**
-  - `infra/constructs/frontend.py` (modify — add ACM certificate for `subdomain.example.com` in us-east-1, CloudFront alternate domain name, conditional on stage=prod)
+  - `infra/cdkconstructs/frontend.py` (modify — add ACM certificate for `subdomain.example.com` in us-east-1, CloudFront alternate domain name, conditional on stage=prod)
   - `infra/stacks/novascan_stack.py` (modify — output ACM CNAME validation records and CloudFront domain for DNS setup)
 - **Acceptance criteria:**
   - `cdk synth --context stage=prod` includes ACM certificate for `subdomain.example.com` in us-east-1
