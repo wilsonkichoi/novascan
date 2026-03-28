@@ -1,32 +1,11 @@
 import { Routes, Route } from "react-router-dom";
-
-function LoginPage() {
-  return <h1>Login</h1>;
-}
-
-function DashboardPage() {
-  return <h1>Dashboard</h1>;
-}
-
-function UploadPage() {
-  return <h1>Upload</h1>;
-}
-
-function ReceiptsPage() {
-  return <h1>Receipts</h1>;
-}
-
-function ReceiptDetailPage() {
-  return <h1>Receipt Detail</h1>;
-}
-
-function TransactionsPage() {
-  return <h1>Transactions</h1>;
-}
-
-function NotFoundPage() {
-  return <h1>404 — Not Found</h1>;
-}
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import UploadPage from "./pages/UploadPage";
+import ReceiptsPage from "./pages/ReceiptsPage";
+import ReceiptDetailPage from "./pages/ReceiptDetailPage";
+import TransactionsPage from "./pages/TransactionsPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
   return (

@@ -2,7 +2,7 @@
 export type ReceiptStatus =
   | "uploading"
   | "processing"
-  | "completed"
+  | "confirmed"
   | "failed";
 
 /** A single line item on a receipt */
