@@ -3,6 +3,7 @@ import {
   InitiateAuthCommand,
   SignUpCommand,
   RespondToAuthChallengeCommand,
+  RevokeTokenCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import type {
   AuthChallengeResult,
@@ -14,6 +15,12 @@ import type {
 
 const REGION = import.meta.env.VITE_AWS_REGION ?? "us-east-1";
 const USER_POOL_CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID ?? "";
+
+if (!USER_POOL_CLIENT_ID) {
+  throw new Error(
+    "VITE_COGNITO_CLIENT_ID is required — set it in frontend/.env (see .env.example)",
+  );
+}
 
 const REFRESH_TOKEN_KEY = "novascan_refresh_token";
 
@@ -31,6 +38,27 @@ export function getIdToken(): string | null {
 /** Return the current access token. */
 export function getAccessToken(): string | null {
   return accessToken;
+}
+
+/**
+ * Return a valid (non-expired) ID token for API calls.
+ * If the current token expires within 5 minutes, proactively refreshes.
+ * Returns null if no token is available or refresh fails.
+ */
+export async function getValidIdToken(): Promise<string | null> {
+  if (!idToken) return null;
+
+  const claims = decodeJwtPayload(idToken);
+  const nowSecs = Math.floor(Date.now() / 1000);
+  const bufferSecs = 5 * 60;
+
+  if (claims.exp - nowSecs > bufferSecs) {
+    return idToken;
+  }
+
+  // Token expired or expiring soon — try refresh
+  const user = await refreshTokens();
+  return user ? idToken : null;
 }
 
 // ---- JWT helpers ----
@@ -216,9 +244,24 @@ export async function refreshTokens(): Promise<AuthUser | null> {
   }
 }
 
-/** Clear all stored tokens (sign out). */
+/** Clear local tokens and revoke the refresh token on the Cognito side. */
 export function signOut(): void {
+  const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   clearTokens();
+
+  // Best-effort server-side revocation — don't block sign-out on network
+  if (storedRefreshToken) {
+    client
+      .send(
+        new RevokeTokenCommand({
+          Token: storedRefreshToken,
+          ClientId: USER_POOL_CLIENT_ID,
+        }),
+      )
+      .catch(() => {
+        // Revocation failed (offline, token already expired, etc.) — local tokens are already cleared
+      });
+  }
 }
 
 // ---- Internal helpers ----
