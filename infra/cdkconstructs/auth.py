@@ -38,7 +38,10 @@ class AuthConstruct(Construct):
             function_name=f"novascan-{stage}-pre-signup",
             runtime=lambda_.Runtime.PYTHON_3_13,
             handler="pre_signup.handler",
-            code=lambda_.Code.from_asset(BACKEND_AUTH_CODE_PATH),
+            code=lambda_.Code.from_asset(
+                BACKEND_AUTH_CODE_PATH,
+                exclude=["post_confirmation.py", "__pycache__"],
+            ),
             timeout=cdk.Duration.seconds(10),
             memory_size=128,
             description="Cognito Pre-Sign-Up trigger: auto-confirm user and auto-verify email",
@@ -51,7 +54,10 @@ class AuthConstruct(Construct):
             function_name=f"novascan-{stage}-post-confirmation",
             runtime=lambda_.Runtime.PYTHON_3_13,
             handler="post_confirmation.handler",
-            code=lambda_.Code.from_asset(BACKEND_AUTH_CODE_PATH),
+            code=lambda_.Code.from_asset(
+                BACKEND_AUTH_CODE_PATH,
+                exclude=["pre_signup.py", "__pycache__"],
+            ),
             timeout=cdk.Duration.seconds(10),
             memory_size=128,
             description="Cognito Post-Confirmation trigger: add user to 'user' group",
