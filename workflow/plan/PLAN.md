@@ -171,7 +171,7 @@
 
 ### Wave 3: Serving Constructs + Login Page
 
-#### [ ] Task 1.7: API + Frontend CDK Constructs
+#### [x] Task 1.7: API + Frontend CDK Constructs
 - **Role:** devops-engineer
 - **Depends on:** 1.2, 1.4, 1.5
 - **Spec reference:** SPEC.md >> Section 3 (Component Overview), Section 13 (Deployment Architecture, CORS)
@@ -190,7 +190,7 @@
   - CDK stack outputs: API URL, CloudFront domain, User Pool ID, App Client ID
 - **Test command:** `cd infra && uv run cdk synth --context stage=dev | python -c "import sys,json; t=json.load(sys.stdin); r=t['Resources']; apis=[v for v in r.values() if v['Type']=='AWS::ApiGatewayV2::Api']; cfs=[v for v in r.values() if v['Type']=='AWS::CloudFront::Distribution']; assert len(apis)==1 and len(cfs)==1; print('PASS')"`
 
-#### [ ] Task 1.8: Login Page UI
+#### [x] Task 1.8: Login Page UI
 - **Role:** frontend-developer
 - **Depends on:** 1.6
 - **Spec reference:** SPEC.md >> Section 3 (Auth Flow)

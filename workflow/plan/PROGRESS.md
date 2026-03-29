@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-03-28
+Last updated: 2026-03-29
 
 ## Prerequisites
 
@@ -30,8 +30,8 @@ Last updated: 2026-03-28
 | 1.4  | Storage Construct (DynamoDB + S3) | devops-engineer | done | [task-1.4](reviews/task-1.4.md) | Completed 2026-03-28 |
 | 1.5  | Auth Construct + Cognito Lambda Triggers | backend-engineer | done | [task-1.5](reviews/task-1.5.md) | Completed 2026-03-28 |
 | 1.6  | Frontend Auth Module | frontend-developer | done | [task-1.6](reviews/task-1.6.md) | Completed 2026-03-28 |
-| 1.7  | API + Frontend CDK Constructs | devops-engineer | pending | | |
-| 1.8  | Login Page UI | frontend-developer | pending | | |
+| 1.7  | API + Frontend CDK Constructs | devops-engineer | done | [task-1.7](reviews/task-1.7.md) | Reviewed 2026-03-29 |
+| 1.8  | Login Page UI | frontend-developer | done | [task-1.8](reviews/task-1.8.md) | Reviewed 2026-03-29 |
 | 1.9  | App Shell (Navigation + Protected Routes) | frontend-developer | pending | | |
 | 1.10 | CDK Infrastructure Tests | qa-engineer | pending | | TEST |
 | 1.11 | Frontend Auth + UI Tests | qa-engineer | pending | | TEST |
