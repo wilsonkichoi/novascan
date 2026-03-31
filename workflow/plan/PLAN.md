@@ -282,7 +282,7 @@
 
 ### Wave 5: Integration Verification
 
-#### [ ] Task 1.12: Dev Stack Deployment + E2E Smoke Test
+#### [x] Task 1.12: Dev Stack Deployment + E2E Smoke Test
 - **Role:** devops-engineer
 - **Depends on:** 1.7, 1.9, 1.10
 - **Spec reference:** SPEC.md >> Milestone 1 Acceptance Criteria

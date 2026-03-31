@@ -59,7 +59,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "2bb8f84996ebb232ed8570205c34800cf72b88074fbc55393960ab94f4070a28.zip"
+          "S3Key": "0df463d5baa65fd78586abfe0bd2eb3d87373bbf4b9920596235b6a79e097a3b.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -674,9 +674,9 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "0fd375e786fc447b2b040c9b24710362f92f94d9d4865ab1fda9094e8be0e54e.zip"
+          "S3Key": "a15355ae8a5689e398184ac63c64941f5ad6c789b25cbf3e6b9fc8ae836274a4.zip"
         },
-        "Description": "Cognito Pre-Sign-Up trigger: auto-confirm user and auto-verify email",
+        "Description": "Cognito Pre-Sign-Up trigger: no-op placeholder for future validation",
         "FunctionName": "novascan-dev-pre-signup",
         "Handler": "pre_signup.handler",
         "MemorySize": 128,

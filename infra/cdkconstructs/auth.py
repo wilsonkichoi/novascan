@@ -44,7 +44,7 @@ class AuthConstruct(Construct):
             ),
             timeout=cdk.Duration.seconds(10),
             memory_size=128,
-            description="Cognito Pre-Sign-Up trigger: auto-confirm user and auto-verify email",
+            description="Cognito Pre-Sign-Up trigger: no-op placeholder for future validation",
         )
 
         # --- Post-Confirmation Lambda (needs User Pool ID, set below) ---

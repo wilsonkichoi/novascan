@@ -2,6 +2,8 @@ import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
   SignUpCommand,
+  ConfirmSignUpCommand,
+  ResendConfirmationCodeCommand,
   RespondToAuthChallengeCommand,
   RevokeTokenCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -98,7 +100,7 @@ function userFromIdToken(token: string): AuthUser {
 
 /**
  * Register a new user with Cognito.
- * Pre-Sign-Up Lambda auto-confirms and auto-verifies the email.
+ * User is created as UNCONFIRMED — Cognito sends a verification code.
  * A random password is generated because Cognito requires one for SignUp,
  * but it is never used — auth is passwordless via email OTP.
  */
@@ -120,8 +122,10 @@ export async function signUp(email: string): Promise<void> {
 
 /**
  * Start the USER_AUTH flow.
- * If the user doesn't exist, automatically signs them up and retries.
- * Returns the session token needed for respondToChallenge.
+ * If the user doesn't exist, signs them up (UNCONFIRMED) and returns
+ * CONFIRM_SIGN_UP so the UI can show the confirmation code step.
+ * If the user exists but is unconfirmed, resends the verification code
+ * and returns CONFIRM_SIGN_UP.
  */
 export async function initiateAuth(
   email: string,
@@ -131,10 +135,52 @@ export async function initiateAuth(
   } catch (error: unknown) {
     if (isUserNotFoundException(error)) {
       await signUp(email);
-      return await sendInitiateAuth(email);
+      // User is UNCONFIRMED — Cognito sent verification email on signup
+      return { session: "", challengeName: "CONFIRM_SIGN_UP" };
+    }
+    if (isUserNotConfirmedException(error)) {
+      await resendConfirmationCode(email);
+      return { session: "", challengeName: "CONFIRM_SIGN_UP" };
     }
     throw error;
   }
+}
+
+/**
+ * Confirm a new user's email with the verification code sent by Cognito.
+ * After confirmation, the user is CONFIRMED and can initiate auth.
+ */
+export async function confirmSignUp(
+  email: string,
+  code: string,
+): Promise<void> {
+  try {
+    await client.send(
+      new ConfirmSignUpCommand({
+        ClientId: USER_POOL_CLIENT_ID,
+        Username: email,
+        ConfirmationCode: code,
+      }),
+    );
+  } catch (error: unknown) {
+    // User was already confirmed (e.g., confirmed on another device)
+    if (isNotAuthorizedException(error)) {
+      return;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Resend the sign-up verification code for an unconfirmed user.
+ */
+export async function resendConfirmationCode(email: string): Promise<void> {
+  await client.send(
+    new ResendConfirmationCodeCommand({
+      ClientId: USER_POOL_CLIENT_ID,
+      Username: email,
+    }),
+  );
 }
 
 async function sendInitiateAuth(
@@ -164,6 +210,20 @@ async function sendInitiateAuth(
 function isUserNotFoundException(error: unknown): boolean {
   if (error instanceof Error && "name" in error) {
     return error.name === "UserNotFoundException";
+  }
+  return false;
+}
+
+function isUserNotConfirmedException(error: unknown): boolean {
+  if (error instanceof Error && "name" in error) {
+    return error.name === "UserNotConfirmedException";
+  }
+  return false;
+}
+
+function isNotAuthorizedException(error: unknown): boolean {
+  if (error instanceof Error && "name" in error) {
+    return error.name === "NotAuthorizedException";
   }
   return false;
 }

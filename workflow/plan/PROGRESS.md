@@ -35,7 +35,7 @@ Last updated: 2026-03-30
 | 1.9  | App Shell (Navigation + Protected Routes) | frontend-developer | done | [task-1.9](reviews/task-1.9.md) | Completed 2026-03-30. Verified 2026-03-30 |
 | 1.10 | CDK Infrastructure Tests | qa-engineer | done | [task-1.10](reviews/task-1.10.md) | Completed 2026-03-30. 47 passed (cycle bug fixed). TEST |
 | 1.11 | Frontend Auth + UI Tests | qa-engineer | done | [task-1.11](reviews/task-1.11.md) | Completed 2026-03-30. 78 tests, 5 files. TEST |
-| 1.12 | Dev Stack Deployment + E2E Smoke Test | devops-engineer | review | [task-1.12](reviews/task-1.12.md) | E2E verified 2026-03-31. BLOCKED: pre-sign-up security gap |
+| 1.12 | Dev Stack Deployment + E2E Smoke Test | devops-engineer | done | [task-1.12](reviews/task-1.12.md) | E2E verified 2026-03-31. Security fix applied. |
 
 ## Milestone 2: Receipt Upload & Storage
 
@@ -119,4 +119,4 @@ All 6 issues from the Wave 1 scaffolding review have been fixed. See [wave-1-fix
 5. **Cognito EMAIL_OTP sends 8-digit codes** — SPEC and frontend assumed 6-digit. Fixed in frontend (LoginPage.tsx maxLength 6→8). CDK L2 doesn't expose `AllowedFirstAuthFactors` — used CloudFormation escape hatch.
 
 ## Blocked Items
-1. **M1 completion blocked on pre-sign-up security fix** — Auto-confirm in Pre-Sign-Up Lambda allows unauthenticated account creation with arbitrary emails (user pool pollution + email spam vector). Must remove `autoConfirmUser`, add `confirmSignUp` step to frontend auth flow. See [task-1.12 review](reviews/task-1.12.md).
+(none)

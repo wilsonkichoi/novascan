@@ -37,6 +37,15 @@ vi.mock("@/hooks/useAuth", () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+// Mock auth functions used directly by LoginPage
+const mockConfirmSignUp = vi.fn();
+const mockResendConfirmationCode = vi.fn();
+
+vi.mock("@/lib/auth", () => ({
+  confirmSignUp: (...args: unknown[]) => mockConfirmSignUp(...args),
+  resendConfirmationCode: (...args: unknown[]) => mockResendConfirmationCode(...args),
+}));
+
 // Mock navigate
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -65,6 +74,8 @@ describe("LoginPage", () => {
     vi.clearAllMocks();
     mockIsAuthenticated = false;
     mockIsLoading = false;
+    mockConfirmSignUp.mockResolvedValue(undefined);
+    mockResendConfirmationCode.mockResolvedValue(undefined);
   });
 
   // ---- Initial rendering ----
@@ -112,7 +123,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Sign-in code")).toBeInTheDocument();
     });
 
     // Should show verify button instead of continue
@@ -219,7 +230,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Sign-in code")).toBeInTheDocument();
     });
 
     // Now submit wrong OTP
@@ -227,7 +238,7 @@ describe("LoginPage", () => {
     codeMismatch.name = "CodeMismatchException";
     mockVerifyOtp.mockRejectedValue(codeMismatch);
 
-    await user.type(screen.getByPlaceholderText("Verification code"), "000000");
+    await user.type(screen.getByPlaceholderText("Sign-in code"), "00000000");
     await user.click(screen.getByRole("button", { name: /verify/i }));
 
     await waitFor(() => {
@@ -277,16 +288,16 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Sign-in code")).toBeInTheDocument();
     });
 
-    await user.type(screen.getByPlaceholderText("Verification code"), "654321");
+    await user.type(screen.getByPlaceholderText("Sign-in code"), "65432100");
     await user.click(screen.getByRole("button", { name: /verify/i }));
 
     await waitFor(() => {
       expect(mockVerifyOtp).toHaveBeenCalledWith(
         "session-xyz",
-        "654321",
+        "65432100",
         "user@example.com",
       );
     });
@@ -311,10 +322,10 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Sign-in code")).toBeInTheDocument();
     });
 
-    await user.type(screen.getByPlaceholderText("Verification code"), "654321");
+    await user.type(screen.getByPlaceholderText("Sign-in code"), "65432100");
     await user.click(screen.getByRole("button", { name: /verify/i }));
 
     await waitFor(() => {
@@ -336,7 +347,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Sign-in code")).toBeInTheDocument();
     });
 
     // Submit without entering OTP
@@ -386,7 +397,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Sign-in code")).toBeInTheDocument();
     });
 
     await user.click(screen.getByText(/use a different email/i));
@@ -395,6 +406,87 @@ describe("LoginPage", () => {
       expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
+  });
+
+  // ---- Confirm step (new user) ----
+
+  it("shows confirm step when signIn returns CONFIRM_SIGN_UP", async () => {
+    const user = userEvent.setup();
+    mockSignIn.mockResolvedValue({
+      session: "",
+      challengeName: "CONFIRM_SIGN_UP",
+    });
+
+    renderLoginPage();
+
+    await user.type(screen.getByPlaceholderText("you@example.com"), "new@example.com");
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /confirm account/i })).toBeInTheDocument();
+    expect(screen.getByText(/resend code/i)).toBeInTheDocument();
+  });
+
+  it("calls confirmSignUp then signIn after confirm code submit", async () => {
+    const user = userEvent.setup();
+
+    // First signIn → CONFIRM_SIGN_UP
+    mockSignIn.mockResolvedValueOnce({
+      session: "",
+      challengeName: "CONFIRM_SIGN_UP",
+    });
+
+    // After confirm, signIn again → EMAIL_OTP
+    mockSignIn.mockResolvedValueOnce({
+      session: "session-after-confirm",
+      challengeName: "EMAIL_OTP",
+    });
+
+    renderLoginPage();
+
+    await user.type(screen.getByPlaceholderText("you@example.com"), "new@example.com");
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Verification code")).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText("Verification code"), "123456");
+    await user.click(screen.getByRole("button", { name: /confirm account/i }));
+
+    await waitFor(() => {
+      expect(mockConfirmSignUp).toHaveBeenCalledWith("new@example.com", "123456");
+    });
+
+    // Should transition to OTP step
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Sign-in code")).toBeInTheDocument();
+    });
+  });
+
+  it("calls resendConfirmationCode when clicking resend", async () => {
+    const user = userEvent.setup();
+    mockSignIn.mockResolvedValue({
+      session: "",
+      challengeName: "CONFIRM_SIGN_UP",
+    });
+
+    renderLoginPage();
+
+    await user.type(screen.getByPlaceholderText("you@example.com"), "new@example.com");
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/resend code/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/resend code/i));
+
+    await waitFor(() => {
+      expect(mockResendConfirmationCode).toHaveBeenCalledWith("new@example.com");
+    });
   });
 
   // ---- Authenticated redirect ----

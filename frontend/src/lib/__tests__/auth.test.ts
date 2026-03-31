@@ -29,6 +29,14 @@ vi.mock("@aws-sdk/client-cognito-identity-provider", () => {
       _type: "SignUpCommand",
       input,
     })),
+    ConfirmSignUpCommand: vi.fn().mockImplementation((input) => ({
+      _type: "ConfirmSignUpCommand",
+      input,
+    })),
+    ResendConfirmationCodeCommand: vi.fn().mockImplementation((input) => ({
+      _type: "ResendConfirmationCodeCommand",
+      input,
+    })),
     RespondToAuthChallengeCommand: vi.fn().mockImplementation((input) => ({
       _type: "RespondToAuthChallengeCommand",
       input,
@@ -51,6 +59,8 @@ function fakeJwt(claims: Record<string, unknown>): string {
 import {
   initiateAuth,
   signUp,
+  confirmSignUp,
+  resendConfirmationCode,
   respondToChallenge,
   signOut,
   getIdToken,
@@ -112,29 +122,40 @@ describe("Auth module", () => {
       );
     });
 
-    it("auto-signs up and retries on UserNotFoundException", async () => {
+    it("signs up and returns CONFIRM_SIGN_UP on UserNotFoundException", async () => {
       // First call: UserNotFoundException
       const userNotFoundError = new Error("User does not exist.");
       userNotFoundError.name = "UserNotFoundException";
       mockSend.mockRejectedValueOnce(userNotFoundError);
 
-      // Second call: SignUp succeeds
+      // Second call: SignUp succeeds (user created as UNCONFIRMED)
       mockSend.mockResolvedValueOnce({});
-
-      // Third call: InitiateAuth succeeds after signup
-      mockSend.mockResolvedValueOnce({
-        Session: "session-after-signup",
-        ChallengeName: "EMAIL_OTP",
-      });
 
       const result = await initiateAuth("newuser@example.com");
 
       expect(result).toEqual({
-        session: "session-after-signup",
-        challengeName: "EMAIL_OTP",
+        session: "",
+        challengeName: "CONFIRM_SIGN_UP",
       });
-      // 3 calls: InitiateAuth (fail) → SignUp → InitiateAuth (success)
-      expect(mockSend).toHaveBeenCalledTimes(3);
+      // 2 calls: InitiateAuth (fail) → SignUp. No retry — user needs to confirm first.
+      expect(mockSend).toHaveBeenCalledTimes(2);
+    });
+
+    it("resends code and returns CONFIRM_SIGN_UP on UserNotConfirmedException", async () => {
+      const unconfirmedError = new Error("User is not confirmed.");
+      unconfirmedError.name = "UserNotConfirmedException";
+      mockSend.mockRejectedValueOnce(unconfirmedError);
+
+      // ResendConfirmationCode succeeds
+      mockSend.mockResolvedValueOnce({});
+
+      const result = await initiateAuth("unconfirmed@example.com");
+
+      expect(result).toEqual({
+        session: "",
+        challengeName: "CONFIRM_SIGN_UP",
+      });
+      expect(mockSend).toHaveBeenCalledTimes(2);
     });
 
     it("throws non-UserNotFoundException errors without retrying", async () => {
@@ -206,6 +227,64 @@ describe("Auth module", () => {
         .calls[0][0] as { Password?: string };
       expect(callArgs.Password).toBeTruthy();
       expect(callArgs.Password!.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ---- confirmSignUp ----
+
+  describe("confirmSignUp", () => {
+    it("calls Cognito ConfirmSignUp with email and code", async () => {
+      const { ConfirmSignUpCommand } = await import(
+        "@aws-sdk/client-cognito-identity-provider"
+      );
+
+      mockSend.mockResolvedValueOnce({});
+
+      await confirmSignUp("new@example.com", "123456");
+
+      expect(ConfirmSignUpCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          Username: "new@example.com",
+          ConfirmationCode: "123456",
+        }),
+      );
+    });
+
+    it("silently succeeds if user is already confirmed (NotAuthorizedException)", async () => {
+      const alreadyConfirmed = new Error("User cannot be confirmed. Current status is CONFIRMED");
+      alreadyConfirmed.name = "NotAuthorizedException";
+      mockSend.mockRejectedValueOnce(alreadyConfirmed);
+
+      // Should not throw
+      await expect(confirmSignUp("user@example.com", "123456")).resolves.toBeUndefined();
+    });
+
+    it("throws on other errors", async () => {
+      const expiredCode = new Error("Code expired");
+      expiredCode.name = "ExpiredCodeException";
+      mockSend.mockRejectedValueOnce(expiredCode);
+
+      await expect(confirmSignUp("user@example.com", "999999")).rejects.toThrow("Code expired");
+    });
+  });
+
+  // ---- resendConfirmationCode ----
+
+  describe("resendConfirmationCode", () => {
+    it("calls Cognito ResendConfirmationCode with email", async () => {
+      const { ResendConfirmationCodeCommand } = await import(
+        "@aws-sdk/client-cognito-identity-provider"
+      );
+
+      mockSend.mockResolvedValueOnce({});
+
+      await resendConfirmationCode("user@example.com");
+
+      expect(ResendConfirmationCodeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          Username: "user@example.com",
+        }),
+      );
     });
   });
 
