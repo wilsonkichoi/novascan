@@ -77,6 +77,13 @@ class AuthConstruct(Construct):
             ),
         )
 
+        # Enable EMAIL_OTP as an allowed first auth factor.
+        # CDK L2 doesn't expose SignInPolicy yet — use CloudFormation escape hatch.
+        cfn_user_pool = self.user_pool.node.default_child
+        cfn_user_pool.add_property_override(
+            "Policies.SignInPolicy.AllowedFirstAuthFactors", ["EMAIL_OTP", "PASSWORD"]
+        )
+
         # Grant Post-Confirmation Lambda permission to add users to groups.
         # Use a constructed ARN with wildcard instead of self.user_pool.user_pool_arn
         # to break the circular dependency: IAM Policy -> User Pool -> Lambda -> Policy.

@@ -125,8 +125,8 @@ export default function LoginPage() {
               disabled={isSubmitting}
               autoFocus
               autoComplete="one-time-code"
-              maxLength={6}
-              pattern="[0-9]{6}"
+              maxLength={8}
+              pattern="[0-9]{8}"
             />
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (

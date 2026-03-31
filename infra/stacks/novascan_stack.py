@@ -63,3 +63,15 @@ class NovascanStack(cdk.Stack):
             value=self.auth.app_client_id,
             description="Cognito App Client ID",
         )
+        cdk.CfnOutput(
+            self,
+            "FrontendBucketName",
+            value=self.storage.frontend_bucket.bucket_name,
+            description="S3 bucket for frontend static assets",
+        )
+        cdk.CfnOutput(
+            self,
+            "DistributionId",
+            value=self.frontend.distribution_id,
+            description="CloudFront distribution ID for cache invalidation",
+        )

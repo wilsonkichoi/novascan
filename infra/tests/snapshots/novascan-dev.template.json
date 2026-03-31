@@ -24,6 +24,18 @@
         ]
       }
     },
+    "DistributionId": {
+      "Description": "CloudFront distribution ID for cache invalidation",
+      "Value": {
+        "Ref": "FrontendDistributionC0C89627"
+      }
+    },
+    "FrontendBucketName": {
+      "Description": "S3 bucket for frontend static assets",
+      "Value": {
+        "Ref": "StorageFrontendBucketC065FEEF"
+      }
+    },
     "UserPoolId": {
       "Description": "Cognito User Pool ID",
       "Value": {
@@ -766,6 +778,14 @@
             "Fn::GetAtt": [
               "AuthPreSignUpFnDD500D92",
               "Arn"
+            ]
+          }
+        },
+        "Policies": {
+          "SignInPolicy": {
+            "AllowedFirstAuthFactors": [
+              "EMAIL_OTP",
+              "PASSWORD"
             ]
           }
         },
