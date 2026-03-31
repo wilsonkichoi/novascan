@@ -212,7 +212,7 @@
 
 ### Wave 4: App Shell + CDK Tests
 
-#### [ ] Task 1.9: App Shell — Navigation + Protected Routes
+#### [x] Task 1.9: App Shell — Navigation + Protected Routes
 - **Role:** frontend-developer
 - **Depends on:** 1.8
 - **Spec reference:** SPEC.md >> Milestone 1 Acceptance Criteria
@@ -236,7 +236,7 @@
   - `cd frontend && npm run build` succeeds
 - **Test command:** `cd frontend && npm run build`
 
-#### [ ] Task 1.10: CDK Infrastructure Tests [TEST]
+#### [x] Task 1.10: CDK Infrastructure Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 1.4, 1.5, 1.7
 - **Spec reference:** SPEC.md >> Section 5 (Database Schema), Section 3 (Auth Flow, Architecture)

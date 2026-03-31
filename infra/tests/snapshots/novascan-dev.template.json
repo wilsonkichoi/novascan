@@ -1,0 +1,1244 @@
+{
+  "Outputs": {
+    "ApiUrl": {
+      "Description": "API Gateway URL",
+      "Value": {
+        "Fn::GetAtt": [
+          "ApiHttpApi4C294DC0",
+          "ApiEndpoint"
+        ]
+      }
+    },
+    "AppClientId": {
+      "Description": "Cognito App Client ID",
+      "Value": {
+        "Ref": "AuthUserPoolAppClient1D18298A"
+      }
+    },
+    "CloudFrontDomain": {
+      "Description": "CloudFront distribution domain",
+      "Value": {
+        "Fn::GetAtt": [
+          "FrontendDistributionC0C89627",
+          "DomainName"
+        ]
+      }
+    },
+    "UserPoolId": {
+      "Description": "Cognito User Pool ID",
+      "Value": {
+        "Ref": "AuthUserPool8115E87F"
+      }
+    }
+  },
+  "Parameters": {
+    "BootstrapVersion": {
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
+      "Type": "AWS::SSM::Parameter::Value<String>"
+    }
+  },
+  "Resources": {
+    "ApiApiFunctionAA82C666": {
+      "DependsOn": [
+        "ApiApiFunctionServiceRoleDefaultPolicyCC97891F",
+        "ApiApiFunctionServiceRoleDA39BDB5"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "b6a17590f615e9c5fd20c39273c80d78b09ea2299d8132d433a54b94732fbdf4.zip"
+        },
+        "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
+        "Environment": {
+          "Variables": {
+            "LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-api",
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-api",
+        "Handler": "api.app.handler",
+        "MemorySize": 256,
+        "Role": {
+          "Fn::GetAtt": [
+            "ApiApiFunctionServiceRoleDA39BDB5",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 30,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "ApiApiFunctionServiceRoleDA39BDB5": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "ApiApiFunctionServiceRoleDefaultPolicyCC97891F": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageTableB43FDCE7",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageTableB43FDCE7",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageTableB43FDCE7",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageTableB43FDCE7",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ApiApiFunctionServiceRoleDefaultPolicyCC97891F",
+        "Roles": [
+          {
+            "Ref": "ApiApiFunctionServiceRoleDA39BDB5"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "ApiHttpApi4C294DC0": {
+      "Properties": {
+        "CorsConfiguration": {
+          "AllowHeaders": [
+            "Authorization",
+            "Content-Type"
+          ],
+          "AllowMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+          ],
+          "AllowOrigins": [
+            {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Fn::GetAtt": [
+                      "FrontendDistributionC0C89627",
+                      "DomainName"
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          "MaxAge": 86400
+        },
+        "Description": "NovaScan API (dev)",
+        "Name": "novascan-dev",
+        "ProtocolType": "HTTP"
+      },
+      "Type": "AWS::ApiGatewayV2::Api"
+    },
+    "ApiHttpApiCognitoAuthorizerB58DB3E4": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "AuthorizerType": "JWT",
+        "IdentitySource": [
+          "$request.header.Authorization"
+        ],
+        "JwtConfiguration": {
+          "Audience": [
+            {
+              "Ref": "AuthUserPoolAppClient1D18298A"
+            }
+          ],
+          "Issuer": {
+            "Fn::Join": [
+              "",
+              [
+                "https://cognito-idp.us-east-1.amazonaws.com/",
+                {
+                  "Ref": "AuthUserPool8115E87F"
+                }
+              ]
+            ]
+          }
+        },
+        "Name": "CognitoAuthorizer"
+      },
+      "Type": "AWS::ApiGatewayV2::Authorizer"
+    },
+    "ApiHttpApiDELETEapiproxy1B08B1C0": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ApiHttpApiCognitoAuthorizerB58DB3E4"
+        },
+        "RouteKey": "DELETE /api/{proxy+}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "ApiHttpApiGETapihealthApiIntegration0E4856C8"
+              }
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::ApiGatewayV2::Route"
+    },
+    "ApiHttpApiDELETEapiproxyApiIntegrationPermission172B18C0": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ApiApiFunctionAA82C666",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-east-1:123456789012:",
+              {
+                "Ref": "ApiHttpApi4C294DC0"
+              },
+              "/*/*/api/{proxy+}"
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "ApiHttpApiDefaultStageE708EF42": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "AutoDeploy": true,
+        "StageName": "$default"
+      },
+      "Type": "AWS::ApiGatewayV2::Stage"
+    },
+    "ApiHttpApiGETapihealthApiIntegration0E4856C8": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "ApiApiFunctionAA82C666",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0"
+      },
+      "Type": "AWS::ApiGatewayV2::Integration"
+    },
+    "ApiHttpApiGETapihealthApiIntegrationPermissionB14D9B39": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ApiApiFunctionAA82C666",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-east-1:123456789012:",
+              {
+                "Ref": "ApiHttpApi4C294DC0"
+              },
+              "/*/*/api/health"
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "ApiHttpApiGETapihealthDAC42AAC": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "AuthorizationType": "NONE",
+        "RouteKey": "GET /api/health",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "ApiHttpApiGETapihealthApiIntegration0E4856C8"
+              }
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::ApiGatewayV2::Route"
+    },
+    "ApiHttpApiGETapiproxyApiIntegrationPermissionDA851E74": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ApiApiFunctionAA82C666",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-east-1:123456789012:",
+              {
+                "Ref": "ApiHttpApi4C294DC0"
+              },
+              "/*/*/api/{proxy+}"
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "ApiHttpApiGETapiproxyF112B9A1": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ApiHttpApiCognitoAuthorizerB58DB3E4"
+        },
+        "RouteKey": "GET /api/{proxy+}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "ApiHttpApiGETapihealthApiIntegration0E4856C8"
+              }
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::ApiGatewayV2::Route"
+    },
+    "ApiHttpApiPOSTapiproxy66F8ED96": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ApiHttpApiCognitoAuthorizerB58DB3E4"
+        },
+        "RouteKey": "POST /api/{proxy+}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "ApiHttpApiGETapihealthApiIntegration0E4856C8"
+              }
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::ApiGatewayV2::Route"
+    },
+    "ApiHttpApiPOSTapiproxyApiIntegrationPermission54950E7B": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ApiApiFunctionAA82C666",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-east-1:123456789012:",
+              {
+                "Ref": "ApiHttpApi4C294DC0"
+              },
+              "/*/*/api/{proxy+}"
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "ApiHttpApiPUTapiproxyApiIntegrationPermissionCDFFBEC6": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ApiApiFunctionAA82C666",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-east-1:123456789012:",
+              {
+                "Ref": "ApiHttpApi4C294DC0"
+              },
+              "/*/*/api/{proxy+}"
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "ApiHttpApiPUTapiproxyCAA79CD9": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiHttpApi4C294DC0"
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ApiHttpApiCognitoAuthorizerB58DB3E4"
+        },
+        "RouteKey": "PUT /api/{proxy+}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "ApiHttpApiGETapihealthApiIntegration0E4856C8"
+              }
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::ApiGatewayV2::Route"
+    },
+    "AuthAdminGroup9B286F1A": {
+      "Properties": {
+        "Description": "Full administrative access",
+        "GroupName": "admin",
+        "Precedence": 0,
+        "UserPoolId": {
+          "Ref": "AuthUserPool8115E87F"
+        }
+      },
+      "Type": "AWS::Cognito::UserPoolGroup"
+    },
+    "AuthPostConfirmationFn8CAE7CA3": {
+      "DependsOn": [
+        "AuthPostConfirmationFnServiceRoleDefaultPolicy9BE987EC",
+        "AuthPostConfirmationFnServiceRole95F889E0"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "469fb3765173da4ec63667c67f6ac1627b41c24a26ed621cae72cba56b06eaf2.zip"
+        },
+        "Description": "Cognito Post-Confirmation trigger: add user to 'user' group",
+        "Environment": {
+          "Variables": {
+            "USER_POOL_ID": {
+              "Ref": "AuthUserPool8115E87F"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-post-confirmation",
+        "Handler": "post_confirmation.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "AuthPostConfirmationFnServiceRole95F889E0",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 10
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "AuthPostConfirmationFnServiceRole95F889E0": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "AuthPostConfirmationFnServiceRoleDefaultPolicy9BE987EC": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "cognito-idp:AdminAddUserToGroup",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "AuthUserPool8115E87F",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "AuthPostConfirmationFnServiceRoleDefaultPolicy9BE987EC",
+        "Roles": [
+          {
+            "Ref": "AuthPostConfirmationFnServiceRole95F889E0"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "AuthPreSignUpFnDD500D92": {
+      "DependsOn": [
+        "AuthPreSignUpFnServiceRole5C4478B7"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "0fd375e786fc447b2b040c9b24710362f92f94d9d4865ab1fda9094e8be0e54e.zip"
+        },
+        "Description": "Cognito Pre-Sign-Up trigger: auto-confirm user and auto-verify email",
+        "FunctionName": "novascan-dev-pre-signup",
+        "Handler": "pre_signup.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "AuthPreSignUpFnServiceRole5C4478B7",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 10
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "AuthPreSignUpFnServiceRole5C4478B7": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "AuthStaffGroup626B5C57": {
+      "Properties": {
+        "Description": "Staff access with pipeline comparison features",
+        "GroupName": "staff",
+        "Precedence": 1,
+        "UserPoolId": {
+          "Ref": "AuthUserPool8115E87F"
+        }
+      },
+      "Type": "AWS::Cognito::UserPoolGroup"
+    },
+    "AuthUserGroup248BAA3C": {
+      "Properties": {
+        "Description": "Default group for all users",
+        "GroupName": "user",
+        "Precedence": 2,
+        "UserPoolId": {
+          "Ref": "AuthUserPool8115E87F"
+        }
+      },
+      "Type": "AWS::Cognito::UserPoolGroup"
+    },
+    "AuthUserPool8115E87F": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "AccountRecoverySetting": {
+          "RecoveryMechanisms": [
+            {
+              "Name": "verified_phone_number",
+              "Priority": 1
+            },
+            {
+              "Name": "verified_email",
+              "Priority": 2
+            }
+          ]
+        },
+        "AdminCreateUserConfig": {
+          "AllowAdminCreateUserOnly": false
+        },
+        "AutoVerifiedAttributes": [
+          "email"
+        ],
+        "EmailVerificationMessage": "The verification code to your new account is {####}",
+        "EmailVerificationSubject": "Verify your new account",
+        "LambdaConfig": {
+          "PostConfirmation": {
+            "Fn::GetAtt": [
+              "AuthPostConfirmationFn8CAE7CA3",
+              "Arn"
+            ]
+          },
+          "PreSignUp": {
+            "Fn::GetAtt": [
+              "AuthPreSignUpFnDD500D92",
+              "Arn"
+            ]
+          }
+        },
+        "SmsVerificationMessage": "The verification code to your new account is {####}",
+        "UserPoolName": "novascan-dev",
+        "UsernameAttributes": [
+          "email"
+        ],
+        "VerificationMessageTemplate": {
+          "DefaultEmailOption": "CONFIRM_WITH_CODE",
+          "EmailMessage": "The verification code to your new account is {####}",
+          "EmailSubject": "Verify your new account",
+          "SmsMessage": "The verification code to your new account is {####}"
+        }
+      },
+      "Type": "AWS::Cognito::UserPool",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "AuthUserPoolAppClient1D18298A": {
+      "Properties": {
+        "AllowedOAuthFlows": [
+          "implicit",
+          "code"
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": [
+          "profile",
+          "phone",
+          "email",
+          "openid",
+          "aws.cognito.signin.user.admin"
+        ],
+        "CallbackURLs": [
+          "https://example.com"
+        ],
+        "ClientName": "novascan-dev-app",
+        "ExplicitAuthFlows": [
+          "ALLOW_USER_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH"
+        ],
+        "GenerateSecret": false,
+        "SupportedIdentityProviders": [
+          "COGNITO"
+        ],
+        "UserPoolId": {
+          "Ref": "AuthUserPool8115E87F"
+        }
+      },
+      "Type": "AWS::Cognito::UserPoolClient"
+    },
+    "AuthUserPoolPostConfirmationCognitoCCE904CE": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AuthPostConfirmationFn8CAE7CA3",
+            "Arn"
+          ]
+        },
+        "Principal": "cognito-idp.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "AuthUserPool8115E87F",
+            "Arn"
+          ]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "AuthUserPoolPreSignUpCognito52504672": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AuthPreSignUpFnDD500D92",
+            "Arn"
+          ]
+        },
+        "Principal": "cognito-idp.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "AuthUserPool8115E87F",
+            "Arn"
+          ]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+      "DependsOn": [
+        "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
+        },
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "Lambda function for auto-deleting objects in ",
+              {
+                "Ref": "StorageFrontendBucketC065FEEF"
+              },
+              " S3 bucket."
+            ]
+          ]
+        },
+        "Handler": "index.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 900
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "FrontendDistributionC0C89627": {
+      "Properties": {
+        "DistributionConfig": {
+          "Comment": "NovaScan frontend (dev)",
+          "CustomErrorResponses": [
+            {
+              "ErrorCachingMinTTL": 0,
+              "ErrorCode": 403,
+              "ResponseCode": 200,
+              "ResponsePagePath": "/index.html"
+            },
+            {
+              "ErrorCachingMinTTL": 0,
+              "ErrorCode": 404,
+              "ResponseCode": 200,
+              "ResponsePagePath": "/index.html"
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+            "Compress": true,
+            "TargetOriginId": "novascandevFrontendDistributionOrigin1879D827F",
+            "ViewerProtocolPolicy": "redirect-to-https"
+          },
+          "DefaultRootObject": "index.html",
+          "Enabled": true,
+          "HttpVersion": "http2",
+          "IPV6Enabled": true,
+          "Origins": [
+            {
+              "DomainName": {
+                "Fn::GetAtt": [
+                  "StorageFrontendBucketC065FEEF",
+                  "RegionalDomainName"
+                ]
+              },
+              "Id": "novascandevFrontendDistributionOrigin1879D827F",
+              "OriginAccessControlId": {
+                "Fn::GetAtt": [
+                  "FrontendDistributionOrigin1S3OriginAccessControl96CDF506",
+                  "Id"
+                ]
+              },
+              "S3OriginConfig": {
+                "OriginAccessIdentity": ""
+              }
+            }
+          ]
+        }
+      },
+      "Type": "AWS::CloudFront::Distribution"
+    },
+    "FrontendDistributionOrigin1S3OriginAccessControl96CDF506": {
+      "Properties": {
+        "OriginAccessControlConfig": {
+          "Name": "novascandevFrontendDistributOrigin1S3OriginAccessControl003F21CD",
+          "OriginAccessControlOriginType": "s3",
+          "SigningBehavior": "always",
+          "SigningProtocol": "sigv4"
+        }
+      },
+      "Type": "AWS::CloudFront::OriginAccessControl"
+    },
+    "StorageFrontendBucketAutoDeleteObjectsCustomResourceE14612B9": {
+      "DeletionPolicy": "Delete",
+      "DependsOn": [
+        "StorageFrontendBucketPolicyDF4BBFFD"
+      ],
+      "Properties": {
+        "BucketName": {
+          "Ref": "StorageFrontendBucketC065FEEF"
+        },
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        }
+      },
+      "Type": "Custom::S3AutoDeleteObjects",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "StorageFrontendBucketC065FEEF": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          }
+        ]
+      },
+      "Type": "AWS::S3::Bucket",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "StorageFrontendBucketPolicyDF4BBFFD": {
+      "Properties": {
+        "Bucket": {
+          "Ref": "StorageFrontendBucketC065FEEF"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageFrontendBucketC065FEEF",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageFrontendBucketC065FEEF",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:PutBucketPolicy",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageFrontendBucketC065FEEF",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageFrontendBucketC065FEEF",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "s3:GetObject",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceArn": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        ":cloudfront::",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        ":distribution/",
+                        {
+                          "Ref": "FrontendDistributionC0C89627"
+                        }
+                      ]
+                    ]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "StorageFrontendBucketC065FEEF",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Type": "AWS::S3::BucketPolicy"
+    },
+    "StorageTableB43FDCE7": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "PK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "SK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "GSI1PK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "GSI1SK",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "GSI1",
+            "KeySchema": [
+              {
+                "AttributeName": "GSI1PK",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "GSI1SK",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "PK",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "SK",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": false
+        },
+        "TableName": "novascan-dev"
+      },
+      "Type": "AWS::DynamoDB::Table",
+      "UpdateReplacePolicy": "Delete"
+    }
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5"
+                  ],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
+      ]
+    }
+  }
+}
