@@ -47,7 +47,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "b6a17590f615e9c5fd20c39273c80d78b09ea2299d8132d433a54b94732fbdf4.zip"
+          "S3Key": "2bb8f84996ebb232ed8570205c34800cf72b88074fbc55393960ab94f4070a28.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -575,16 +575,9 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "469fb3765173da4ec63667c67f6ac1627b41c24a26ed621cae72cba56b06eaf2.zip"
+          "S3Key": "2b743d2019270a3570b38a073683dc75ed5a8f55eba61fe870485ff209abfd38.zip"
         },
         "Description": "Cognito Post-Confirmation trigger: add user to 'user' group",
-        "Environment": {
-          "Variables": {
-            "USER_POOL_ID": {
-              "Ref": "AuthUserPool8115E87F"
-            }
-          }
-        },
         "FunctionName": "novascan-dev-post-confirmation",
         "Handler": "post_confirmation.handler",
         "MemorySize": 128,
@@ -638,9 +631,15 @@
               "Action": "cognito-idp:AdminAddUserToGroup",
               "Effect": "Allow",
               "Resource": {
-                "Fn::GetAtt": [
-                  "AuthUserPool8115E87F",
-                  "Arn"
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":cognito-idp:us-east-1:123456789012:userpool/*"
+                  ]
                 ]
               }
             }

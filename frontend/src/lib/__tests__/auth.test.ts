@@ -202,7 +202,7 @@ describe("Auth module", () => {
 
       await signUp("test@example.com");
 
-      const callArgs = (SignUpCommand as ReturnType<typeof vi.fn>).mock
+      const callArgs = (SignUpCommand as unknown as ReturnType<typeof vi.fn>).mock
         .calls[0][0] as { Password?: string };
       expect(callArgs.Password).toBeTruthy();
       expect(callArgs.Password!.length).toBeGreaterThan(0);

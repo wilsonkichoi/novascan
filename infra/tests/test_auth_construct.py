@@ -143,27 +143,8 @@ class TestCognitoAppClient:
 
 
 class TestAuthDependencyCycle:
-    """Detect circular dependency in Auth construct.
+    """Verify Auth construct has no circular dependencies."""
 
-    BUG: The Post-Confirmation Lambda has a circular dependency with the
-    User Pool. The cycle is:
-      PostConfirmation IAM Policy (needs User Pool ARN)
-      -> User Pool (needs PostConfirmation Lambda ARN as trigger)
-      -> PostConfirmation Lambda (DependsOn its IAM Policy)
-
-    This makes the template undeployable per CloudFormation validation.
-    The fix is to either:
-    1. Use a wildcard ARN in the IAM policy instead of Fn::GetAtt on the User Pool
-    2. Add the trigger via a separate CfnUserPool override after construction
-    3. Use CfnResource.add_override to remove the implicit DependsOn
-    """
-
-    @pytest.mark.xfail(
-        reason="BUG: Auth construct has circular dependency "
-        "(PostConfirmation IAM Policy -> User Pool -> PostConfirmation Lambda). "
-        "Template.from_stack() correctly rejects this as undeployable.",
-        strict=True,
-    )
     def test_no_circular_dependencies(self) -> None:
         """Template must synthesize without circular dependency errors.
 

@@ -24,11 +24,6 @@ def dev_template() -> Template:
     """Synthesize the dev stack and return a CDK assertions Template.
 
     Session-scoped so the stack is only synthesized once across all tests.
-
-    NOTE: skip_cyclical_dependencies_check=True is used to work around a
-    circular dependency bug in the Auth construct (PostConfirmation Lambda
-    IAM policy -> User Pool -> PostConfirmation Lambda). This bug is tracked
-    separately and should be fixed in the Auth construct implementation.
     """
     app = cdk.App()
     stack = NovascanStack(
@@ -38,7 +33,7 @@ def dev_template() -> Template:
         config=DEV_CONFIG,
         env=cdk.Environment(account="123456789012", region="us-east-1"),
     )
-    return Template.from_stack(stack, skip_cyclical_dependencies_check=True)
+    return Template.from_stack(stack)
 
 
 @pytest.fixture(scope="session")

@@ -14,7 +14,6 @@ AWS documentation: https://docs.aws.amazon.com/cognito/latest/developerguide/use
 """
 
 import logging
-import os
 from typing import Any
 
 import boto3
@@ -30,10 +29,10 @@ DEFAULT_GROUP = "user"
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Add the newly confirmed user to the 'user' Cognito group.
 
-    The User Pool ID is passed via environment variable to avoid
-    hardcoding. The username comes from the trigger event.
+    The User Pool ID is extracted from the Cognito trigger event
+    (available as event["userPoolId"] in all Cognito Lambda triggers).
     """
-    user_pool_id = os.environ["USER_POOL_ID"]
+    user_pool_id = event["userPoolId"]
     username = event["userName"]
 
     logger.info(
