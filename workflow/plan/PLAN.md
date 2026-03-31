@@ -257,7 +257,7 @@
   - `cd infra && uv run pytest` passes all tests
 - **Test command:** `cd infra && uv run pytest -v`
 
-#### [ ] Task 1.11: Frontend Auth + UI Tests [TEST]
+#### [x] Task 1.11: Frontend Auth + UI Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 1.6, 1.8, 1.9
 - **Spec reference:** SPEC.md >> Section 3 (Auth Flow), Milestone 1 Acceptance Criteria

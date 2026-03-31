@@ -14,7 +14,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: [],
+    setupFiles: ["./src/test/setup.ts"],
     css: true,
+    env: {
+      VITE_AWS_REGION: "us-east-1",
+      VITE_COGNITO_CLIENT_ID: "test-client-id-123",
+      VITE_API_URL: "https://test-api.example.com",
+    },
   },
 });

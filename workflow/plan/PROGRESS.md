@@ -34,7 +34,7 @@ Last updated: 2026-03-30
 | 1.8  | Login Page UI | frontend-developer | done | [task-1.8](reviews/task-1.8.md) | Reviewed 2026-03-29 |
 | 1.9  | App Shell (Navigation + Protected Routes) | frontend-developer | review | [task-1.9](reviews/task-1.9.md) | Completed 2026-03-30 |
 | 1.10 | CDK Infrastructure Tests | qa-engineer | review | [task-1.10](reviews/task-1.10.md) | Completed 2026-03-30. 46 passed, 1 xfail (auth cycle bug). TEST |
-| 1.11 | Frontend Auth + UI Tests | qa-engineer | pending | | TEST |
+| 1.11 | Frontend Auth + UI Tests | qa-engineer | review | [task-1.11](reviews/task-1.11.md) | Completed 2026-03-30. 78 tests passing across 5 files. TEST |
 | 1.12 | Dev Stack Deployment + E2E Smoke Test | devops-engineer | pending | | |
 
 ## Milestone 2: Receipt Upload & Storage
