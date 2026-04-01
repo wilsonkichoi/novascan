@@ -42,7 +42,7 @@ Last updated: 2026-03-30
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
 | 2.1  | Receipts S3 Bucket + Pydantic Models | backend-engineer | pending | | |
-| 2.2  | Upload UI Components | frontend-developer | pending | | |
+| 2.2  | Upload UI Components | frontend-developer | review | [task-2.2](reviews/task-2.2.md) | Completed 2026-04-01 |
 | 2.3  | Upload URLs API Endpoint | backend-engineer | pending | | |
 | 2.4  | List Receipts API Endpoint | backend-engineer | pending | | |
 | 2.5  | Upload Flow Integration | frontend-developer | pending | | |
