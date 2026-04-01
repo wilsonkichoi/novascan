@@ -305,7 +305,7 @@
 
 ### Wave 1: Backend Models + Upload UI
 
-#### [ ] Task 2.1: Receipts S3 Bucket + Pydantic Models
+#### [x] Task 2.1: Receipts S3 Bucket + Pydantic Models
 - **Role:** backend-engineer
 - **Depends on:** none (M1 complete)
 - **Spec reference:** SPEC.md >> Section 5 (Receipt Attributes, Line Item Attributes), api-contracts.md >> POST /api/receipts/upload-urls

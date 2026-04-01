@@ -36,6 +36,12 @@
         "Ref": "StorageFrontendBucketC065FEEF"
       }
     },
+    "ReceiptsBucketName": {
+      "Description": "S3 bucket for receipt images",
+      "Value": {
+        "Ref": "StorageReceiptsBucket73106E11"
+      }
+    },
     "UserPoolId": {
       "Description": "Cognito User Pool ID",
       "Value": {
@@ -59,7 +65,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "0df463d5baa65fd78586abfe0bd2eb3d87373bbf4b9920596235b6a79e097a3b.zip"
+          "S3Key": "b9cfd8d413befc57455c6428ad5e2c308f073dd4121e87e086488d594a1414ec.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -67,6 +73,10 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-api",
+            "PRESIGNED_URL_EXPIRY": "900",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -194,6 +204,43 @@
                         ]
                       },
                       "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
                     ]
                   ]
                 }
@@ -1163,6 +1210,142 @@
                   ]
                 ]
               }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Type": "AWS::S3::BucketPolicy"
+    },
+    "StorageReceiptsBucket73106E11": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          }
+        ],
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      },
+      "Type": "AWS::S3::Bucket",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "StorageReceiptsBucketAutoDeleteObjectsCustomResource55AA7C98": {
+      "DeletionPolicy": "Delete",
+      "DependsOn": [
+        "StorageReceiptsBucketPolicyF51E6647"
+      ],
+      "Properties": {
+        "BucketName": {
+          "Ref": "StorageReceiptsBucket73106E11"
+        },
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        }
+      },
+      "Type": "Custom::S3AutoDeleteObjects",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "StorageReceiptsBucketPolicyF51E6647": {
+      "Properties": {
+        "Bucket": {
+          "Ref": "StorageReceiptsBucket73106E11"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:PutBucketPolicy",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
