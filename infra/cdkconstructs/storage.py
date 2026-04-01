@@ -49,6 +49,18 @@ class StorageConstruct(Construct):
             auto_delete_objects=not is_prod,
         )
 
+        # --- S3 Receipts Bucket ---
+        self.receipts_bucket = s3.Bucket(
+            self,
+            "ReceiptsBucket",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            enforce_ssl=True,
+            versioned=True,
+            removal_policy=cdk.RemovalPolicy.RETAIN if is_prod else cdk.RemovalPolicy.DESTROY,
+            auto_delete_objects=not is_prod,
+        )
+
     @property
     def table_name(self) -> str:
         return self.table.table_name
@@ -56,3 +68,7 @@ class StorageConstruct(Construct):
     @property
     def table_arn(self) -> str:
         return self.table.table_arn
+
+    @property
+    def receipts_bucket_name(self) -> str:
+        return self.receipts_bucket.bucket_name

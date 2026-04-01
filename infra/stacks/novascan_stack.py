@@ -41,6 +41,7 @@ class NovascanStack(cdk.Stack):
             app_client=self.auth.app_client,
             table=self.storage.table,
             allowed_origins=[f"https://{self.frontend.domain_name}"],
+            receipts_bucket=self.storage.receipts_bucket,
         )
 
         # --- Stack Outputs ---
@@ -68,6 +69,12 @@ class NovascanStack(cdk.Stack):
             "FrontendBucketName",
             value=self.storage.frontend_bucket.bucket_name,
             description="S3 bucket for frontend static assets",
+        )
+        cdk.CfnOutput(
+            self,
+            "ReceiptsBucketName",
+            value=self.storage.receipts_bucket.bucket_name,
+            description="S3 bucket for receipt images",
         )
         cdk.CfnOutput(
             self,

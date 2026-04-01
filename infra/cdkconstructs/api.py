@@ -113,6 +113,8 @@ class ApiConstruct(Construct):
                 "STAGE": stage,
                 "POWERTOOLS_SERVICE_NAME": "novascan-api",
                 "POWERTOOLS_LOG_LEVEL": config.get("logLevel", "INFO"),
+                "RECEIPTS_BUCKET": receipts_bucket.bucket_name if receipts_bucket else "",
+                "PRESIGNED_URL_EXPIRY": str(config.get("presignedUrlExpirySec", 900)),
             },
             tracing=lambda_.Tracing.ACTIVE,
             description="NovaScan API Lambda — all REST routes via Powertools resolver",
