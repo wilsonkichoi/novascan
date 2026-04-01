@@ -320,7 +320,7 @@
   - `cd backend && uv run ruff check src/ && uv run mypy src/` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run python -c "from novascan.models.receipt import Receipt, UploadRequest; print('PASS')"`
 
-#### [ ] Task 2.2: Upload UI Components
+#### [x] Task 2.2: Upload UI Components
 - **Role:** frontend-developer
 - **Depends on:** none (M1 complete)
 - **Spec reference:** SPEC.md >> Section 3 (Upload Flow), Milestone 2 Acceptance Criteria
