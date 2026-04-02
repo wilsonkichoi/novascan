@@ -41,8 +41,8 @@ Last updated: 2026-03-30
 
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
-| 2.1  | Receipts S3 Bucket + Pydantic Models | backend-engineer | review | [task-2.1](reviews/task-2.1.md) | Completed 2026-04-01 |
-| 2.2  | Upload UI Components | frontend-developer | review | [task-2.2](reviews/task-2.2.md) | Completed 2026-04-01 |
+| 2.1  | Receipts S3 Bucket + Pydantic Models | backend-engineer | done | [task-2.1](reviews/task-2.1.md) | Verified 2026-04-01. Model fields aligned with api-contracts. |
+| 2.2  | Upload UI Components | frontend-developer | done | [task-2.2](reviews/task-2.2.md) | Verified 2026-04-01. No issues found. |
 | 2.3  | Upload URLs API Endpoint | backend-engineer | pending | | |
 | 2.4  | List Receipts API Endpoint | backend-engineer | pending | | |
 | 2.5  | Upload Flow Integration | frontend-developer | pending | | |

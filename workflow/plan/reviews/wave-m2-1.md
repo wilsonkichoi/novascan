@@ -189,3 +189,26 @@ cd backend && uv run ruff check src/ && uv run mypy src/ && uv run python -c "fr
 - `mypy src/` — PASS (12 source files, no issues)
 - Model attribute assertions — PASS
 
+### Fix Verification (Claude Opus 4.6 QA — 2026-04-01)
+
+Verified on branch `fix/2.1-receipt-model-fields` (commit `582e838`).
+
+**Issue 1 (`cursor` → `nextCursor`) — Fixed** ✓
+Verified: `receipt.py:82` — field is `nextCursor: str | None = None`. Cross-checked against api-contracts.md line 141 (`"nextCursor": "eyJza..."`) and line 148 (`nextCursor — Opaque pagination token`). Match confirmed. Old `cursor` field does not exist (assertion verified programmatically).
+
+**Issue 2 (Missing `subcategory` on `ReceiptListItem`) — Fixed** ✓
+Verified: `receipt.py:70` — `subcategory: str | None = None` present after `category`. Cross-checked against api-contracts.md line 134 (`"subcategory": "supermarket-grocery"`). Match confirmed. Consistent with full `Receipt` model which also has `subcategory` at line 51.
+
+**Issue 3 (Missing `categoryDisplay`/`subcategoryDisplay` on `ReceiptListItem`) — Fixed** ✓
+Verified: `receipt.py:71-72` — `categoryDisplay: str | None = None` and `subcategoryDisplay: str | None = None` present after `subcategory`. Cross-checked against api-contracts.md lines 133, 135. Match confirmed. Both are `str | None = None` — correct for computed fields populated at response time.
+
+**Field ordering:** `ReceiptListItem` fields now follow the same order as the api-contracts.md JSON response: `receiptId`, `receiptDate`, `merchant`, `total`, `category`, `subcategory`, `categoryDisplay`, `subcategoryDisplay`, `status`, `imageUrl`, `createdAt`. Exact match.
+
+**Verification commands:**
+- `cd backend && uv run ruff check src/` — PASS (all checks passed)
+- `cd backend && uv run mypy src/` — PASS (12 source files, no issues)
+- Model attribute assertions (`hasattr` checks for `nextCursor`, `subcategory`, `categoryDisplay`, `subcategoryDisplay`; absence check for old `cursor`) — ALL PASS
+- `cd backend && uv run pytest` — no tests collected (Task 2.7 not yet implemented; no regressions possible)
+
+**Verdict:** 3/3 issues resolved. No regressions. All verification commands pass.
+

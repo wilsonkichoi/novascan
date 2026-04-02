@@ -195,3 +195,42 @@ export async function initiateAuth(email: string): Promise<AuthChallengeResult> 
 **Edge cases:** All three scenarios in the fix plan are correctly handled. One additional edge case: if a user signs up on device A, confirms on device B, and device A still shows the confirm step — `confirmSignUp` returns `NotAuthorizedException` ("User cannot be confirmed. Current status is CONFIRMED"). Frontend should catch this and treat as success (proceed to OTP step).
 
 **No regressions identified.** Post-Confirmation Lambda fires on `ConfirmSignUp` completion — same trigger event, just now from user-submitted code instead of auto-confirm. Verified: `post_confirmation.py` docstring confirms this.
+
+### Fix Verification (Claude Opus 4.6 QA — 2026-04-01)
+
+**Issue 1 (Pre-Sign-Up Auto-Confirm Security) — Fixed** ✓
+
+Verified by reading all modified source files, reviewing git diff `9880159..ca70d79`, and running verification commands.
+
+**Backend changes:**
+- `backend/src/novascan/auth/pre_signup.py` — No-op handler. Returns `event` unchanged. No `autoConfirmUser` or `autoVerifyEmail` flags. Docstring clearly explains the change and rationale.
+- `backend/src/novascan/auth/post_confirmation.py:35` — Uses `event["userPoolId"]` (from Cognito trigger payload) instead of `os.environ["USER_POOL_ID"]`. No `os` import. Correct — all Cognito trigger events include `userPoolId`.
+
+**CDK changes:**
+- `infra/cdkconstructs/auth.py:47` — Lambda description updated to "no-op placeholder for future validation".
+- Note: Module-level docstring (`auth.py:7`) still says "Pre-Sign-Up Lambda trigger (auto-confirm + auto-verify email)" — stale but cosmetic. The fix plan only called for updating the Lambda description parameter, not the module docstring. Non-functional.
+
+**Frontend auth module (`frontend/src/lib/auth.ts`):**
+- `ConfirmSignUpCommand` and `ResendConfirmationCodeCommand` imported (lines 5-6).
+- `initiateAuth()` (lines 130-147) — restructured per fix plan analysis recommendation: `UserNotFoundException` → `signUp` → return `CONFIRM_SIGN_UP` (no wasteful retry). `UserNotConfirmedException` → `resendConfirmationCode` → return `CONFIRM_SIGN_UP`. Clean, no nested try/catch.
+- `confirmSignUp()` (lines 153-172) — Sends `ConfirmSignUpCommand`. Handles `NotAuthorizedException` (already confirmed on another device) by silently succeeding. Edge case from fix plan analysis correctly addressed.
+- `resendConfirmationCode()` (lines 177-184) — Sends `ResendConfirmationCodeCommand`.
+
+**Frontend LoginPage (`frontend/src/pages/LoginPage.tsx`):**
+- `Step` type includes `"confirm"` (line 9). Three-step state machine: email → confirm → otp.
+- `handleConfirmSubmit` (lines 56-77) calls `confirmSignUp`, then re-calls `signIn` to get OTP session. Correct flow.
+- `handleResendConfirmation` (lines 79-90) — resend button handler.
+- Confirm step UI (lines 169-205): verification code input with `maxLength={6}`, pattern `[0-9]{6}`. "Confirm Account" submit, "Resend code", "Use a different email" buttons.
+- OTP step retains `maxLength={8}` for Cognito EMAIL_OTP codes (line 219).
+- `friendlyError` handles `ExpiredCodeException` (line 249).
+
+**Tests:**
+- `auth.test.ts` — 30 tests. New coverage: `UserNotConfirmedException` handling (lines 144-159), `confirmSignUp` with Cognito call + `NotAuthorizedException` handling + error propagation (lines 233-269), `resendConfirmationCode` (lines 273-289).
+- `LoginPage.test.tsx` — 22 tests. New coverage: confirm step rendering (lines 413-429), confirm → signIn → OTP transition (lines 432-467), resend code button (lines 469-490). Mocks for `confirmSignUp`/`resendConfirmationCode` via `@/lib/auth` mock (lines 41-47).
+
+**Verification commands:**
+- `cd frontend && npm run build` — PASS (`tsc -b && vite build`, 4 assets)
+- `cd frontend && npm run test -- --run` — PASS (86 tests, 5 files, 0 failures)
+- `cd infra && uv run pytest` — 46 passed, 1 failed (snapshot). The snapshot failure is **unrelated** to this fix — it's caused by the subsequent task 2.1 receipts bucket addition (`e6a729b`). The 46 non-snapshot tests all pass, including `test_no_circular_dependencies`.
+
+**Verdict:** 1/1 issues resolved. The security vulnerability (arbitrary account creation via auto-confirm) is eliminated. No regressions detected. All fix plan recommendations (including fix plan analysis edge cases) correctly implemented.
