@@ -20,6 +20,7 @@ from shared.dynamo import get_table
 logger = Logger()
 tracer = Tracer()
 router = Router()  # type: ignore[no-untyped-call]
+s3_client = boto3.client("s3")
 
 
 def _encode_cursor(last_key: dict[str, Any]) -> str:
@@ -56,8 +57,6 @@ def list_receipts() -> Response[Any]:
 
     table = get_table()
     bucket = os.environ["RECEIPTS_BUCKET"]
-    s3_client = boto3.client("s3")
-
     # Key condition on GSI1
     key_cond: ConditionBase = Key("GSI1PK").eq(f"USER#{user_id}")
     if start_date and end_date:
@@ -84,7 +83,14 @@ def list_receipts() -> Response[Any]:
     if filter_expr:
         query_kwargs["FilterExpression"] = filter_expr
     if cursor:
-        query_kwargs["ExclusiveStartKey"] = _decode_cursor(cursor)
+        try:
+            query_kwargs["ExclusiveStartKey"] = _decode_cursor(cursor)
+        except Exception as e:
+            return Response(
+                status_code=400,
+                content_type=content_types.APPLICATION_JSON,
+                body=json.dumps({"error": {"code": "VALIDATION_ERROR", "message": f"Invalid cursor: {e}"}}),
+            )
 
     response = table.query(**query_kwargs)
     items: list[dict[str, Any]] = response.get("Items", [])

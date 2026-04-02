@@ -21,6 +21,7 @@ from shared.dynamo import get_table
 logger = Logger()
 tracer = Tracer()
 router = Router()  # type: ignore[no-untyped-call]
+s3_client = boto3.client("s3")
 
 
 @router.post("/api/receipts/upload-urls")
@@ -33,7 +34,7 @@ def upload_urls() -> Response[Any]:
     """
     try:
         request = UploadRequest(**router.current_event.json_body)
-    except ValidationError as e:
+    except (ValidationError, TypeError, json.JSONDecodeError) as e:
         return Response(
             status_code=400,
             content_type=content_types.APPLICATION_JSON,
@@ -44,8 +45,6 @@ def upload_urls() -> Response[Any]:
     table = get_table()
     bucket = os.environ["RECEIPTS_BUCKET"]
     expiry = int(os.environ.get("PRESIGNED_URL_EXPIRY", "900"))
-    s3_client = boto3.client("s3")
-
     now = datetime.now(UTC)
     now_iso = now.isoformat()
     now_date = now.strftime("%Y-%m-%d")
