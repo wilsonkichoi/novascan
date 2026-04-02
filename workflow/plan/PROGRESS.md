@@ -46,7 +46,7 @@ Last updated: 2026-04-02
 | 2.3  | Upload URLs API Endpoint | backend-engineer | done | [task-2.3](reviews/task-2.3.md) | Verified 2026-04-02. Fixes applied and verified. |
 | 2.4  | List Receipts API Endpoint | backend-engineer | done | [task-2.4](reviews/task-2.4.md) | Verified 2026-04-02. Fixes applied and verified. |
 | 2.5  | Upload Flow Integration | frontend-developer | review | [task-2.5](reviews/task-2.5.md) | Submitted 2026-04-02. |
-| 2.6  | Receipts List Page | frontend-developer | pending | | |
+| 2.6  | Receipts List Page | frontend-developer | review | [task-2.6](reviews/task-2.6.md) | Submitted 2026-04-02. |
 | 2.7  | Receipt Upload + Storage API Tests | qa-engineer | pending | | TEST |
 | 2.8  | Upload + Receipts List UI Tests | qa-engineer | pending | | TEST |
 

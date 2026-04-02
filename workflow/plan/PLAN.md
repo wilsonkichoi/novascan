@@ -398,7 +398,7 @@
   - `cd frontend && npm run build` succeeds
 - **Test command:** `cd frontend && npm run build`
 
-#### [ ] Task 2.6: Receipts List Page
+#### [x] Task 2.6: Receipts List Page
 - **Role:** frontend-developer
 - **Depends on:** 2.2, 2.4
 - **Spec reference:** Milestone 2 Acceptance Criteria
