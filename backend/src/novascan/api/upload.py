@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import UTC, datetime
+from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
@@ -19,12 +20,12 @@ from shared.dynamo import get_table
 
 logger = Logger()
 tracer = Tracer()
-router = Router()
+router = Router()  # type: ignore[no-untyped-call]
 
 
 @router.post("/api/receipts/upload-urls")
 @tracer.capture_method
-def upload_urls() -> Response:
+def upload_urls() -> Response[Any]:
     """Generate presigned S3 PUT URLs for receipt image uploads.
 
     Creates a DynamoDB receipt record (status=processing) for each file,
@@ -39,7 +40,7 @@ def upload_urls() -> Response:
             body=json.dumps({"error": {"code": "VALIDATION_ERROR", "message": str(e)}}),
         )
 
-    user_id = router.current_event.request_context.authorizer.jwt_claim["sub"]
+    user_id: str = router.current_event.request_context.authorizer.jwt_claim["sub"]  # type: ignore[attr-defined]
     table = get_table()
     bucket = os.environ["RECEIPTS_BUCKET"]
     expiry = int(os.environ.get("PRESIGNED_URL_EXPIRY", "900"))

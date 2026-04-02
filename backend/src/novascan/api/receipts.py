@@ -6,41 +6,42 @@ import base64
 import json
 import os
 from decimal import Decimal
+from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import Response, content_types
 from aws_lambda_powertools.event_handler.api_gateway import Router
-from boto3.dynamodb.conditions import Attr, Key
+from boto3.dynamodb.conditions import Attr, ConditionBase, Key
 
 from models.receipt import ReceiptListItem, ReceiptListResponse
 from shared.dynamo import get_table
 
 logger = Logger()
 tracer = Tracer()
-router = Router()
+router = Router()  # type: ignore[no-untyped-call]
 
 
-def _encode_cursor(last_key: dict) -> str:
+def _encode_cursor(last_key: dict[str, Any]) -> str:
     """Base64-encode DynamoDB LastEvaluatedKey as opaque pagination cursor."""
     return base64.urlsafe_b64encode(json.dumps(last_key).encode()).decode()
 
 
-def _decode_cursor(cursor: str) -> dict:
+def _decode_cursor(cursor: str) -> dict[str, Any]:
     """Decode opaque pagination cursor back to DynamoDB ExclusiveStartKey."""
-    return json.loads(base64.urlsafe_b64decode(cursor))
+    return json.loads(base64.urlsafe_b64decode(cursor))  # type: ignore[no-any-return]
 
 
 @router.get("/api/receipts")
 @tracer.capture_method
-def list_receipts() -> Response:
+def list_receipts() -> Response[Any]:
     """List receipts for the authenticated user with filtering and pagination.
 
     Queries GSI1 (USER#{userId}) sorted by date descending.
     Supports status, category, date range filters, and cursor-based pagination.
     """
-    user_id = router.current_event.request_context.authorizer.jwt_claim["sub"]
-    params = router.current_event.query_string_parameters or {}
+    user_id: str = router.current_event.request_context.authorizer.jwt_claim["sub"]  # type: ignore[attr-defined]
+    params: dict[str, str] = router.current_event.query_string_parameters or {}
 
     status_filter = params.get("status")
     category_filter = params.get("category")
@@ -58,7 +59,7 @@ def list_receipts() -> Response:
     s3_client = boto3.client("s3")
 
     # Key condition on GSI1
-    key_cond = Key("GSI1PK").eq(f"USER#{user_id}")
+    key_cond: ConditionBase = Key("GSI1PK").eq(f"USER#{user_id}")
     if start_date and end_date:
         key_cond = key_cond & Key("GSI1SK").between(start_date, f"{end_date}~")
     elif start_date:
@@ -67,14 +68,14 @@ def list_receipts() -> Response:
         key_cond = key_cond & Key("GSI1SK").lte(f"{end_date}~")
 
     # Optional filter expression for post-query filtering
-    filter_expr = None
+    filter_expr: ConditionBase | None = None
     if status_filter:
         filter_expr = Attr("status").eq(status_filter)
     if category_filter:
-        cat_expr = Attr("category").eq(category_filter)
+        cat_expr: ConditionBase = Attr("category").eq(category_filter)
         filter_expr = (filter_expr & cat_expr) if filter_expr else cat_expr
 
-    query_kwargs: dict = {
+    query_kwargs: dict[str, Any] = {
         "IndexName": "GSI1",
         "KeyConditionExpression": key_cond,
         "ScanIndexForward": False,
@@ -86,13 +87,13 @@ def list_receipts() -> Response:
         query_kwargs["ExclusiveStartKey"] = _decode_cursor(cursor)
 
     response = table.query(**query_kwargs)
-    items = response.get("Items", [])
+    items: list[dict[str, Any]] = response.get("Items", [])
     last_key = response.get("LastEvaluatedKey")
 
     # Build receipt list with presigned GET URLs for images
-    receipts = []
+    receipts: list[ReceiptListItem] = []
     for item in items:
-        image_key = item.get("imageKey", "")
+        image_key = str(item.get("imageKey", ""))
         image_url = None
         if image_key:
             image_url = s3_client.generate_presigned_url(
@@ -107,17 +108,17 @@ def list_receipts() -> Response:
 
         receipts.append(
             ReceiptListItem(
-                receiptId=item["receiptId"],
-                receiptDate=item.get("receiptDate"),
-                merchant=item.get("merchant"),
-                total=total,
-                category=item.get("category"),
-                subcategory=item.get("subcategory"),
-                categoryDisplay=item.get("categoryDisplay"),
-                subcategoryDisplay=item.get("subcategoryDisplay"),
-                status=item["status"],
+                receiptId=str(item["receiptId"]),
+                receiptDate=str(item["receiptDate"]) if item.get("receiptDate") else None,
+                merchant=str(item["merchant"]) if item.get("merchant") else None,
+                total=float(total) if total is not None else None,
+                category=str(item["category"]) if item.get("category") else None,
+                subcategory=str(item["subcategory"]) if item.get("subcategory") else None,
+                categoryDisplay=str(item["categoryDisplay"]) if item.get("categoryDisplay") else None,
+                subcategoryDisplay=str(item["subcategoryDisplay"]) if item.get("subcategoryDisplay") else None,
+                status=str(item["status"]),  # type: ignore[arg-type]
                 imageUrl=image_url,
-                createdAt=item["createdAt"],
+                createdAt=str(item["createdAt"]),
             )
         )
 
