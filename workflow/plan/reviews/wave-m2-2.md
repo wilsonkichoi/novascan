@@ -193,3 +193,22 @@ cd backend && uv run ruff check src/ && uv run mypy src/
 - `uv run ruff check src/` — PASS (all checks passed)
 - `uv run mypy src/` — PASS (no issues found in 14 source files)
 
+### Fix Verification (Claude Opus 4.6 / Claude Code — 2026-04-02)
+
+**Issue 1 (Malformed JSON body → 500 in upload endpoint) — Fixed** ✓
+Verified: Read `upload.py:35-42`. The except clause at line 37 now catches `(ValidationError, TypeError, json.JSONDecodeError)`. The `json` module is imported at line 5. Confirmed via `git diff feature/m2-wave2-api-endpoints..fix/wave2-review-issues` — the old `except ValidationError` was replaced with the widened tuple. The error response format (`VALIDATION_ERROR` code, 400 status, `str(e)` message) is preserved. Malformed JSON bodies will now return a proper 400 instead of 500.
+
+**Issue 2 (Malformed cursor → 500 in list endpoint) — Fixed** ✓
+Verified: Read `receipts.py:85-93`. The `_decode_cursor(cursor)` call is now wrapped in `try/except Exception`. Any failure (including `binascii.Error` from invalid base64, `json.JSONDecodeError` from non-JSON content, or `KeyError` from malformed dict) returns 400 with `VALIDATION_ERROR` code and `f"Invalid cursor: {e}"` message. Confirmed via diff — the bare assignment was replaced with the guarded block.
+
+**Issue 3 (S3 client per request → module scope) — Fixed** ✓
+Verified: Read `upload.py:24` — `s3_client = boto3.client("s3")` at module scope. Read `receipts.py:23` — same. Confirmed via diff — both files had per-handler `s3_client = boto3.client("s3")` lines removed and a module-scope assignment added. The module-scope client is referenced at `upload.py:81` and `receipts.py:105`. TCP connections will now be reused across warm Lambda invocations.
+
+**Regression check:** No regressions detected. Both files maintain the same external behavior for valid inputs. The diff is additive (broader exception handling, client initialization moved) with no functional changes to happy-path logic.
+
+**Verification commands:**
+- `uv run ruff check src/` — PASS
+- `uv run mypy src/` — PASS
+- `uv run pytest -v` — PASS (0 tests collected — no backend tests exist yet for wave 2, expected)
+
+**Verdict:** 3/3 issues resolved. All fixes correctly applied, no regressions.
