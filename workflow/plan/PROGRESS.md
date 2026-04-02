@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-03-30
+Last updated: 2026-04-02
 
 ## Prerequisites
 
@@ -43,8 +43,8 @@ Last updated: 2026-03-30
 |------|-------|------|--------|--------|-------|
 | 2.1  | Receipts S3 Bucket + Pydantic Models | backend-engineer | done | [task-2.1](reviews/task-2.1.md) | Verified 2026-04-01. Model fields aligned with api-contracts. |
 | 2.2  | Upload UI Components | frontend-developer | done | [task-2.2](reviews/task-2.2.md) | Verified 2026-04-01. No issues found. |
-| 2.3  | Upload URLs API Endpoint | backend-engineer | pending | | |
-| 2.4  | List Receipts API Endpoint | backend-engineer | pending | | |
+| 2.3  | Upload URLs API Endpoint | backend-engineer | review | [task-2.3](reviews/task-2.3.md) | Completed 2026-04-02. Presigned S3 PUT URLs + DDB records. |
+| 2.4  | List Receipts API Endpoint | backend-engineer | review | [task-2.4](reviews/task-2.4.md) | Completed 2026-04-02. GSI1 query, filters, cursor pagination. |
 | 2.5  | Upload Flow Integration | frontend-developer | pending | | |
 | 2.6  | Receipts List Page | frontend-developer | pending | | |
 | 2.7  | Receipt Upload + Storage API Tests | qa-engineer | pending | | TEST |

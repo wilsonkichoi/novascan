@@ -342,7 +342,7 @@
 
 ### Wave 2: API Endpoints
 
-#### [ ] Task 2.3: Upload URLs API Endpoint
+#### [x] Task 2.3: Upload URLs API Endpoint
 - **Role:** backend-engineer
 - **Depends on:** 2.1
 - **Spec reference:** api-contracts.md >> POST /api/receipts/upload-urls
@@ -360,7 +360,7 @@
   - `cd backend && uv run ruff check src/` passes
 - **Test command:** `cd backend && uv run ruff check src/`
 
-#### [ ] Task 2.4: List Receipts API Endpoint
+#### [x] Task 2.4: List Receipts API Endpoint
 - **Role:** backend-engineer
 - **Depends on:** 2.1
 - **Spec reference:** api-contracts.md >> GET /api/receipts
