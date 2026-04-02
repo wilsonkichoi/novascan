@@ -67,6 +67,9 @@ class ReceiptListItem(BaseModel):
     merchant: str | None = None
     total: float | None = None
     category: str | None = None
+    subcategory: str | None = None
+    categoryDisplay: str | None = None
+    subcategoryDisplay: str | None = None
     status: Literal["processing", "confirmed", "failed"]
     imageUrl: str | None = None
     createdAt: str
@@ -76,4 +79,4 @@ class ReceiptListResponse(BaseModel):
     """GET /api/receipts response."""
 
     receipts: list[ReceiptListItem]
-    cursor: str | None = None
+    nextCursor: str | None = None
