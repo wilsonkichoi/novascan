@@ -381,7 +381,7 @@
 
 ### Wave 3: Frontend Integration
 
-#### [ ] Task 2.5: Upload Flow Integration
+#### [x] Task 2.5: Upload Flow Integration
 - **Role:** frontend-developer
 - **Depends on:** 2.2, 2.3
 - **Spec reference:** SPEC.md >> Section 3 (Upload Flow)
