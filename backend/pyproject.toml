@@ -30,10 +30,10 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "src/novascan"]
 
 [tool.ruff]
-src = ["src"]
+src = ["src", "src/novascan"]
 target-version = "py313"
 line-length = 120
 
@@ -45,4 +45,4 @@ python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
-mypy_path = "src"
+mypy_path = "src:src/novascan"

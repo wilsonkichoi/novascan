@@ -1,0 +1,104 @@
+"""POST /api/receipts/upload-urls — generate presigned S3 upload URLs."""
+
+from __future__ import annotations
+
+import json
+import os
+from datetime import UTC, datetime
+
+import boto3
+from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools.event_handler import Response, content_types
+from aws_lambda_powertools.event_handler.api_gateway import Router
+from pydantic import ValidationError
+from ulid import ULID
+
+from models.receipt import UploadReceiptResponse, UploadRequest, UploadResponse
+from shared.constants import RECEIPT
+from shared.dynamo import get_table
+
+logger = Logger()
+tracer = Tracer()
+router = Router()
+
+
+@router.post("/api/receipts/upload-urls")
+@tracer.capture_method
+def upload_urls() -> Response:
+    """Generate presigned S3 PUT URLs for receipt image uploads.
+
+    Creates a DynamoDB receipt record (status=processing) for each file,
+    then returns presigned URLs for direct-to-S3 upload.
+    """
+    try:
+        request = UploadRequest(**router.current_event.json_body)
+    except ValidationError as e:
+        return Response(
+            status_code=400,
+            content_type=content_types.APPLICATION_JSON,
+            body=json.dumps({"error": {"code": "VALIDATION_ERROR", "message": str(e)}}),
+        )
+
+    user_id = router.current_event.request_context.authorizer.jwt_claim["sub"]
+    table = get_table()
+    bucket = os.environ["RECEIPTS_BUCKET"]
+    expiry = int(os.environ.get("PRESIGNED_URL_EXPIRY", "900"))
+    s3_client = boto3.client("s3")
+
+    now = datetime.now(UTC)
+    now_iso = now.isoformat()
+    now_date = now.strftime("%Y-%m-%d")
+
+    # Phase 1: Generate receipt IDs and image keys
+    receipt_data: list[tuple[str, str, str]] = []  # (receipt_id, image_key, content_type)
+    for file_req in request.files:
+        receipt_id = str(ULID())
+        ext = "jpg" if file_req.contentType == "image/jpeg" else "png"
+        image_key = f"receipts/{receipt_id}.{ext}"
+        receipt_data.append((receipt_id, image_key, file_req.contentType))
+
+    # Phase 2: Write all DynamoDB records
+    with table.batch_writer() as batch:
+        for receipt_id, image_key, _content_type in receipt_data:
+            batch.put_item(
+                Item={
+                    "PK": f"USER#{user_id}",
+                    "SK": f"RECEIPT#{receipt_id}",
+                    "entityType": RECEIPT,
+                    "receiptId": receipt_id,
+                    "status": "processing",
+                    "imageKey": image_key,
+                    "createdAt": now_iso,
+                    "updatedAt": now_iso,
+                    "GSI1PK": f"USER#{user_id}",
+                    "GSI1SK": f"{now_date}#{receipt_id}",
+                }
+            )
+
+    # Phase 3: Generate presigned URLs
+    receipts = []
+    for receipt_id, image_key, content_type in receipt_data:
+        upload_url = s3_client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": bucket,
+                "Key": image_key,
+                "ContentType": content_type,
+            },
+            ExpiresIn=expiry,
+        )
+        receipts.append(
+            UploadReceiptResponse(
+                receiptId=receipt_id,
+                uploadUrl=upload_url,
+                imageKey=image_key,
+                expiresIn=expiry,
+            )
+        )
+
+    response = UploadResponse(receipts=receipts)
+    return Response(
+        status_code=201,
+        content_type=content_types.APPLICATION_JSON,
+        body=response.model_dump_json(),
+    )
