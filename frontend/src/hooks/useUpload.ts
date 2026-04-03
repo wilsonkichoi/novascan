@@ -41,7 +41,7 @@ export function useUpload() {
   const uploadSingleFile = useCallback(
     async (file: File, index: number): Promise<void> => {
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        const key = `${file.name}-${file.size}`;
+        const key = `${file.name}-${file.size}-${index}`;
         let urlInfo = urlMapRef.current.get(key);
 
         if (!urlInfo) {
@@ -116,7 +116,7 @@ export function useUpload() {
         const receipts = await requestUploadUrls(selectedFiles);
         for (let i = 0; i < receipts.length; i++) {
           const file = selectedFiles[i];
-          const key = `${file.name}-${file.size}`;
+          const key = `${file.name}-${file.size}-${i}`;
           urlMapRef.current.set(key, receipts[i]);
         }
       } catch {

@@ -59,6 +59,50 @@ export async function requestUploadUrls(
   return data.receipts;
 }
 
+// --- Receipt list types and fetch ---
+
+export interface ReceiptListItem {
+  receiptId: string;
+  receiptDate: string | null;
+  merchant: string | null;
+  total: number | null;
+  category: string | null;
+  subcategory: string | null;
+  categoryDisplay: string | null;
+  subcategoryDisplay: string | null;
+  status: "processing" | "confirmed" | "failed";
+  imageUrl: string | null;
+  createdAt: string;
+}
+
+export interface ReceiptListResponse {
+  receipts: ReceiptListItem[];
+  nextCursor: string | null;
+}
+
+export async function fetchReceipts(
+  cursor?: string,
+): Promise<ReceiptListResponse> {
+  const token = await getValidIdToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+
+  const url = `${API_URL}/api/receipts${params.size > 0 ? `?${params}` : ""}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch receipts (${res.status})`);
+  }
+
+  return (await res.json()) as ReceiptListResponse;
+}
+
+// --- S3 upload ---
+
 export function uploadFileToS3(
   url: string,
   file: File,

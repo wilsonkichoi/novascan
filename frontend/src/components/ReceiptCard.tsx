@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Receipt, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ReceiptListItem } from "@/hooks/useReceipts";
+import type { ReceiptListItem } from "@/api/receipts";
 
 const statusConfig = {
   processing: {
