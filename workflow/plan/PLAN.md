@@ -583,7 +583,7 @@
   - `cd backend && uv run pytest tests/unit/test_textract_extract.py tests/unit/test_nova_structure.py tests/unit/test_bedrock_extract.py tests/unit/test_finalize.py tests/unit/test_ranking.py -v` passes
 - **Test command:** `cd backend && uv run pytest tests/unit/ -v -k "pipeline or textract or nova or bedrock or finalize or ranking"`
 
-#### [ ] Task 3.7: Pipeline CDK + Integration Tests [TEST]
+#### [x] Task 3.7: Pipeline CDK + Integration Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 3.5
 - **Spec reference:** SPEC.md >> Section 3 (Processing Flow)
