@@ -65,7 +65,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "39ad6ccad4cb6969fa3589f398fb1b6979e718ac9a79f42867c6c10de8216d4f.zip"
+          "S3Key": "53a577ffa872587c5b2cc8d9307c7e95038bfbd7813e75a72e04340d486e69a0.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -1127,7 +1127,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "57032eb00b6dc6176e8aa5fbab0ed0a2816efdcc5ae8a29304e0e1104aad3083.zip"
         },
         "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
         "Environment": {
@@ -1135,6 +1135,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-bedrock-extract",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -1256,7 +1259,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "57032eb00b6dc6176e8aa5fbab0ed0a2816efdcc5ae8a29304e0e1104aad3083.zip"
         },
         "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
         "Environment": {
@@ -1265,6 +1268,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-finalize",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -1464,7 +1470,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "57032eb00b6dc6176e8aa5fbab0ed0a2816efdcc5ae8a29304e0e1104aad3083.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1472,6 +1478,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-load-custom-categories",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -1540,41 +1549,8 @@
             },
             {
               "Action": [
-                "dynamodb:BatchGetItem",
                 "dynamodb:Query",
-                "dynamodb:GetItem",
-                "dynamodb:Scan",
-                "dynamodb:ConditionCheckItem",
-                "dynamodb:DescribeTable"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "StorageTableB43FDCE7",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "StorageTableB43FDCE7",
-                          "Arn"
-                        ]
-                      },
-                      "/index/*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Action": [
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator"
+                "dynamodb:GetItem"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -1620,7 +1596,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "57032eb00b6dc6176e8aa5fbab0ed0a2816efdcc5ae8a29304e0e1104aad3083.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -1628,6 +1604,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-nova-structure",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -2220,7 +2199,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "57032eb00b6dc6176e8aa5fbab0ed0a2816efdcc5ae8a29304e0e1104aad3083.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {
@@ -2228,6 +2207,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-textract-extract",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -2719,6 +2701,10 @@
           {
             "AttributeName": "GSI1SK",
             "AttributeType": "S"
+          },
+          {
+            "AttributeName": "GSI2PK",
+            "AttributeType": "S"
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
@@ -2738,6 +2724,18 @@
             ],
             "Projection": {
               "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "GSI2",
+            "KeySchema": [
+              {
+                "AttributeName": "GSI2PK",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "KEYS_ONLY"
             }
           }
         ],
