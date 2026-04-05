@@ -3,7 +3,13 @@
 The prompt template embeds the full category taxonomy, user custom categories,
 and extraction instructions. Output must conform to the ExtractionResult schema
 defined in models/extraction.py (SPEC Section 7).
+
+Security: Custom category names and slugs are validated before interpolation
+into the prompt to prevent prompt injection attacks (SECURITY-REVIEW C1).
 """
+
+import json
+import re
 
 CATEGORY_TAXONOMY = """\
 ## Predefined Categories
@@ -124,6 +130,75 @@ YYYY-MM-DD format. Set null if unreadable.
 """
 
 
+# --- Validation patterns (SECURITY-REVIEW C1) ---
+
+# Category display names: alphanumeric, spaces, & / , . ( ) -
+_VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9 &/,.()\-]+$")
+
+# Category slugs: lowercase alphanumeric + hyphens
+_VALID_SLUG_RE = re.compile(r"^[a-z0-9\-]+$")
+
+# Injection patterns: newlines, markdown headers, instruction-like content
+_INJECTION_PATTERNS = [
+    re.compile(r"[\n\r]"),                     # newlines
+    re.compile(r"#{2,}"),                       # markdown headers (##, ###, etc.)
+    re.compile(r"(?i)ignore\s+(previous|above|all)\s+instructions?"),
+    re.compile(r"(?i)you\s+are\s+(now|a)\b"),
+    re.compile(r"(?i)system\s*:"),
+    re.compile(r"(?i)assistant\s*:"),
+    re.compile(r"(?i)human\s*:"),
+]
+
+_MAX_CATEGORY_LENGTH = 64
+
+
+def validate_category_name(name: str) -> str:
+    """Validate a custom category display name.
+
+    Raises:
+        ValueError: If the name fails validation.
+
+    Returns:
+        The validated name (unchanged).
+    """
+    if not name or len(name) > _MAX_CATEGORY_LENGTH:
+        raise ValueError(
+            f"Category name must be 1-{_MAX_CATEGORY_LENGTH} characters, "
+            f"got {len(name) if name else 0}"
+        )
+    if not _VALID_NAME_RE.match(name):
+        raise ValueError(
+            f"Category name contains invalid characters: {name!r}"
+        )
+    for pattern in _INJECTION_PATTERNS:
+        if pattern.search(name):
+            raise ValueError(
+                f"Category name contains disallowed pattern: {name!r}"
+            )
+    return name
+
+
+def validate_category_slug(slug: str) -> str:
+    """Validate a custom category slug.
+
+    Raises:
+        ValueError: If the slug fails validation.
+
+    Returns:
+        The validated slug (unchanged).
+    """
+    if not slug or len(slug) > _MAX_CATEGORY_LENGTH:
+        raise ValueError(
+            f"Category slug must be 1-{_MAX_CATEGORY_LENGTH} characters, "
+            f"got {len(slug) if slug else 0}"
+        )
+    if not _VALID_SLUG_RE.match(slug):
+        raise ValueError(
+            f"Category slug contains invalid characters: {slug!r}"
+        )
+    return slug
+
+
 def build_extraction_prompt(
     *,
     custom_categories: list[dict[str, str]] | None = None,
@@ -139,14 +214,34 @@ def build_extraction_prompt(
 
     Returns:
         Complete prompt string ready for Bedrock Nova.
+
+    Raises:
+        ValueError: If any custom category name or slug fails validation.
     """
     if custom_categories:
-        lines = ["## Custom Categories (user-defined, prefer when specific match)"]
+        # Validate all categories before building the prompt (C1 mitigation)
+        sanitized_cats = []
         for cat in custom_categories:
-            parent = cat.get("parentCategory")
-            parent_str = f" (under {parent})" if parent else ""
-            lines.append(f"- {cat['displayName']} ({cat['slug']}){parent_str}")
-        custom_section = "\n".join(lines)
+            validate_category_name(cat["displayName"])
+            validate_category_slug(cat["slug"])
+            if cat.get("parentCategory"):
+                validate_category_slug(cat["parentCategory"])
+            sanitized_cats.append({
+                "slug": cat["slug"],
+                "displayName": cat["displayName"],
+                **({"parentCategory": cat["parentCategory"]}
+                   if cat.get("parentCategory") else {}),
+            })
+        # Place custom categories in structured JSON data block to prevent
+        # prompt injection via free-text interpolation (C1 mitigation)
+        custom_section = (
+            "## Custom Categories (user-defined, prefer when specific match)\n\n"
+            "The following JSON array contains user-defined categories. "
+            "Use them when they are a more specific match than predefined ones.\n\n"
+            "```json\n"
+            f"{json.dumps(sanitized_cats, indent=2)}\n"
+            "```"
+        )
     else:
         custom_section = "No custom categories defined."
 
