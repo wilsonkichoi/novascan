@@ -38,6 +38,15 @@ class StorageConstruct(Construct):
             projection_type=dynamodb.ProjectionType.ALL,
         )
 
+        # GSI2: Receipt lookup by receiptId — used by pipeline to resolve userId
+        # from receiptId without a full table scan (SECURITY-REVIEW C2).
+        # KEYS_ONLY projection: we only need PK to extract userId.
+        self.table.add_global_secondary_index(
+            index_name="GSI2",
+            partition_key=dynamodb.Attribute(name="GSI2PK", type=dynamodb.AttributeType.STRING),
+            projection_type=dynamodb.ProjectionType.KEYS_ONLY,
+        )
+
         # --- S3 Frontend Assets Bucket ---
         self.frontend_bucket = s3.Bucket(
             self,

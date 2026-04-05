@@ -72,6 +72,7 @@ def upload_urls() -> Response[Any]:
                     "updatedAt": now_iso,
                     "GSI1PK": f"USER#{user_id}",
                     "GSI1SK": f"{now_date}#{receipt_id}",
+                    "GSI2PK": receipt_id,
                 }
             )
 
