@@ -59,6 +59,10 @@ class StorageConstruct(Construct):
         )
 
         # --- S3 Receipts Bucket ---
+        # L2 — TODO: Upgrade to CUSTOMER_MANAGED encryption with KMS key + rotation
+        # for production use. Deferred for personal MVP (~$1/month + complexity).
+        # To upgrade: change encryption to BucketEncryption.KMS_MANAGED or
+        # provide an explicit KMS key with auto-rotation enabled.
         self.receipts_bucket = s3.Bucket(
             self,
             "ReceiptsBucket",
@@ -68,6 +72,23 @@ class StorageConstruct(Construct):
             versioned=True,
             removal_policy=cdk.RemovalPolicy.RETAIN if is_prod else cdk.RemovalPolicy.DESTROY,
             auto_delete_objects=not is_prod,
+            # M3 — S3 lifecycle rules for cost optimization
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    id="InfrequentAccessAt90Days",
+                    transitions=[
+                        s3.Transition(
+                            storage_class=s3.StorageClass.INFREQUENT_ACCESS,
+                            transition_after=cdk.Duration.days(90),
+                        ),
+                        s3.Transition(
+                            storage_class=s3.StorageClass.GLACIER,
+                            transition_after=cdk.Duration.days(365),
+                        ),
+                    ],
+                    expiration=cdk.Duration.days(2555),  # ~7 years
+                ),
+            ],
         )
 
     @property
