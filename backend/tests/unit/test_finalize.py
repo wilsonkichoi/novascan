@@ -389,6 +389,10 @@ class TestFinalizeBothFailed:
         assert "failureReason" in receipt, "Failed receipt must have failureReason"
         assert isinstance(receipt["failureReason"], str)
         assert len(receipt["failureReason"]) > 0
+        # H4 — Failure reason must be generic, not containing raw error text
+        assert "Textract error" not in receipt["failureReason"]
+        assert "Bedrock error" not in receipt["failureReason"]
+        assert "CloudWatch" in receipt["failureReason"]
 
     def test_no_line_items_created(self, aws_resources):
         """When both fail, no line items should be created."""

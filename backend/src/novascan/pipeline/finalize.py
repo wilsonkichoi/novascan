@@ -19,6 +19,7 @@ import boto3
 from aws_lambda_powertools import Logger, Metrics, Tracer
 from aws_lambda_powertools.metrics import MetricUnit, single_metric
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from boto3.dynamodb.conditions import Key
 
 from novascan.models.extraction import ExtractionResult
 from novascan.pipeline.ranking import rank_results
@@ -108,12 +109,19 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
 
     failure_reason = None
     if status == "failed":
-        main_error = main_raw.get("error", "unknown")
-        shadow_error = shadow_raw.get("error", "unknown")
-        failure_reason = (
-            f"Both pipelines failed. Main ({main_type}): {main_error}. "
-            f"Shadow ({shadow_type}): {shadow_error}."
+        # H4 — Generic failure_reason in DynamoDB; raw error details logged only
+        logger.error(
+            "Both pipelines failed",
+            extra={
+                "main_type": main_type,
+                "main_error": main_raw.get("error", "unknown"),
+                "main_error_type": main_raw.get("errorType", "unknown"),
+                "shadow_type": shadow_type,
+                "shadow_error": shadow_raw.get("error", "unknown"),
+                "shadow_error_type": shadow_raw.get("errorType", "unknown"),
+            },
         )
+        failure_reason = "Pipeline processing failed. Check CloudWatch logs for details."
 
     _update_receipt(
         table, user_id, receipt_id, selected_result, status,
@@ -140,6 +148,9 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         },
     )
 
+    # L8 — selectedPipeline, rankingWinner, usedFallback are internal-only
+    # fields retained for observability and pipeline tuning. They are NOT
+    # exposed via the public API and should not be relied upon by clients.
     return {
         "receiptId": receipt_id,
         "status": status,
@@ -307,7 +318,9 @@ def _write_pipeline_record(
         item["rankingScore"] = Decimal(str(ranking_score))
 
     if "error" in raw:
-        item["error"] = raw["error"]
+        # H4 — Store error classification only, not raw exception message.
+        # Raw details are logged to CloudWatch by the originating Lambda.
+        item["error"] = raw.get("errorType", "Unknown")
         item["errorType"] = raw.get("errorType", "Unknown")
 
     table.put_item(Item=item)
@@ -392,12 +405,20 @@ def _update_receipt(
 
     update_expression = "SET " + ", ".join(update_parts)
 
-    table.update_item(
-        Key={"PK": pk, "SK": sk},
-        UpdateExpression=update_expression,
-        ExpressionAttributeNames=attr_names,
-        ExpressionAttributeValues=attr_values,
-    )
+    # M11 — Idempotency: prevent stale overwrites with ConditionExpression
+    try:
+        table.update_item(
+            Key={"PK": pk, "SK": sk},
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=attr_names,
+            ExpressionAttributeValues=attr_values,
+            ConditionExpression="attribute_not_exists(updatedAt) OR updatedAt < :now",
+        )
+    except table.meta.client.exceptions.ConditionalCheckFailedException:
+        logger.warning(
+            "Skipped stale receipt update (newer version exists)",
+            extra={"receipt_id": receipt_id},
+        )
 
 
 @tracer.capture_method
@@ -417,6 +438,20 @@ def _create_line_items(
         return
 
     pk = f"USER#{user_id}"
+
+    # M11 — Idempotency: delete existing items before writing new ones
+    # This prevents duplicate line items on re-execution.
+    existing = table.query(
+        KeyConditionExpression=(
+            Key("PK").eq(pk)
+            & Key("SK").begins_with(f"{RECEIPT}#{receipt_id}#{ITEM}#")
+        ),
+        ProjectionExpression="PK, SK",
+    )
+    if existing.get("Items"):
+        with table.batch_writer() as batch:
+            for item in existing["Items"]:
+                batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
 
     with table.batch_writer() as batch:
         for idx, line_item in enumerate(result.lineItems):
@@ -458,12 +493,14 @@ def _update_s3_metadata(
         head = s3_client.head_object(Bucket=bucket, Key=key)
         content_type = head.get("ContentType", "image/jpeg")
 
+        # M12 — Explicit S3 encryption on copy
         s3_client.copy_object(
             Bucket=bucket,
             Key=key,
             CopySource={"Bucket": bucket, "Key": key},
             MetadataDirective="REPLACE",
             ContentType=content_type,
+            ServerSideEncryption="AES256",
             Metadata={
                 "status": status,
                 "receipt-id": receipt_id,
