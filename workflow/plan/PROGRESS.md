@@ -58,7 +58,7 @@ Last updated: 2026-04-04
 | 3.2  | OCR-AI Pipeline Lambdas (Textract + Nova) | backend-engineer | done | [task-3.2](reviews/task-3.2.md) | Completed 2026-04-04. Fixes verified 2026-04-04. |
 | 3.3  | AI-Multimodal Pipeline Lambda (Bedrock) | backend-engineer | done | [task-3.3](reviews/task-3.3.md) | Completed 2026-04-04. Fixes verified 2026-04-04. |
 | 3.4  | Finalize Lambda + LoadCustomCategories Lambda | backend-engineer | done | [task-3.4](reviews/task-3.4.md) | Completed 2026-04-04. Fixes verified 2026-04-04. |
-| 3.5  | Pipeline CDK Construct (SQS + Pipes + SFN) | devops-engineer | pending | | |
+| 3.5  | Pipeline CDK Construct (SQS + Pipes + SFN) | devops-engineer | done | [task-3.5](reviews/task-3.5.md) | Completed 2026-04-04. MaximumConcurrency gap documented. |
 | 3.6  | Pipeline Lambda Unit Tests | qa-engineer | pending | | TEST |
 | 3.7  | Pipeline CDK + Integration Tests | qa-engineer | pending | | TEST |
 
@@ -117,6 +117,9 @@ All 6 issues from the Wave 1 scaffolding review have been fixed. See [wave-1-fix
 3. **GSI1SK for processing receipts** — Resolved: use `createdAt` as fallback in GSI1SK when `receiptDate` not yet extracted. Finalize Lambda updates to `receiptDate` after OCR.
 4. **CRITICAL: Pre-Sign-Up auto-confirm allows arbitrary account creation** — Anyone can create confirmed accounts with any email without proof of ownership. Enables user pool pollution and unsolicited OTP email spam. Fix: remove `autoConfirmUser`, add `confirmSignUp` step to frontend. Must fix before M1 complete.
 5. **Cognito EMAIL_OTP sends 8-digit codes** — SPEC and frontend assumed 6-digit. Fixed in frontend (LoginPage.tsx maxLength 6→8). CDK L2 doesn't expose `AllowedFirstAuthFactors` — used CloudFormation escape hatch.
+
+6. **userId not in S3 event payload** -- SPEC assumes userId is available in pipeline input but doesn't specify how it gets there when triggered by S3 event notification. Resolved with DynamoDB scan for MVP. Production fix: add GSI on receiptId, or encode userId in S3 key, or set user-id as presigned URL metadata condition.
+7. **EventBridge Pipes MaximumConcurrency unsupported** -- `CfnPipe` (AWS::Pipes::Pipe) does not expose `MaximumConcurrency` in CloudFormation as of 2026-04. The `pipelineMaxConcurrency` config value cannot be enforced at the Pipe level. Using SQS `batch_size=1` as workaround.
 
 ## Blocked Items
 (none)

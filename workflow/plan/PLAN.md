@@ -537,7 +537,7 @@
 
 ### Wave 3: Pipeline CDK Construct
 
-#### [ ] Task 3.5: Pipeline CDK Construct — SQS + EventBridge Pipes + Step Functions
+#### [x] Task 3.5: Pipeline CDK Construct — SQS + EventBridge Pipes + Step Functions
 - **Role:** devops-engineer
 - **Depends on:** 3.2, 3.3, 3.4
 - **Spec reference:** SPEC.md >> Section 3 (Processing Flow, Pipeline State Machine diagram)
