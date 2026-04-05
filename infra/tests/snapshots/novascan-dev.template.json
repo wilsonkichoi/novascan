@@ -65,7 +65,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "39ad6ccad4cb6969fa3589f398fb1b6979e718ac9a79f42867c6c10de8216d4f.zip"
+          "S3Key": "6fda72787d8af00fdca578bb9aa85078a0dfa62003bcf478c095e5f84d5ba892.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -697,7 +697,7 @@
                     {
                       "Ref": "AWS::Partition"
                     },
-                    ":cognito-idp:us-east-1:123456789012:userpool/*"
+                    ":cognito-idp:us-east-1:123456789012:userpool/novascan-*"
                   ]
                 ]
               }
@@ -831,8 +831,7 @@
         "Policies": {
           "SignInPolicy": {
             "AllowedFirstAuthFactors": [
-              "EMAIL_OTP",
-              "PASSWORD"
+              "EMAIL_OTP"
             ]
           }
         },
@@ -874,9 +873,13 @@
           "ALLOW_REFRESH_TOKEN_AUTH"
         ],
         "GenerateSecret": false,
+        "RefreshTokenValidity": 10080,
         "SupportedIdentityProviders": [
           "COGNITO"
         ],
+        "TokenValidityUnits": {
+          "RefreshToken": "minutes"
+        },
         "UserPoolId": {
           "Ref": "AuthUserPool8115E87F"
         }
@@ -1077,6 +1080,9 @@
           "DefaultCacheBehavior": {
             "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
             "Compress": true,
+            "ResponseHeadersPolicyId": {
+              "Ref": "FrontendSecurityHeadersPolicy1832CE86"
+            },
             "TargetOriginId": "novascandevFrontendDistributionOrigin1879D827F",
             "ViewerProtocolPolicy": "redirect-to-https"
           },
@@ -1119,6 +1125,36 @@
       },
       "Type": "AWS::CloudFront::OriginAccessControl"
     },
+    "FrontendSecurityHeadersPolicy1832CE86": {
+      "Properties": {
+        "ResponseHeadersPolicyConfig": {
+          "Name": "novascan-dev-security-headers",
+          "SecurityHeadersConfig": {
+            "ContentSecurityPolicy": {
+              "ContentSecurityPolicy": "default-src 'self'; connect-src 'self' https://*.amazonaws.com https://*.execute-api.*.amazonaws.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+              "Override": true
+            },
+            "ContentTypeOptions": {
+              "Override": true
+            },
+            "FrameOptions": {
+              "FrameOption": "DENY",
+              "Override": true
+            },
+            "ReferrerPolicy": {
+              "Override": true,
+              "ReferrerPolicy": "strict-origin-when-cross-origin"
+            },
+            "StrictTransportSecurity": {
+              "AccessControlMaxAgeSec": 63072000,
+              "IncludeSubdomains": true,
+              "Override": true
+            }
+          }
+        }
+      },
+      "Type": "AWS::CloudFront::ResponseHeadersPolicy"
+    },
     "PipelineBedrockExtractFn9B7F32EE": {
       "DependsOn": [
         "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34",
@@ -1127,7 +1163,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
         },
         "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
         "Environment": {
@@ -1135,6 +1171,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-bedrock-extract",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -1256,7 +1295,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
         },
         "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
         "Environment": {
@@ -1265,6 +1304,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-finalize",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -1464,7 +1506,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1472,6 +1514,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-load-custom-categories",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -1540,41 +1585,8 @@
             },
             {
               "Action": [
-                "dynamodb:BatchGetItem",
                 "dynamodb:Query",
-                "dynamodb:GetItem",
-                "dynamodb:Scan",
-                "dynamodb:ConditionCheckItem",
-                "dynamodb:DescribeTable"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "StorageTableB43FDCE7",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "StorageTableB43FDCE7",
-                          "Arn"
-                        ]
-                      },
-                      "/index/*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Action": [
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator"
+                "dynamodb:GetItem"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -1620,7 +1632,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -1628,6 +1640,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-nova-structure",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -2220,7 +2235,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {
@@ -2228,6 +2243,9 @@
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-textract-extract",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
             "STAGE": "dev",
             "TABLE_NAME": {
               "Ref": "StorageTableB43FDCE7"
@@ -2719,6 +2737,10 @@
           {
             "AttributeName": "GSI1SK",
             "AttributeType": "S"
+          },
+          {
+            "AttributeName": "GSI2PK",
+            "AttributeType": "S"
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
@@ -2738,6 +2760,18 @@
             ],
             "Projection": {
               "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "GSI2",
+            "KeySchema": [
+              {
+                "AttributeName": "GSI2PK",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "KEYS_ONLY"
             }
           }
         ],

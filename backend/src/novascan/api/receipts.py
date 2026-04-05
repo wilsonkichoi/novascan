@@ -28,9 +28,42 @@ def _encode_cursor(last_key: dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(json.dumps(last_key).encode()).decode()
 
 
-def _decode_cursor(cursor: str) -> dict[str, Any]:
-    """Decode opaque pagination cursor back to DynamoDB ExclusiveStartKey."""
-    return json.loads(base64.urlsafe_b64decode(cursor))  # type: ignore[no-any-return]
+# Expected keys in a valid GSI1 pagination cursor
+_VALID_CURSOR_KEYS = {"GSI1PK", "GSI1SK", "PK", "SK"}
+
+
+def _decode_cursor(cursor: str, *, user_id: str) -> dict[str, Any]:
+    """Decode and validate opaque pagination cursor.
+
+    Validates that:
+    - Decoded JSON has exactly {GSI1PK, GSI1SK, PK, SK} keys (H1 mitigation)
+    - GSI1PK matches USER#{authenticated_userId} (ownership check)
+
+    Raises:
+        ValueError: If cursor is invalid or targets another user.
+    """
+    try:
+        decoded = json.loads(base64.urlsafe_b64decode(cursor))
+    except Exception as e:
+        raise ValueError(f"Cursor decode failed: {type(e).__name__}") from e
+
+    if not isinstance(decoded, dict):
+        raise ValueError("Cursor must decode to a JSON object")
+
+    if set(decoded.keys()) != _VALID_CURSOR_KEYS:
+        raise ValueError(
+            f"Cursor has invalid keys: {set(decoded.keys())}"
+        )
+
+    expected_gsi1pk = f"USER#{user_id}"
+    if decoded.get("GSI1PK") != expected_gsi1pk:
+        raise ValueError("Cursor GSI1PK does not match authenticated user")
+
+    expected_pk = f"USER#{user_id}"
+    if decoded.get("PK") != expected_pk:
+        raise ValueError("Cursor PK does not match authenticated user")
+
+    return decoded  # type: ignore[no-any-return]
 
 
 @router.get("/api/receipts")
@@ -84,12 +117,19 @@ def list_receipts() -> Response[Any]:
         query_kwargs["FilterExpression"] = filter_expr
     if cursor:
         try:
-            query_kwargs["ExclusiveStartKey"] = _decode_cursor(cursor)
+            query_kwargs["ExclusiveStartKey"] = _decode_cursor(
+                cursor, user_id=user_id
+            )
         except Exception as e:
+            # Log detailed error server-side, return generic message (M7 mitigation)
+            logger.warning(
+                "Invalid pagination cursor",
+                extra={"error": str(e), "user_id": user_id},
+            )
             return Response(
                 status_code=400,
                 content_type=content_types.APPLICATION_JSON,
-                body=json.dumps({"error": {"code": "VALIDATION_ERROR", "message": f"Invalid cursor: {e}"}}),
+                body=json.dumps({"error": {"code": "VALIDATION_ERROR", "message": "Invalid pagination cursor"}}),
             )
 
     response = table.query(**query_kwargs)

@@ -4,6 +4,7 @@ Verifies:
 - CloudFront distribution exists
 - S3 origin configured
 - Error responses for SPA routing (403/404 -> /index.html with 200)
+- Security response headers (SECURITY-REVIEW M2)
 
 Spec references:
 - Section 3: Architecture ('Static React SPA served from S3 via CloudFront')
@@ -136,6 +137,117 @@ class TestViewerProtocol:
                         "ViewerProtocolPolicy": Match.string_like_regexp(
                             r"(redirect-to-https|https-only)"
                         ),
+                    },
+                },
+            },
+        )
+
+
+class TestSecurityResponseHeaders:
+    """Security response headers per SECURITY-REVIEW M2."""
+
+    def test_response_headers_policy_exists(
+        self, dev_template: Template
+    ) -> None:
+        """A ResponseHeadersPolicy resource must be created."""
+        dev_template.resource_count_is(
+            "AWS::CloudFront::ResponseHeadersPolicy", 1
+        )
+
+    def test_hsts_header_configured(self, dev_template: Template) -> None:
+        """HSTS must be set with max-age=63072000 and includeSubdomains."""
+        dev_template.has_resource_properties(
+            "AWS::CloudFront::ResponseHeadersPolicy",
+            {
+                "ResponseHeadersPolicyConfig": {
+                    "SecurityHeadersConfig": {
+                        "StrictTransportSecurity": {
+                            "AccessControlMaxAgeSec": 63072000,
+                            "IncludeSubdomains": True,
+                            "Override": True,
+                        },
+                    },
+                },
+            },
+        )
+
+    def test_content_type_options_nosniff(
+        self, dev_template: Template
+    ) -> None:
+        """X-Content-Type-Options: nosniff must be set."""
+        dev_template.has_resource_properties(
+            "AWS::CloudFront::ResponseHeadersPolicy",
+            {
+                "ResponseHeadersPolicyConfig": {
+                    "SecurityHeadersConfig": {
+                        "ContentTypeOptions": {
+                            "Override": True,
+                        },
+                    },
+                },
+            },
+        )
+
+    def test_frame_options_deny(self, dev_template: Template) -> None:
+        """X-Frame-Options: DENY must be set."""
+        dev_template.has_resource_properties(
+            "AWS::CloudFront::ResponseHeadersPolicy",
+            {
+                "ResponseHeadersPolicyConfig": {
+                    "SecurityHeadersConfig": {
+                        "FrameOptions": {
+                            "FrameOption": "DENY",
+                            "Override": True,
+                        },
+                    },
+                },
+            },
+        )
+
+    def test_referrer_policy(self, dev_template: Template) -> None:
+        """Referrer-Policy: strict-origin-when-cross-origin must be set."""
+        dev_template.has_resource_properties(
+            "AWS::CloudFront::ResponseHeadersPolicy",
+            {
+                "ResponseHeadersPolicyConfig": {
+                    "SecurityHeadersConfig": {
+                        "ReferrerPolicy": {
+                            "ReferrerPolicy": "strict-origin-when-cross-origin",
+                            "Override": True,
+                        },
+                    },
+                },
+            },
+        )
+
+    def test_content_security_policy(self, dev_template: Template) -> None:
+        """CSP must be configured with the expected directives."""
+        dev_template.has_resource_properties(
+            "AWS::CloudFront::ResponseHeadersPolicy",
+            {
+                "ResponseHeadersPolicyConfig": {
+                    "SecurityHeadersConfig": {
+                        "ContentSecurityPolicy": {
+                            "ContentSecurityPolicy": Match.string_like_regexp(
+                                r"default-src 'self'"
+                            ),
+                            "Override": True,
+                        },
+                    },
+                },
+            },
+        )
+
+    def test_distribution_uses_response_headers_policy(
+        self, dev_template: Template
+    ) -> None:
+        """CloudFront distribution must reference the security headers policy."""
+        dev_template.has_resource_properties(
+            "AWS::CloudFront::Distribution",
+            {
+                "DistributionConfig": {
+                    "DefaultCacheBehavior": {
+                        "ResponseHeadersPolicyId": Match.any_value(),
                     },
                 },
             },

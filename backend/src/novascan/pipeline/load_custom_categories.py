@@ -18,7 +18,7 @@ from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from boto3.dynamodb.conditions import Key
 
-from novascan.shared.constants import CUSTOMCAT, RECEIPT
+from novascan.shared.constants import CUSTOMCAT
 from novascan.shared.dynamo import get_table
 
 logger = Logger()
@@ -191,46 +191,30 @@ def _extract_receipt_id(key: str) -> str:
 
 @tracer.capture_method
 def _lookup_user_id(receipt_id: str) -> str:
-    """Look up the userId that owns a receipt by scanning for the receiptId attribute.
+    """Look up the userId that owns a receipt via GSI2 query.
 
-    This is used when the pipeline is triggered via S3 event notification
-    (S3 -> SQS -> EventBridge Pipes -> Step Functions) where userId is not
-    available in the event payload.
-
-    The scan filters on receiptId attribute and entityType=RECEIPT. At MVP
-    scale (single user, low volume), this is acceptable. For production
-    scale, add a GSI on receiptId or encode userId in the S3 key.
+    Uses GSI2 (GSI2PK = receiptId) to find the receipt's PK, from which
+    the userId is extracted. This replaces the previous full-table scan
+    (SECURITY-REVIEW C2 — cross-user data exposure mitigation).
     """
     table = get_table()
 
-    # Scan with filter — paginate until we find the receipt or exhaust the table.
-    # DynamoDB Limit restricts items *evaluated* (before filtering), not items
-    # *returned*. We use a modest Limit to avoid reading the entire table in one
-    # call while still finding the receipt within a few pages at MVP scale.
-    scan_kwargs: dict[str, Any] = {
-        "FilterExpression": "receiptId = :rid AND entityType = :et",
-        "ExpressionAttributeValues": {
-            ":rid": receipt_id,
-            ":et": RECEIPT,
-        },
-        "ProjectionExpression": "PK",
-        "Limit": 100,
-    }
+    response = table.query(
+        IndexName="GSI2",
+        KeyConditionExpression=Key("GSI2PK").eq(receipt_id),
+        ProjectionExpression="PK",
+        Limit=1,
+    )
 
-    while True:
-        response = table.scan(**scan_kwargs)
-        items = response.get("Items", [])
-        if items:
-            pk = items[0].get("PK", "")
-            user_id = pk.split("#", 1)[1] if "#" in pk else ""
-            logger.info(
-                "Looked up userId from receipt",
-                extra={"receipt_id": receipt_id, "user_id": user_id},
-            )
-            return user_id
-        if "LastEvaluatedKey" not in response:
-            break
-        scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+    items = response.get("Items", [])
+    if items:
+        pk = items[0].get("PK", "")
+        user_id = pk.split("#", 1)[1] if "#" in pk else ""
+        logger.info(
+            "Looked up userId from receipt via GSI2",
+            extra={"receipt_id": receipt_id, "user_id": user_id},
+        )
+        return user_id
 
-    logger.error("Receipt not found in DynamoDB", extra={"receipt_id": receipt_id})
+    logger.error("Receipt not found in GSI2", extra={"receipt_id": receipt_id})
     return ""

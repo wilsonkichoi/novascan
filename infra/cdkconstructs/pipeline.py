@@ -193,10 +193,21 @@ class PipelineConstruct(Construct):
             environment={
                 **common_lambda_props["environment"],
                 "POWERTOOLS_SERVICE_NAME": "novascan-load-custom-categories",
+                "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
             },
             **{k: v for k, v in common_lambda_props.items() if k != "environment"},
         )
-        table.grant_read_data(self.load_custom_categories_fn)
+        # Scoped IAM: only Query (for GSI2 lookup) and GetItem (for custom
+        # categories) — no Scan permission (SECURITY-REVIEW M13).
+        self.load_custom_categories_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["dynamodb:Query", "dynamodb:GetItem"],
+                resources=[
+                    table.table_arn,
+                    f"{table.table_arn}/index/*",
+                ],
+            )
+        )
 
         self.textract_extract_fn = lambda_.Function(
             self,
@@ -207,6 +218,7 @@ class PipelineConstruct(Construct):
             environment={
                 **common_lambda_props["environment"],
                 "POWERTOOLS_SERVICE_NAME": "novascan-textract-extract",
+                "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
             },
             **{k: v for k, v in common_lambda_props.items() if k != "environment"},
         )
@@ -228,6 +240,7 @@ class PipelineConstruct(Construct):
             environment={
                 **common_lambda_props["environment"],
                 "POWERTOOLS_SERVICE_NAME": "novascan-nova-structure",
+                "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
             },
             **{k: v for k, v in common_lambda_props.items() if k != "environment"},
         )
@@ -249,6 +262,7 @@ class PipelineConstruct(Construct):
             environment={
                 **common_lambda_props["environment"],
                 "POWERTOOLS_SERVICE_NAME": "novascan-bedrock-extract",
+                "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
             },
             **{k: v for k, v in common_lambda_props.items() if k != "environment"},
         )
@@ -272,6 +286,7 @@ class PipelineConstruct(Construct):
                 **common_lambda_props["environment"],
                 "POWERTOOLS_SERVICE_NAME": "novascan-finalize",
                 "DEFAULT_PIPELINE": config.get("defaultPipeline", "ocr-ai"),
+                "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
             },
             **{
                 k: v

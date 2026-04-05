@@ -29,6 +29,41 @@ class FrontendConstruct(Construct):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
+        # --- Security Response Headers (SECURITY-REVIEW M2) ---
+        security_headers_policy = cloudfront.ResponseHeadersPolicy(
+            self,
+            "SecurityHeadersPolicy",
+            response_headers_policy_name=f"novascan-{stage}-security-headers",
+            security_headers_behavior=cloudfront.ResponseSecurityHeadersBehavior(
+                strict_transport_security=cloudfront.ResponseHeadersStrictTransportSecurity(
+                    access_control_max_age=cdk.Duration.seconds(63072000),
+                    include_subdomains=True,
+                    override=True,
+                ),
+                content_type_options=cloudfront.ResponseHeadersContentTypeOptions(
+                    override=True,
+                ),
+                frame_options=cloudfront.ResponseHeadersFrameOptions(
+                    frame_option=cloudfront.HeadersFrameOption.DENY,
+                    override=True,
+                ),
+                referrer_policy=cloudfront.ResponseHeadersReferrerPolicy(
+                    referrer_policy=cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+                    override=True,
+                ),
+                content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
+                    content_security_policy=(
+                        "default-src 'self'; "
+                        "connect-src 'self' https://*.amazonaws.com https://*.execute-api.*.amazonaws.com; "
+                        "img-src 'self' data: blob:; "
+                        "style-src 'self' 'unsafe-inline'; "
+                        "script-src 'self'"
+                    ),
+                    override=True,
+                ),
+            ),
+        )
+
         # --- CloudFront Distribution ---
         self.distribution = cloudfront.Distribution(
             self,
@@ -37,6 +72,7 @@ class FrontendConstruct(Construct):
                 origin=origins.S3BucketOrigin.with_origin_access_control(frontend_bucket),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                 cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
+                response_headers_policy=security_headers_policy,
             ),
             default_root_object="index.html",
             error_responses=[
