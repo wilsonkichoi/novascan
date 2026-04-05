@@ -10,21 +10,17 @@ Tests the security contract (SECURITY-REVIEW H4, H5, H6, L5, M8):
 
 from __future__ import annotations
 
-import os
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from novascan.pipeline.validation import (
-    ALLOWED_MODEL_IDS,
     MAX_IMAGE_SIZE_BYTES,
     check_image_size,
     validate_event_fields,
     validate_model_id,
     validate_s3_key,
 )
-
 
 # ---------------------------------------------------------------------------
 # Event validation (H6)
@@ -319,18 +315,20 @@ class TestPipelineErrorSanitization:
         ctx.invoked_function_arn = "arn:aws:lambda:us-east-1:123:function:test"
         ctx.aws_request_id = "test"
 
-        # Force an exception in the try block by providing valid event structure
-        # but invalid S3 key
-        result = ns_module.handler(
-            {
-                "bucket": "novascan-receipts-test",
-                "key": "receipts/01ABCDEFGHIJKLMNOPQRSTUV.jpg",
-                "textractResult": {"expenseDocuments": []},
-            },
-            ctx,
-        )
-        # If S3 call fails (no real bucket), it should return sanitized error
-        if "error" in result:
-            assert "Secret" not in str(result.get("error", ""))
-            # Error type should be the class name only
-            assert isinstance(result.get("errorType"), str)
+        # Mock internal function to raise, testing the actual H4 error path
+        with patch.object(
+            ns_module,
+            "_read_image_from_s3",
+            side_effect=RuntimeError("Super secret internal error details"),
+        ), patch.dict("os.environ", {"RECEIPTS_BUCKET": "novascan-receipts-test"}):
+            result = ns_module.handler(
+                {
+                    "bucket": "novascan-receipts-test",
+                    "key": "receipts/01ABCDEFGHIJKLMNOPQRSTUVAB.jpg",
+                    "textractResult": {"expenseDocuments": []},
+                },
+                ctx,
+            )
+        assert result["error"] == "nova_structure_failed"
+        assert "Super secret" not in str(result)
+        assert isinstance(result.get("errorType"), str)

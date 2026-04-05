@@ -19,7 +19,6 @@ from novascan.pipeline.prompts import (
     validate_category_slug,
 )
 
-
 # ---------------------------------------------------------------------------
 # Category name validation — rejection cases
 # ---------------------------------------------------------------------------

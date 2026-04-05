@@ -8,17 +8,13 @@ SECURITY-REVIEW references: C2 (GSI2 query), H4 (error sanitization).
 
 from __future__ import annotations
 
-import json
-import os
 from datetime import UTC, datetime
-from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock
 
 import boto3
 import pytest
 from moto import mock_aws
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -252,8 +248,14 @@ class TestFinalizeErrorSanitizationIntegration:
             "receiptId": RECEIPT_ID,
             "customCategories": [],
             "pipelineResults": [
-                {"error": "Textract: Rate limit exceeded on us-east-1 account 123456789012", "errorType": "ThrottlingException"},
-                {"error": "Bedrock: Model inference timeout after 30s on request req-abc-123", "errorType": "TimeoutError"},
+                {
+                    "error": "Textract: Rate limit exceeded on us-east-1 account 123456789012",
+                    "errorType": "ThrottlingException",
+                },
+                {
+                    "error": "Bedrock: Model inference timeout after 30s on request req-abc-123",
+                    "errorType": "TimeoutError",
+                },
             ],
         }
 

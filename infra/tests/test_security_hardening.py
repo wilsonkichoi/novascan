@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 
-from aws_cdk.assertions import Capture, Match, Template
+from aws_cdk.assertions import Match, Template
 
 
 # ---------------------------------------------------------------------------

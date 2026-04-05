@@ -10,9 +10,6 @@ Tests the security contract:
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
-from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -20,7 +17,6 @@ import boto3
 import pytest
 from boto3.dynamodb.conditions import Key
 from moto import mock_aws
-
 
 # ---------------------------------------------------------------------------
 # Test data
