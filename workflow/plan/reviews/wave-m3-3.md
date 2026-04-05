@@ -245,3 +245,26 @@ To make a Catch block useful, Finalize would need to handle the "LoadCustomCateg
 Combined with fix 1 (fail early on empty userId), the failure mode is already handled correctly: the state machine execution fails, it's visible in CloudWatch, and no garbage data is written. Deferring this is the right call.
 
 **Summary:** Fixes 1-4 are straightforward, low-risk, 1-5 lines each. Apply all four. Fix 5 is deferred -- the fail-fast behavior from fix 1 makes a Catch block on LoadCustomCategories unnecessary at MVP scale.
+
+### Fix Results
+
+**Date:** 2026-04-04
+**Branch:** `fix/3.5-pipeline-hardening`
+**Commit:** `fix: harden pipeline — fail-fast on empty userId, URL-decode S3 key, scope Bedrock IAM, add DLQ`
+
+| Fix | File | Status | Notes |
+|-----|------|--------|-------|
+| 1. Empty userId fail-fast | `load_custom_categories.py` | APPLIED | Raises `ValueError` when `_lookup_user_id` returns empty string |
+| 2. URL-decode S3 key | `load_custom_categories.py` | APPLIED | Added `urllib.parse.unquote_plus` to `_parse_s3_event` |
+| 3. Scope Bedrock IAM | `pipeline.py` | APPLIED | Both InvokeModel policies scoped to `arn:aws:bedrock:*::foundation-model/amazon.nova-*` |
+| 4. Add DLQ | `pipeline.py` | APPLIED | DLQ with 14-day retention, `max_receive_count=3` on main queue |
+| 5. LoadCustomCategories Catch | — | DEFERRED | Not needed at MVP; fail-fast from fix 1 handles the failure mode |
+
+**Verification:**
+
+| Check | Result |
+|-------|--------|
+| `cdk synth --context stage=dev` | PASS |
+| `ruff check .` (infra) | PASS (pre-existing unrelated lint in test file) |
+| `ruff check src/` (backend) | PASS |
+| `pytest -v` (backend, 144 tests) | PASS (144 passed, 0 failed) |
