@@ -806,6 +806,7 @@ class TestBothFailPath:
         """Receipt must have failureReason when both pipelines fail.
 
         Spec Section 5: 'failureReason: Error message if failed'
+        SECURITY-REVIEW H4: failureReason must be generic — no raw error text.
         """
         table = aws_resources["table"]
         _create_receipt_record(table)
@@ -826,9 +827,10 @@ class TestBothFailPath:
             "Receipt failureReason is empty. "
             "Spec Section 5: Failed receipts must include a failureReason."
         )
-        assert "Textract error" in failure_reason or "Bedrock error" in failure_reason, (
-            f"failureReason '{failure_reason}' does not mention the actual errors. "
-            "It should include information about what went wrong."
+        # H4 — failureReason must be generic, not contain raw error text
+        assert "CloudWatch" in failure_reason, (
+            f"failureReason '{failure_reason}' should reference CloudWatch logs "
+            "for detailed error information (SECURITY-REVIEW H4)."
         )
 
     def test_no_line_items_created_on_failure(self, aws_resources) -> None:

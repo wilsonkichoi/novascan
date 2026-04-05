@@ -77,7 +77,7 @@ Last updated: 2026-04-04
 | 3.16 | CDK IAM + API Gateway Hardening [M1 + M5 + M9 + M10] | devops-engineer | done | [task-3.16](reviews/task-3.16.md) | 2026-04-04 |
 | 3.17 | Storage Lifecycle + Encryption + Cleanup [M3 + L2 + L3] | devops-engineer | done | [task-3.17](reviews/task-3.17.md) | 2026-04-04 |
 | 3.18 | Security Hardening Backend Tests | qa-engineer | review | [task-3.18](reviews/task-3.18.md) | 101 tests. 2026-04-04. TEST |
-| 3.19 | Security Hardening CDK + Integration Tests | qa-engineer | pending | | TEST |
+| 3.19 | Security Hardening CDK + Integration Tests | qa-engineer | review | [task-3.19](reviews/task-3.19.md) | 24 tests. 2026-04-04. TEST |
 
 ## Milestone 4: Receipt Management
 
