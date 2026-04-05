@@ -1080,6 +1080,9 @@
           "DefaultCacheBehavior": {
             "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
             "Compress": true,
+            "ResponseHeadersPolicyId": {
+              "Ref": "FrontendSecurityHeadersPolicy1832CE86"
+            },
             "TargetOriginId": "novascandevFrontendDistributionOrigin1879D827F",
             "ViewerProtocolPolicy": "redirect-to-https"
           },
@@ -1121,6 +1124,36 @@
         }
       },
       "Type": "AWS::CloudFront::OriginAccessControl"
+    },
+    "FrontendSecurityHeadersPolicy1832CE86": {
+      "Properties": {
+        "ResponseHeadersPolicyConfig": {
+          "Name": "novascan-dev-security-headers",
+          "SecurityHeadersConfig": {
+            "ContentSecurityPolicy": {
+              "ContentSecurityPolicy": "default-src 'self'; connect-src 'self' https://*.amazonaws.com https://*.execute-api.*.amazonaws.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+              "Override": true
+            },
+            "ContentTypeOptions": {
+              "Override": true
+            },
+            "FrameOptions": {
+              "FrameOption": "DENY",
+              "Override": true
+            },
+            "ReferrerPolicy": {
+              "Override": true,
+              "ReferrerPolicy": "strict-origin-when-cross-origin"
+            },
+            "StrictTransportSecurity": {
+              "AccessControlMaxAgeSec": 63072000,
+              "IncludeSubdomains": true,
+              "Override": true
+            }
+          }
+        }
+      },
+      "Type": "AWS::CloudFront::ResponseHeadersPolicy"
     },
     "PipelineBedrockExtractFn9B7F32EE": {
       "DependsOn": [
