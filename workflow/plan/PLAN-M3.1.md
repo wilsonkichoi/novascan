@@ -7,7 +7,7 @@
 
 ### Wave 1: Critical Fixes + Independent Hardening
 
-#### [ ] Task 3.8: Sanitize Custom Category Inputs in Extraction Prompt [C1]
+#### [x] Task 3.8: Sanitize Custom Category Inputs in Extraction Prompt [C1]
 - **Role:** security-engineer
 - **Depends on:** none (M3 complete)
 - **Security ref:** SECURITY-REVIEW.md >> C1 (Critical — Prompt Injection)
@@ -23,7 +23,7 @@
   - `cd backend && uv run ruff check src/ && uv run pytest tests/unit/ -v -k "nova or bedrock or prompt"` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run pytest tests/unit/ -v -k "nova or bedrock"`
 
-#### [ ] Task 3.9: Replace DynamoDB Scan with GSI2 Query [C2 + M13]
+#### [x] Task 3.9: Replace DynamoDB Scan with GSI2 Query [C2 + M13]
 - **Role:** senior-engineer
 - **Depends on:** none (M3 complete)
 - **Security ref:** SECURITY-REVIEW.md >> C2 (Critical — Cross-User Data Exposure), M13 (Medium — Excessive IAM)
@@ -44,7 +44,7 @@
   - `cd backend && uv run pytest tests/unit/ -v -k "load_custom" && cd ../infra && uv run pytest -v`
 - **Test command:** `cd infra && uv run cdk synth --context stage=dev > /dev/null && cd ../backend && uv run pytest tests/unit/ -v -k "load_custom"`
 
-#### [ ] Task 3.10: Validate Pagination Cursor + Sanitize API Errors [H1 + M7]
+#### [x] Task 3.10: Validate Pagination Cursor + Sanitize API Errors [H1 + M7]
 - **Role:** security-engineer
 - **Depends on:** none (M3 complete)
 - **Security ref:** SECURITY-REVIEW.md >> H1 (High — Cursor Injection), M7 (Medium — Error Info Leak)
@@ -59,7 +59,7 @@
   - `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_receipts_list.py -v` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_receipts_list.py -v`
 
-#### [ ] Task 3.11: Auth Construct Hardening [H2 + H3 + M4]
+#### [x] Task 3.11: Auth Construct Hardening [H2 + H3 + M4]
 - **Role:** devops-engineer
 - **Depends on:** none (M3 complete)
 - **Security ref:** SECURITY-REVIEW.md >> H2 (High — PASSWORD Auth), H3 (High — Wildcard Cognito IAM), M4 (Medium — Refresh Token TTL)
@@ -74,7 +74,7 @@
   - `cd infra && uv run cdk synth --context stage=dev > /dev/null && uv run pytest tests/test_auth_construct.py -v`
 - **Test command:** `cd infra && uv run cdk synth --context stage=dev > /dev/null && uv run pytest tests/test_auth_construct.py -v`
 
-#### [ ] Task 3.12: CloudFront Security Response Headers [M2]
+#### [x] Task 3.12: CloudFront Security Response Headers [M2]
 - **Role:** devops-engineer
 - **Depends on:** none (M3 complete)
 - **Security ref:** SECURITY-REVIEW.md >> M2 (Medium — Missing Security Headers)
@@ -96,7 +96,7 @@
 
 ### Wave 2: Pipeline + API + IAM Hardening
 
-#### [ ] Task 3.13: Pipeline Lambda Input Validation + Error Sanitization [H4 + H5 + H6 + L5 + M8 + L6 + L7]
+#### [x] Task 3.13: Pipeline Lambda Input Validation + Error Sanitization [H4 + H5 + H6 + L5 + M8 + L6 + L7]
 - **Role:** security-engineer
 - **Depends on:** 3.8 (file overlap: `prompts.py` imported by `nova_structure.py`, `bedrock_extract.py`), 3.9 (file overlap: `load_custom_categories.py`)
 - **Security ref:** SECURITY-REVIEW.md >> H4, H5, H6 (High), L5, L6, L7 (Low), M8 (Medium)
@@ -116,7 +116,7 @@
   - `cd backend && uv run ruff check src/ && uv run pytest tests/unit/ -v -k "textract or nova or bedrock or load_custom"` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run pytest tests/unit/ -v -k "textract or nova or bedrock or load_custom"`
 
-#### [ ] Task 3.14: Finalize Lambda Hardening [H4-finalize + M11 + M12 + L8]
+#### [x] Task 3.14: Finalize Lambda Hardening [H4-finalize + M11 + M12 + L8]
 - **Role:** backend-engineer
 - **Depends on:** 3.9 (file overlap: `finalize.py` reads from same DynamoDB table modified by GSI2 changes; no direct file overlap but wave ordering ensures consistent schema)
 - **Security ref:** SECURITY-REVIEW.md >> H4 (High — Error Payloads), M11 (Medium — Idempotency), M12 (Medium — S3 Encryption), L8 (Low — Internal Fields)
@@ -134,7 +134,7 @@
   - `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_finalize.py -v` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_finalize.py -v`
 
-#### [ ] Task 3.15: Upload Endpoint Hardening [M6 + L4]
+#### [x] Task 3.15: Upload Endpoint Hardening [M6 + L4]
 - **Role:** backend-engineer
 - **Depends on:** 3.10
 - **Security ref:** SECURITY-REVIEW.md >> M6 (Medium — No Content-Length), L4 (Low — ValidationError Leak)
@@ -147,7 +147,7 @@
   - `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_upload.py -v` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_upload.py -v`
 
-#### [ ] Task 3.16: CDK IAM + API Gateway Hardening [M1 + M5 + M9 + M10]
+#### [x] Task 3.16: CDK IAM + API Gateway Hardening [M1 + M5 + M9 + M10]
 - **Role:** devops-engineer
 - **Depends on:** 3.11, 3.12
 - **Security ref:** SECURITY-REVIEW.md >> M1 (Medium — Broad S3 IAM), M5 (Medium — No Rate Limiting), M9 (Medium — Textract Wildcard), M10 (Medium — Bedrock Wildcard Region)
@@ -163,7 +163,7 @@
   - `cd infra && uv run cdk synth --context stage=dev > /dev/null && uv run pytest -v`
 - **Test command:** `cd infra && uv run cdk synth --context stage=dev > /dev/null && uv run pytest -v`
 
-#### [ ] Task 3.17: Storage Lifecycle + Encryption + Dependency Cleanup [M3 + L2 + L3]
+#### [x] Task 3.17: Storage Lifecycle + Encryption + Dependency Cleanup [M3 + L2 + L3]
 - **Role:** devops-engineer
 - **Depends on:** 3.9
 - **Security ref:** SECURITY-REVIEW.md >> M3 (Medium — No Lifecycle), L2 (Low — Default Encryption), L3 (Low — Unused pandas)
@@ -183,7 +183,7 @@
 
 ### Wave 3: Security Tests
 
-#### [ ] Task 3.18: Security Hardening Backend Tests [TEST]
+#### [x] Task 3.18: Security Hardening Backend Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 3.8, 3.10, 3.13, 3.14, 3.15
 - **Security ref:** SECURITY-REVIEW.md >> C1, H1, H4, H5, H6, M6, M7, M11, L4, L5
@@ -203,7 +203,7 @@
   - `cd backend && uv run pytest tests/unit/test_security_*.py -v` passes
 - **Test command:** `cd backend && uv run pytest tests/unit/test_security_*.py -v`
 
-#### [ ] Task 3.19: Security Hardening CDK + Integration Tests [TEST]
+#### [x] Task 3.19: Security Hardening CDK + Integration Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 3.9, 3.11, 3.12, 3.16, 3.17
 - **Security ref:** SECURITY-REVIEW.md >> C2, H2, H3, M1, M2, M3, M4, M5, M9, M10, M13, L2, L3

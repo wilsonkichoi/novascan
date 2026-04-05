@@ -190,3 +190,32 @@ cd infra && uv run ruff check tests/test_security_hardening.py
 cd infra && uv run pytest tests/test_security_hardening.py -v
 ```
 
+### Fix Results (Claude Opus 4.6 (1M context) — 2026-04-05)
+
+Applied by orchestrator (fixes were trivial enough to apply directly).
+
+| ID | Status | Details |
+|----|--------|---------|
+| S1 | Fixed | `uv run ruff check --fix` removed unused imports and fixed ordering in 5 backend test files (16 auto-fixed) |
+| S2 | Fixed | `uv run ruff check --fix` removed unused `Capture` import in `test_security_hardening.py` |
+| S3 | Fixed | Rewrote `test_nova_error_payload_no_raw_exception` to mock `_read_image_from_s3` with `RuntimeError`, set `RECEIPTS_BUCKET` env var, and use valid 26-char ULID key. Now tests actual H4 exception path instead of validation path. |
+| S4 | No action | Already correct — `test_pipeline_flow.py` assertion updated to match H4 hardening. |
+| N1 | Fixed | Broke long dict literals across multiple lines in `test_security_pipeline_flow.py` lines 251-258. |
+
+Commit: `7e2bd29` on branch `feature/m3.1-wave3-security-tests`.
+
+### Fix Verification (Claude Opus 4.6 (1M context) — 2026-04-05)
+
+All fixes verified:
+
+| ID | Status | Verification |
+|----|--------|-------------|
+| S1 | Fixed | `uv run ruff check tests/unit/test_security_*.py tests/integration/test_security_pipeline_flow.py` — All checks passed |
+| S2 | Fixed | `uv run ruff check tests/test_security_hardening.py` — All checks passed |
+| S3 | Fixed | `test_nova_error_payload_no_raw_exception` PASSED — asserts `result["error"] == "nova_structure_failed"` and `"Super secret" not in str(result)` |
+| S4 | N/A | No action required |
+| N1 | Fixed | No E501 violations remaining |
+
+**Full test results:** 107 backend security tests passed, 18 CDK security tests passed. 0 regressions.
+
+Tasks 3.18 and 3.19 marked `done`.
