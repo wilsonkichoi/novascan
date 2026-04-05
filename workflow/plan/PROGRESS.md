@@ -47,8 +47,8 @@ Last updated: 2026-04-04
 | 2.4  | List Receipts API Endpoint | backend-engineer | done | [task-2.4](reviews/task-2.4.md) | Verified 2026-04-02. Fixes applied and verified. |
 | 2.5  | Upload Flow Integration | frontend-developer | done | [task-2.5](reviews/task-2.5.md) | Verified 2026-04-02. Fixes applied and verified. |
 | 2.6  | Receipts List Page | frontend-developer | done | [task-2.6](reviews/task-2.6.md) | Verified 2026-04-02. Fixes applied and verified. |
-| 2.7  | Receipt Upload + Storage API Tests | qa-engineer | review | [task-2.7](reviews/task-2.7.md) | 94 tests passing. 2026-04-04. TEST |
-| 2.8  | Upload + Receipts List UI Tests | qa-engineer | review | [task-2.8](reviews/task-2.8.md) | 89 tests, 4 files. 2026-04-04. TEST |
+| 2.7  | Receipt Upload + Storage API Tests | qa-engineer | done | [task-2.7](reviews/task-2.7.md) | 94 tests. Reviewed 2026-04-04. TEST |
+| 2.8  | Upload + Receipts List UI Tests | qa-engineer | done | [task-2.8](reviews/task-2.8.md) | 89 tests. Reviewed 2026-04-04. TEST |
 
 ## Milestone 3: OCR Processing Pipeline
 

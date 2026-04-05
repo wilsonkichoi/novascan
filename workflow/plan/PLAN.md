@@ -420,7 +420,7 @@
 
 ### Wave 4: Tests
 
-#### [ ] Task 2.7: Receipt Upload + Storage API Tests [TEST]
+#### [x] Task 2.7: Receipt Upload + Storage API Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 2.3, 2.4
 - **Spec reference:** api-contracts.md >> POST /api/receipts/upload-urls, GET /api/receipts
@@ -436,7 +436,7 @@
   - `cd backend && uv run pytest tests/unit/test_upload.py tests/unit/test_receipts_list.py tests/unit/test_receipt_models.py -v` passes
 - **Test command:** `cd backend && uv run pytest tests/unit/ -v`
 
-#### [ ] Task 2.8: Upload + Receipts List UI Tests [TEST]
+#### [x] Task 2.8: Upload + Receipts List UI Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 2.5, 2.6
 - **Spec reference:** SPEC.md >> Milestone 2 Acceptance Criteria
