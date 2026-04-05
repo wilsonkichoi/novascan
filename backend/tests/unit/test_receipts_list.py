@@ -415,7 +415,7 @@ class TestListReceiptsPagination:
 
         # Should still return results (clamped to 1)
         assert response["statusCode"] == 200
-        assert len(body["receipts"]) >= 0  # At minimum doesn't error
+        assert len(body["receipts"]) == 1
 
     def test_limit_maximum_clamped_to_100(self, aws_env):
         """limit > 100 should be clamped to 100 per spec."""
