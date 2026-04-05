@@ -34,11 +34,24 @@ def upload_urls() -> Response[Any]:
     """
     try:
         request = UploadRequest(**router.current_event.json_body)
-    except (ValidationError, TypeError, json.JSONDecodeError) as e:
+    except ValidationError as e:
+        # L4 — Sanitize Pydantic ValidationError: return field-level errors only
+        logger.warning("Upload validation failed", extra={"error_count": e.error_count()})
+        sanitized_errors = [
+            {"field": ".".join(str(loc) for loc in err["loc"]), "message": err["msg"]}
+            for err in e.errors()
+        ]
         return Response(
             status_code=400,
             content_type=content_types.APPLICATION_JSON,
-            body=json.dumps({"error": {"code": "VALIDATION_ERROR", "message": str(e)}}),
+            body=json.dumps({"error": {"code": "VALIDATION_ERROR", "details": sanitized_errors}}),
+        )
+    except (TypeError, json.JSONDecodeError) as e:
+        logger.warning("Upload request parse error", extra={"error_type": type(e).__name__})
+        return Response(
+            status_code=400,
+            content_type=content_types.APPLICATION_JSON,
+            body=json.dumps({"error": {"code": "VALIDATION_ERROR", "message": "Invalid request body"}}),
         )
 
     user_id: str = router.current_event.request_context.authorizer.jwt_claim["sub"]  # type: ignore[attr-defined]
@@ -78,13 +91,16 @@ def upload_urls() -> Response[Any]:
 
     # Phase 3: Generate presigned URLs
     receipts = []
-    for receipt_id, image_key, content_type in receipt_data:
+    for (receipt_id, image_key, content_type), file_req in zip(receipt_data, request.files, strict=True):
+        # M6 — Include ContentLength in presigned URL params so S3 rejects
+        # uploads that don't match the declared size.
         upload_url = s3_client.generate_presigned_url(
             "put_object",
             Params={
                 "Bucket": bucket,
                 "Key": image_key,
                 "ContentType": content_type,
+                "ContentLength": file_req.fileSize,
             },
             ExpiresIn=expiry,
         )
