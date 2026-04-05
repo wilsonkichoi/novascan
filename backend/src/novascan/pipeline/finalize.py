@@ -17,7 +17,7 @@ from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger, Metrics, Tracer
-from aws_lambda_powertools.metrics import MetricUnit
+from aws_lambda_powertools.metrics import MetricUnit, single_metric
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from novascan.models.extraction import ExtractionResult
@@ -234,9 +234,20 @@ def _rank_and_get_winner(
             },
         )
 
-        metrics.add_metric(name="RankingDecision", unit=MetricUnit.Count, value=1)
-        metrics.add_dimension(name="Winner", value=winner)
-        metrics.add_metric(name="RankingScoreDelta", unit=MetricUnit.None_, value=delta)
+        with single_metric(
+            name="RankingDecision",
+            unit=MetricUnit.Count,
+            value=1,
+            namespace="NovaScan",
+        ) as metric:
+            metric.add_dimension(name="Winner", value=winner)
+        with single_metric(
+            name="RankingScoreDelta",
+            unit=MetricUnit.NoUnit,
+            value=delta,
+            namespace="NovaScan",
+        ) as metric:
+            metric.add_dimension(name="Winner", value=winner)
 
         return winner
 
@@ -467,30 +478,56 @@ def _emit_pipeline_metrics(
     shadow_raw: dict[str, Any],
     shadow_type: str,
 ) -> None:
-    """Publish PipelineCompleted and PipelineLatency metrics."""
+    """Publish PipelineCompleted and PipelineLatency metrics.
+
+    Uses single_metric context manager to emit each metric with its own
+    isolated dimensions, avoiding dimension overwrite across loop iterations.
+    """
     for raw, pipeline_type in [(main_raw, main_type), (shadow_raw, shadow_type)]:
         succeeded = "error" not in raw
         outcome = "success" if succeeded else "failure"
 
-        metrics.add_dimension(name="PipelineType", value=pipeline_type)
-        metrics.add_dimension(name="Outcome", value=outcome)
-        metrics.add_metric(name="PipelineCompleted", unit=MetricUnit.Count, value=1)
+        with single_metric(
+            name="PipelineCompleted",
+            unit=MetricUnit.Count,
+            value=1,
+            namespace="NovaScan",
+        ) as metric:
+            metric.add_dimension(name="PipelineType", value=pipeline_type)
+            metric.add_dimension(name="Outcome", value=outcome)
 
         if succeeded and "processingTimeMs" in raw:
-            metrics.add_metric(
+            with single_metric(
                 name="PipelineLatency",
                 unit=MetricUnit.Milliseconds,
                 value=raw["processingTimeMs"],
-            )
+                namespace="NovaScan",
+            ) as metric:
+                metric.add_dimension(name="PipelineType", value=pipeline_type)
 
 
 def _emit_receipt_metrics(status: str, used_fallback: bool) -> None:
-    """Publish ReceiptStatus and UsedFallback metrics."""
-    metrics.add_dimension(name="Status", value=status)
-    metrics.add_metric(name="ReceiptStatus", unit=MetricUnit.Count, value=1)
+    """Publish ReceiptStatus and UsedFallback metrics.
+
+    Uses single_metric context manager to isolate dimensions from other
+    metric emissions in the same Lambda invocation.
+    """
+    with single_metric(
+        name="ReceiptStatus",
+        unit=MetricUnit.Count,
+        value=1,
+        namespace="NovaScan",
+    ) as metric:
+        metric.add_dimension(name="Status", value=status)
 
     if used_fallback:
-        metrics.add_metric(name="UsedFallback", unit=MetricUnit.Count, value=1)
+        with single_metric(
+            name="UsedFallback",
+            unit=MetricUnit.Count,
+            value=1,
+            namespace="NovaScan",
+        ) as metric:
+            metric.add_dimension(name="Status", value=status)
 
 
 def _convert_floats_to_decimal(obj: Any) -> Any:

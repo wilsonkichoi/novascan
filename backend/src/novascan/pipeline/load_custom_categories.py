@@ -51,7 +51,14 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
     user_id = event.get("userId", "")
     logger.info("Loading custom categories", extra={"user_id": user_id})
 
-    custom_categories = _query_custom_categories(user_id)
+    try:
+        custom_categories = _query_custom_categories(user_id)
+    except Exception as e:
+        logger.exception(
+            "Failed to load custom categories",
+            extra={"user_id": user_id},
+        )
+        return {"error": str(e), "errorType": type(e).__name__}
 
     logger.info(
         "Custom categories loaded",
@@ -74,14 +81,21 @@ def _query_custom_categories(user_id: str) -> list[dict[str, Any]]:
     """
     table = get_table()
 
-    response = table.query(
-        KeyConditionExpression=(
+    items: list[dict[str, Any]] = []
+    query_kwargs: dict[str, Any] = {
+        "KeyConditionExpression": (
             Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with(f"{CUSTOMCAT}#")
         ),
-    )
+    }
+    while True:
+        response = table.query(**query_kwargs)
+        items.extend(response.get("Items", []))
+        if "LastEvaluatedKey" not in response:
+            break
+        query_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
 
     categories: list[dict[str, Any]] = []
-    for item in response.get("Items", []):
+    for item in items:
         # SK format is CUSTOMCAT#{slug}
         sk = item.get("SK", "")
         slug = sk.split("#", 1)[1] if "#" in sk else sk
