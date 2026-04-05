@@ -57,7 +57,7 @@ Last updated: 2026-04-04
 | 3.1  | Receipt Extraction Schema | backend-engineer | done | [task-3.1](reviews/task-3.1.md) | Completed 2026-04-04. Fix verified 2026-04-04. |
 | 3.2  | OCR-AI Pipeline Lambdas (Textract + Nova) | backend-engineer | review | [task-3.2](reviews/task-3.2.md) | Completed 2026-04-04. |
 | 3.3  | AI-Multimodal Pipeline Lambda (Bedrock) | backend-engineer | review | [task-3.3](reviews/task-3.3.md) | Completed 2026-04-04. |
-| 3.4  | Finalize Lambda + LoadCustomCategories Lambda | backend-engineer | pending | | |
+| 3.4  | Finalize Lambda + LoadCustomCategories Lambda | backend-engineer | review | [task-3.4](reviews/task-3.4.md) | Completed 2026-04-04. |
 | 3.5  | Pipeline CDK Construct (SQS + Pipes + SFN) | devops-engineer | pending | | |
 | 3.6  | Pipeline Lambda Unit Tests | qa-engineer | pending | | TEST |
 | 3.7  | Pipeline CDK + Integration Tests | qa-engineer | pending | | TEST |

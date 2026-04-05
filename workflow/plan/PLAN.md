@@ -510,7 +510,7 @@
   - `cd backend && uv run ruff check src/` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run python -c "from novascan.pipeline.bedrock_extract import handler; print('PASS')"`
 
-#### [ ] Task 3.4: Finalize Lambda + LoadCustomCategories Lambda
+#### [x] Task 3.4: Finalize Lambda + LoadCustomCategories Lambda
 - **Role:** backend-engineer
 - **Depends on:** 3.1
 - **Spec reference:** SPEC.md >> Section 3 (Processing Flow — Finalize), Section 4 (Pipeline State Machine diagram — LoadCustomCategories step)
