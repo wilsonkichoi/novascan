@@ -459,7 +459,7 @@
 
 ### Wave 1: Extraction Schema
 
-#### [ ] Task 3.1: Receipt Extraction Schema
+#### [x] Task 3.1: Receipt Extraction Schema
 - **Role:** backend-engineer
 - **Depends on:** none (M2 complete)
 - **Spec reference:** SPEC.md >> Section 7 (Receipt Extraction Schema)
