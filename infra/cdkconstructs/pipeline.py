@@ -122,6 +122,15 @@ class PipelineConstruct(Construct):
         self._stage = stage
         self._config = config
 
+        # --- SQS Dead Letter Queue for poison messages ---
+        self.dlq = sqs.Queue(
+            self,
+            "ReceiptDLQ",
+            queue_name=f"novascan-{stage}-receipt-pipeline-dlq",
+            retention_period=cdk.Duration.days(14),
+            enforce_ssl=True,
+        )
+
         # --- SQS Queue for S3 event notifications ---
         self.queue = sqs.Queue(
             self,
@@ -130,6 +139,10 @@ class PipelineConstruct(Construct):
             visibility_timeout=cdk.Duration.seconds(900),
             retention_period=cdk.Duration.days(4),
             enforce_ssl=True,
+            dead_letter_queue=sqs.DeadLetterQueue(
+                queue=self.dlq,
+                max_receive_count=3,
+            ),
         )
 
         # Allow S3 to send messages to this queue
@@ -223,7 +236,7 @@ class PipelineConstruct(Construct):
         self.nova_structure_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["bedrock:InvokeModel"],
-                resources=["*"],
+                resources=["arn:aws:bedrock:*::foundation-model/amazon.nova-*"],
             )
         )
 
@@ -244,7 +257,7 @@ class PipelineConstruct(Construct):
         self.bedrock_extract_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["bedrock:InvokeModel"],
-                resources=["*"],
+                resources=["arn:aws:bedrock:*::foundation-model/amazon.nova-*"],
             )
         )
 

@@ -11,6 +11,7 @@ This is a lightweight pre-step (~5-10ms) that runs once per receipt.
 from __future__ import annotations
 
 import json
+import urllib.parse
 from typing import Any
 
 from aws_lambda_powertools import Logger, Tracer
@@ -73,6 +74,10 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
     user_id = event.get("userId", "")
     if not user_id and receipt_id:
         user_id = _lookup_user_id(receipt_id)
+        if not user_id:
+            raise ValueError(
+                f"Could not resolve userId for receiptId={receipt_id}"
+            )
         event["userId"] = user_id
 
     logger.info("Loading custom categories", extra={"user_id": user_id})
@@ -161,7 +166,7 @@ def _parse_s3_event(event: dict[str, Any]) -> dict[str, Any]:
 
     s3_record = records[0].get("s3", {})
     bucket = s3_record.get("bucket", {}).get("name", "")
-    key = s3_record.get("object", {}).get("key", "")
+    key = urllib.parse.unquote_plus(s3_record.get("object", {}).get("key", ""))
 
     logger.info("Parsed S3 event", extra={"bucket": bucket, "key": key})
 
