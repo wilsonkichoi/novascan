@@ -563,7 +563,7 @@
 
 ### Wave 4: Tests
 
-#### [ ] Task 3.6: Pipeline Lambda Unit Tests [TEST]
+#### [x] Task 3.6: Pipeline Lambda Unit Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 3.2, 3.3, 3.4
 - **Spec reference:** SPEC.md >> Section 7 (Extraction Schema), Section 3 (Processing Flow)
