@@ -400,6 +400,9 @@ class TestUploadValidation:
         assert response["statusCode"] == 400, f"Expected 400 for 11 files, got {response['statusCode']}"
         body = json.loads(response["body"])
         assert body["error"]["code"] == "VALIDATION_ERROR"
+        # L4 — ValidationError response should have sanitized field-level details
+        assert "details" in body["error"]
+        assert isinstance(body["error"]["details"], list)
 
     def test_empty_files_rejected(self, _aws_setup):
         """Empty files array should return 400."""
