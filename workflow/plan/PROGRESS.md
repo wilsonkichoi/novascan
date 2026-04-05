@@ -62,6 +62,23 @@ Last updated: 2026-04-04
 | 3.6  | Pipeline Lambda Unit Tests | qa-engineer | done | [task-3.6](reviews/task-3.6.md) | 92 tests. Critical bug found and fixed (DynamoDB reserved words). TEST |
 | 3.7  | Pipeline CDK + Integration Tests | qa-engineer | done | [task-3.7](reviews/task-3.7.md) | 56 tests (25 CDK + 31 integration). Reviewed 2026-04-04. TEST |
 
+## Milestone 3.1: Security Hardening
+
+| Task | Title | Role | Status | Review | Notes |
+|------|-------|------|--------|--------|-------|
+| 3.8  | Prompt Injection Sanitization [C1] | security-engineer | done | [task-3.8](reviews/task-3.8.md) | 2026-04-04 |
+| 3.9  | GSI2 + Scan Elimination [C2 + M13] | senior-engineer | done | [task-3.9](reviews/task-3.9.md) | 2026-04-04 |
+| 3.10 | Cursor Validation + API Error Sanitization [H1 + M7] | security-engineer | done | [task-3.10](reviews/task-3.10.md) | 2026-04-04 |
+| 3.11 | Auth Construct Hardening [H2 + H3 + M4] | devops-engineer | done | [task-3.11](reviews/task-3.11.md) | 2026-04-04 |
+| 3.12 | CloudFront Security Headers [M2] | devops-engineer | done | [task-3.12](reviews/task-3.12.md) | 2026-04-04 |
+| 3.13 | Pipeline Lambda Hardening [H4 + H5 + H6 + L5 + M8 + L6 + L7] | security-engineer | pending | | |
+| 3.14 | Finalize Lambda Hardening [H4 + M11 + M12 + L8] | backend-engineer | pending | | |
+| 3.15 | Upload Endpoint Hardening [M6 + L4] | backend-engineer | pending | | |
+| 3.16 | CDK IAM + API Gateway Hardening [M1 + M5 + M9 + M10] | devops-engineer | pending | | |
+| 3.17 | Storage Lifecycle + Encryption + Cleanup [M3 + L2 + L3] | devops-engineer | pending | | |
+| 3.18 | Security Hardening Backend Tests | qa-engineer | pending | | TEST |
+| 3.19 | Security Hardening CDK + Integration Tests | qa-engineer | pending | | TEST |
+
 ## Milestone 4: Receipt Management
 
 | Task | Title | Role | Status | Review | Notes |
@@ -102,10 +119,11 @@ Last updated: 2026-04-04
 | M1        | 12         | 9              | 2    | 1            |
 | M2        | 8          | 6              | 2    | 0            |
 | M3        | 7          | 5              | 2    | 0            |
+| M3.1      | 12         | 10             | 2    | 0            |
 | M4        | 7          | 5              | 2    | 0            |
 | M5        | 6          | 4              | 2    | 0            |
 | M6        | 4          | 3              | 1    | 0            |
-| **Total** | **45**     | **32**         | **11** | **2**      |
+| **Total** | **57**     | **42**         | **13** | **2**      |
 
 ## Wave 1 Review Fixes
 
