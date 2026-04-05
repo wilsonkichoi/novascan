@@ -141,6 +141,80 @@ class TestCognitoAppClient:
             },
         )
 
+    def test_refresh_token_validity_7_days(self, dev_template: Template) -> None:
+        """Refresh token validity must be set to 7 days (10080 minutes).
+
+        Security hardening M4: Explicit refresh token TTL.
+        CDK stores Duration.days(7) as 10080 minutes internally.
+        """
+        dev_template.has_resource_properties(
+            "AWS::Cognito::UserPoolClient",
+            {
+                "RefreshTokenValidity": 10080,
+                "TokenValidityUnits": Match.object_like(
+                    {"RefreshToken": "minutes"}
+                ),
+            },
+        )
+
+
+class TestAuthSecurityHardening:
+    """Security hardening tests for Auth construct (H2, H3, M4)."""
+
+    def test_email_otp_only_no_password(self, dev_template: Template) -> None:
+        """AllowedFirstAuthFactors must contain only EMAIL_OTP, no PASSWORD.
+
+        Security hardening H2: PASSWORD auth factor must be removed.
+        """
+        dev_template.has_resource_properties(
+            "AWS::Cognito::UserPool",
+            {
+                "Policies": Match.object_like(
+                    {
+                        "SignInPolicy": {
+                            "AllowedFirstAuthFactors": ["EMAIL_OTP"],
+                        }
+                    }
+                ),
+            },
+        )
+
+    def test_cognito_iam_scoped_not_wildcard(self, dev_template: Template) -> None:
+        """Post-Confirmation Lambda IAM policy must scope Cognito ARN to novascan-*.
+
+        Security hardening H3: IAM resource must not use userpool/* wildcard.
+        """
+        dev_template.has_resource_properties(
+            "AWS::IAM::Policy",
+            {
+                "PolicyDocument": Match.object_like(
+                    {
+                        "Statement": Match.array_with(
+                            [
+                                Match.object_like(
+                                    {
+                                        "Action": "cognito-idp:AdminAddUserToGroup",
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                Match.array_with(
+                                                    [
+                                                        Match.string_like_regexp(
+                                                            ".*:cognito-idp:.*:userpool/novascan-\\*"
+                                                        ),
+                                                    ]
+                                                ),
+                                            ],
+                                        },
+                                    }
+                                ),
+                            ]
+                        ),
+                    }
+                ),
+            },
+        )
+
 
 class TestAuthDependencyCycle:
     """Verify Auth construct has no circular dependencies."""
