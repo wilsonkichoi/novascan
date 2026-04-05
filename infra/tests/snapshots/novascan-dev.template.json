@@ -65,7 +65,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "b9cfd8d413befc57455c6428ad5e2c308f073dd4121e87e086488d594a1414ec.zip"
+          "S3Key": "d849079305245ea395ad54eb4fff181aaadd648ffbac353563d2ea9d9d959d58.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -921,6 +921,85 @@
       },
       "Type": "AWS::Lambda::Permission"
     },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db8347ECC3691": {
+      "DependsOn": [
+        "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
+        "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+      ],
+      "Properties": {
+        "Code": {
+          "ZipFile": "import boto3  # type: ignore\nimport json\nimport logging\nimport urllib.request\n\ns3 = boto3.client(\"s3\")\n\nEVENTBRIDGE_CONFIGURATION = 'EventBridgeConfiguration'\nCONFIGURATION_TYPES = [\"TopicConfigurations\", \"QueueConfigurations\", \"LambdaFunctionConfigurations\"]\n\ndef handler(event: dict, context):\n  response_status = \"SUCCESS\"\n  error_message = \"\"\n  try:\n    props = event[\"ResourceProperties\"]\n    notification_configuration = props[\"NotificationConfiguration\"]\n    managed = props.get('Managed', 'true').lower() == 'true'\n    skipDestinationValidation = props.get('SkipDestinationValidation', 'false').lower() == 'true'\n    stack_id = event['StackId']\n    old = event.get(\"OldResourceProperties\", {}).get(\"NotificationConfiguration\", {})\n    if managed:\n      config = handle_managed(event[\"RequestType\"], notification_configuration)\n    else:\n      config = handle_unmanaged(props[\"BucketName\"], stack_id, event[\"RequestType\"], notification_configuration, old)\n    s3.put_bucket_notification_configuration(Bucket=props[\"BucketName\"], NotificationConfiguration=config, SkipDestinationValidation=skipDestinationValidation)\n  except Exception as e:\n    logging.exception(\"Failed to put bucket notification configuration\")\n    response_status = \"FAILED\"\n    error_message = f\"Error: {str(e)}. \"\n  finally:\n    submit_response(event, context, response_status, error_message)\n\ndef handle_managed(request_type, notification_configuration):\n  if request_type == 'Delete':\n    return {}\n  return notification_configuration\n\ndef handle_unmanaged(bucket, stack_id, request_type, notification_configuration, old):\n  def get_id(n):\n    n['Id'] = ''\n    sorted_notifications = sort_filter_rules(n)\n    strToHash=json.dumps(sorted_notifications, sort_keys=True).replace('\"Name\": \"prefix\"', '\"Name\": \"Prefix\"').replace('\"Name\": \"suffix\"', '\"Name\": \"Suffix\"')\n    return f\"{stack_id}-{hash(strToHash)}\"\n  def with_id(n):\n    n['Id'] = get_id(n)\n    return n\n\n  external_notifications = {}\n  existing_notifications = s3.get_bucket_notification_configuration(Bucket=bucket)\n  for t in CONFIGURATION_TYPES:\n    if request_type == 'Update':\n        old_incoming_ids = [get_id(n) for n in old.get(t, [])]\n        external_notifications[t] = [n for n in existing_notifications.get(t, []) if not get_id(n) in old_incoming_ids]      \n    elif request_type == 'Delete':\n        external_notifications[t] = [n for n in existing_notifications.get(t, []) if not n['Id'].startswith(f\"{stack_id}-\")]\n    elif request_type == 'Create':\n        external_notifications[t] = [n for n in existing_notifications.get(t, [])]\n  if EVENTBRIDGE_CONFIGURATION in existing_notifications:\n    external_notifications[EVENTBRIDGE_CONFIGURATION] = existing_notifications[EVENTBRIDGE_CONFIGURATION]\n\n  if request_type == 'Delete':\n    return external_notifications\n\n  notifications = {}\n  for t in CONFIGURATION_TYPES:\n    external = external_notifications.get(t, [])\n    incoming = [with_id(n) for n in notification_configuration.get(t, [])]\n    notifications[t] = external + incoming\n\n  if EVENTBRIDGE_CONFIGURATION in notification_configuration:\n    notifications[EVENTBRIDGE_CONFIGURATION] = notification_configuration[EVENTBRIDGE_CONFIGURATION]\n  elif EVENTBRIDGE_CONFIGURATION in external_notifications:\n    notifications[EVENTBRIDGE_CONFIGURATION] = external_notifications[EVENTBRIDGE_CONFIGURATION]\n\n  return notifications\n\ndef submit_response(event: dict, context, response_status: str, error_message: str):\n  response_body = json.dumps(\n    {\n      \"Status\": response_status,\n      \"Reason\": f\"{error_message}See the details in CloudWatch Log Stream: {context.log_stream_name}\",\n      \"PhysicalResourceId\": event.get(\"PhysicalResourceId\") or event[\"LogicalResourceId\"],\n      \"StackId\": event[\"StackId\"],\n      \"RequestId\": event[\"RequestId\"],\n      \"LogicalResourceId\": event[\"LogicalResourceId\"],\n      \"NoEcho\": False,\n    }\n  ).encode(\"utf-8\")\n  headers = {\"content-type\": \"\", \"content-length\": str(len(response_body))}\n  try:\n    req = urllib.request.Request(url=event[\"ResponseURL\"], headers=headers, data=response_body, method=\"PUT\")\n    with urllib.request.urlopen(req) as response:\n      print(response.read().decode(\"utf-8\"))\n    print(\"Status code: \" + response.reason)\n  except Exception as e:\n      print(\"send(..) failed executing request.urlopen(..): \" + str(e))\n\ndef sort_filter_rules(json_obj):\n  if not isinstance(json_obj, dict):\n      return json_obj\n  for key, value in json_obj.items():\n      if isinstance(value, dict):\n          json_obj[key] = sort_filter_rules(value)\n      elif isinstance(value, list):\n          json_obj[key] = [sort_filter_rules(item) for item in value]\n  if \"Filter\" in json_obj and \"Key\" in json_obj[\"Filter\"] and \"FilterRules\" in json_obj[\"Filter\"][\"Key\"]:\n      filter_rules = json_obj[\"Filter\"][\"Key\"][\"FilterRules\"]\n      sorted_filter_rules = sorted(filter_rules, key=lambda x: x[\"Name\"])\n      json_obj[\"Filter\"][\"Key\"][\"FilterRules\"] = sorted_filter_rules\n  return json_obj"
+        },
+        "Description": "AWS CloudFormation handler for \"Custom::S3BucketNotifications\" resources (@aws-cdk/aws-s3)",
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 300
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutBucketNotification",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "StorageReceiptsBucket73106E11",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
+        "Roles": [
+          {
+            "Ref": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
     "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
       "DependsOn": [
         "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
@@ -1039,6 +1118,1228 @@
         }
       },
       "Type": "AWS::CloudFront::OriginAccessControl"
+    },
+    "PipelineBedrockExtractFn9B7F32EE": {
+      "DependsOn": [
+        "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34",
+        "PipelineBedrockExtractFnServiceRole526F9951"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "7f3cc8228cdf05779b9c0e2d9b70100029df9a1bdfd3d40a42b3eb3c9b96a4f4.zip"
+        },
+        "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
+        "Environment": {
+          "Variables": {
+            "LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-bedrock-extract",
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-bedrock-extract",
+        "Handler": "pipeline.bedrock_extract.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PipelineBedrockExtractFnServiceRole526F9951",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 120,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "PipelineBedrockExtractFnServiceRole526F9951": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "bedrock:InvokeModel",
+              "Effect": "Allow",
+              "Resource": "arn:aws:bedrock:*::foundation-model/amazon.nova-*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34",
+        "Roles": [
+          {
+            "Ref": "PipelineBedrockExtractFnServiceRole526F9951"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "PipelineFinalizeFnD257D684": {
+      "DependsOn": [
+        "PipelineFinalizeFnServiceRoleDefaultPolicy8D90BE39",
+        "PipelineFinalizeFnServiceRole8DDA6D94"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "7f3cc8228cdf05779b9c0e2d9b70100029df9a1bdfd3d40a42b3eb3c9b96a4f4.zip"
+        },
+        "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
+        "Environment": {
+          "Variables": {
+            "DEFAULT_PIPELINE": "ocr-ai",
+            "LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-finalize",
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-finalize",
+        "Handler": "pipeline.finalize.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PipelineFinalizeFnServiceRole8DDA6D94",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "PipelineFinalizeFnServiceRole8DDA6D94": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelineFinalizeFnServiceRoleDefaultPolicy8D90BE39": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageTableB43FDCE7",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageTableB43FDCE7",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageTableB43FDCE7",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageTableB43FDCE7",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "cloudwatch:PutMetricData",
+              "Condition": {
+                "StringEquals": {
+                  "cloudwatch:namespace": "NovaScan"
+                }
+              },
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelineFinalizeFnServiceRoleDefaultPolicy8D90BE39",
+        "Roles": [
+          {
+            "Ref": "PipelineFinalizeFnServiceRole8DDA6D94"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "PipelineLoadCustomCategoriesFnCCD0B2A2": {
+      "DependsOn": [
+        "PipelineLoadCustomCategoriesFnServiceRoleDefaultPolicyCC52FF44",
+        "PipelineLoadCustomCategoriesFnServiceRole4AF2C419"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "7f3cc8228cdf05779b9c0e2d9b70100029df9a1bdfd3d40a42b3eb3c9b96a4f4.zip"
+        },
+        "Description": "Pipeline: load user's custom categories from DynamoDB",
+        "Environment": {
+          "Variables": {
+            "LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-load-custom-categories",
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-load-custom-categories",
+        "Handler": "pipeline.load_custom_categories.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PipelineLoadCustomCategoriesFnServiceRole4AF2C419",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 120,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "PipelineLoadCustomCategoriesFnServiceRole4AF2C419": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelineLoadCustomCategoriesFnServiceRoleDefaultPolicyCC52FF44": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageTableB43FDCE7",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageTableB43FDCE7",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageTableB43FDCE7",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageTableB43FDCE7",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelineLoadCustomCategoriesFnServiceRoleDefaultPolicyCC52FF44",
+        "Roles": [
+          {
+            "Ref": "PipelineLoadCustomCategoriesFnServiceRole4AF2C419"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "PipelineNovaStructureFn588D4B5B": {
+      "DependsOn": [
+        "PipelineNovaStructureFnServiceRoleDefaultPolicy33DF19BC",
+        "PipelineNovaStructureFnServiceRole51EC6A54"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "7f3cc8228cdf05779b9c0e2d9b70100029df9a1bdfd3d40a42b3eb3c9b96a4f4.zip"
+        },
+        "Description": "Pipeline: structure Textract output via Bedrock Nova",
+        "Environment": {
+          "Variables": {
+            "LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-nova-structure",
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-nova-structure",
+        "Handler": "pipeline.nova_structure.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PipelineNovaStructureFnServiceRole51EC6A54",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 120,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "PipelineNovaStructureFnServiceRole51EC6A54": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelineNovaStructureFnServiceRoleDefaultPolicy33DF19BC": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "bedrock:InvokeModel",
+              "Effect": "Allow",
+              "Resource": "arn:aws:bedrock:*::foundation-model/amazon.nova-*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelineNovaStructureFnServiceRoleDefaultPolicy33DF19BC",
+        "Roles": [
+          {
+            "Ref": "PipelineNovaStructureFnServiceRole51EC6A54"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "PipelinePipeRoleD7B87602": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "pipes.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "RoleName": "novascan-dev-pipe-role"
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelinePipeRoleDefaultPolicy6892B1AB": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "sqs:ReceiveMessage",
+                "sqs:ChangeMessageVisibility",
+                "sqs:GetQueueUrl",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "PipelineReceiptQueueCA352C17",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "states:StartExecution",
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "PipelinePipelineStateMachine05F1F149"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelinePipeRoleDefaultPolicy6892B1AB",
+        "Roles": [
+          {
+            "Ref": "PipelinePipeRoleD7B87602"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "PipelinePipelineStateMachine05F1F149": {
+      "DeletionPolicy": "Delete",
+      "DependsOn": [
+        "PipelinePipelineStateMachineRoleDefaultPolicyADB2FC05",
+        "PipelinePipelineStateMachineRole65D02494"
+      ],
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"StartAt\":\"LoadCustomCategories\",\"States\":{\"LoadCustomCategories\":{\"Next\":\"ParallelPipelines\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "PipelineLoadCustomCategoriesFnCCD0B2A2",
+                  "Arn"
+                ]
+              },
+              "\"},\"ParallelPipelines\":{\"Type\":\"Parallel\",\"ResultPath\":\"$.pipelineResults\",\"Next\":\"Finalize\",\"Branches\":[{\"StartAt\":\"TextractExtract\",\"States\":{\"TextractExtract\":{\"Next\":\"NovaStructure\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.textractResult\",\"Next\":\"TextractExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$.textractResult\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "PipelineTextractExtractFnFD3C175F",
+                  "Arn"
+                ]
+              },
+              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\"}},\"NovaStructure\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$\",\"Next\":\"NovaStructureError\"}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "PipelineNovaStructureFn588D4B5B",
+                  "Arn"
+                ]
+              },
+              "\",\"Parameters\":{\"textractResult.$\":\"$.textractResult\",\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"customCategories.$\":\"$.customCategories\"}},\"NovaStructureError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"NovaStructure failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$\",\"End\":true},\"TextractExtractError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"TextractExtract failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$.textractResult\",\"End\":true}}},{\"StartAt\":\"BedrockExtract\",\"States\":{\"BedrockExtract\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$\",\"Next\":\"BedrockExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "PipelineBedrockExtractFn9B7F32EE",
+                  "Arn"
+                ]
+              },
+              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"customCategories.$\":\"$.customCategories\"}},\"BedrockExtractError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"BedrockExtract failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$\",\"End\":true}}}]},\"Finalize\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "PipelineFinalizeFnD257D684",
+                  "Arn"
+                ]
+              },
+              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"userId.$\":\"$.userId\",\"receiptId.$\":\"$.receiptId\",\"customCategories.$\":\"$.customCategories\",\"pipelineResults.$\":\"$.pipelineResults\"}}},\"TimeoutSeconds\":900}"
+            ]
+          ]
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "PipelinePipelineStateMachineRole65D02494",
+            "Arn"
+          ]
+        },
+        "StateMachineName": "novascan-dev-receipt-pipeline",
+        "TracingConfiguration": {
+          "Enabled": true
+        }
+      },
+      "Type": "AWS::StepFunctions::StateMachine",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "PipelinePipelineStateMachineRole65D02494": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelinePipelineStateMachineRoleDefaultPolicyADB2FC05": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PipelineLoadCustomCategoriesFnCCD0B2A2",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PipelineLoadCustomCategoriesFnCCD0B2A2",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PipelineFinalizeFnD257D684",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PipelineFinalizeFnD257D684",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PipelineTextractExtractFnFD3C175F",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PipelineTextractExtractFnFD3C175F",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PipelineNovaStructureFn588D4B5B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PipelineNovaStructureFn588D4B5B",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PipelineBedrockExtractFn9B7F32EE",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PipelineBedrockExtractFn9B7F32EE",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords",
+                "xray:GetSamplingRules",
+                "xray:GetSamplingTargets"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelinePipelineStateMachineRoleDefaultPolicyADB2FC05",
+        "Roles": [
+          {
+            "Ref": "PipelinePipelineStateMachineRole65D02494"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "PipelineReceiptDLQ7E5AE7D0": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "MessageRetentionPeriod": 1209600,
+        "QueueName": "novascan-dev-receipt-pipeline-dlq"
+      },
+      "Type": "AWS::SQS::Queue",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "PipelineReceiptDLQPolicy1E8DAF0C": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sqs:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": {
+                "Fn::GetAtt": [
+                  "PipelineReceiptDLQ7E5AE7D0",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Queues": [
+          {
+            "Ref": "PipelineReceiptDLQ7E5AE7D0"
+          }
+        ]
+      },
+      "Type": "AWS::SQS::QueuePolicy"
+    },
+    "PipelineReceiptPipe79D47CB3": {
+      "Properties": {
+        "Description": "NovaScan receipt pipeline pipe (dev)",
+        "Name": "novascan-dev-receipt-pipe",
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "PipelinePipeRoleD7B87602",
+            "Arn"
+          ]
+        },
+        "Source": {
+          "Fn::GetAtt": [
+            "PipelineReceiptQueueCA352C17",
+            "Arn"
+          ]
+        },
+        "SourceParameters": {
+          "SqsQueueParameters": {
+            "BatchSize": 1
+          }
+        },
+        "Target": {
+          "Ref": "PipelinePipelineStateMachine05F1F149"
+        },
+        "TargetParameters": {
+          "InputTemplate": "{\"s3EventBody\": \"<$.body>\"}",
+          "StepFunctionStateMachineParameters": {
+            "InvocationType": "FIRE_AND_FORGET"
+          }
+        }
+      },
+      "Type": "AWS::Pipes::Pipe"
+    },
+    "PipelineReceiptQueueCA352C17": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "MessageRetentionPeriod": 345600,
+        "QueueName": "novascan-dev-receipt-pipeline",
+        "RedrivePolicy": {
+          "deadLetterTargetArn": {
+            "Fn::GetAtt": [
+              "PipelineReceiptDLQ7E5AE7D0",
+              "Arn"
+            ]
+          },
+          "maxReceiveCount": 3
+        },
+        "VisibilityTimeout": 900
+      },
+      "Type": "AWS::SQS::Queue",
+      "UpdateReplacePolicy": "Delete"
+    },
+    "PipelineReceiptQueuePolicy841F2233": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sqs:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": {
+                "Fn::GetAtt": [
+                  "PipelineReceiptQueueCA352C17",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "sqs:SendMessage",
+              "Condition": {
+                "ArnLike": {
+                  "aws:SourceArn": {
+                    "Fn::GetAtt": [
+                      "StorageReceiptsBucket73106E11",
+                      "Arn"
+                    ]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "s3.amazonaws.com"
+              },
+              "Resource": {
+                "Fn::GetAtt": [
+                  "PipelineReceiptQueueCA352C17",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "sqs:SendMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl"
+              ],
+              "Condition": {
+                "ArnLike": {
+                  "aws:SourceArn": {
+                    "Fn::GetAtt": [
+                      "StorageReceiptsBucket73106E11",
+                      "Arn"
+                    ]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "s3.amazonaws.com"
+              },
+              "Resource": {
+                "Fn::GetAtt": [
+                  "PipelineReceiptQueueCA352C17",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Queues": [
+          {
+            "Ref": "PipelineReceiptQueueCA352C17"
+          }
+        ]
+      },
+      "Type": "AWS::SQS::QueuePolicy"
+    },
+    "PipelineTextractExtractFnFD3C175F": {
+      "DependsOn": [
+        "PipelineTextractExtractFnServiceRoleDefaultPolicyA1373C32",
+        "PipelineTextractExtractFnServiceRole60265A5B"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "7f3cc8228cdf05779b9c0e2d9b70100029df9a1bdfd3d40a42b3eb3c9b96a4f4.zip"
+        },
+        "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
+        "Environment": {
+          "Variables": {
+            "LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-textract-extract",
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-textract-extract",
+        "Handler": "pipeline.textract_extract.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PipelineTextractExtractFnServiceRole60265A5B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 120,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "PipelineTextractExtractFnServiceRole60265A5B": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelineTextractExtractFnServiceRoleDefaultPolicyA1373C32": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "textract:AnalyzeExpense",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelineTextractExtractFnServiceRoleDefaultPolicyA1373C32",
+        "Roles": [
+          {
+            "Ref": "PipelineTextractExtractFnServiceRole60265A5B"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
     },
     "StorageFrontendBucketAutoDeleteObjectsCustomResourceE14612B9": {
       "DeletionPolicy": "Delete",
@@ -1266,6 +2567,52 @@
       },
       "Type": "Custom::S3AutoDeleteObjects",
       "UpdateReplacePolicy": "Delete"
+    },
+    "StorageReceiptsBucketNotificationsACC504DE": {
+      "DependsOn": [
+        "PipelineReceiptQueuePolicy841F2233",
+        "PipelineReceiptQueueCA352C17",
+        "StorageReceiptsBucketPolicyF51E6647"
+      ],
+      "Properties": {
+        "BucketName": {
+          "Ref": "StorageReceiptsBucket73106E11"
+        },
+        "Managed": true,
+        "NotificationConfiguration": {
+          "QueueConfigurations": [
+            {
+              "Events": [
+                "s3:ObjectCreated:*"
+              ],
+              "Filter": {
+                "Key": {
+                  "FilterRules": [
+                    {
+                      "Name": "prefix",
+                      "Value": "receipts/"
+                    }
+                  ]
+                }
+              },
+              "QueueArn": {
+                "Fn::GetAtt": [
+                  "PipelineReceiptQueueCA352C17",
+                  "Arn"
+                ]
+              }
+            }
+          ]
+        },
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "BucketNotificationsHandler050a0587b7544547bf325f094a3db8347ECC3691",
+            "Arn"
+          ]
+        },
+        "SkipDestinationValidation": false
+      },
+      "Type": "Custom::S3BucketNotifications"
     },
     "StorageReceiptsBucketPolicyF51E6647": {
       "Properties": {
