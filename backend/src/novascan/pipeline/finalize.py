@@ -344,15 +344,21 @@ def _update_receipt(
             "merchant = :merchant",
             "merchantAddress = :merchantAddress",
             "receiptDate = :receiptDate",
-            "currency = :currency",
-            "subtotal = :subtotal",
+            "#currency = :currency",
+            "#subtotal = :subtotal",
             "tax = :tax",
             "tip = :tip",
-            "total = :total",
-            "category = :category",
+            "#total = :total",
+            "#category = :category",
             "subcategory = :subcategory",
             "paymentMethod = :paymentMethod",
         ])
+        attr_names.update({
+            "#currency": "currency",
+            "#subtotal": "subtotal",
+            "#total": "total",
+            "#category": "category",
+        })
         attr_values.update({
             ":merchant": result.merchant.name,
             ":merchantAddress": result.merchant.address,
