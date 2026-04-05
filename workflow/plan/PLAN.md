@@ -479,7 +479,7 @@
 
 ### Wave 2: Pipeline Lambdas
 
-#### [ ] Task 3.2: OCR-AI Pipeline Lambdas (Textract + Nova)
+#### [x] Task 3.2: OCR-AI Pipeline Lambdas (Textract + Nova)
 - **Role:** backend-engineer
 - **Depends on:** 3.1
 - **Spec reference:** SPEC.md >> Section 3 (Processing Flow — Main pipeline)
