@@ -59,7 +59,7 @@
   - `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_receipts_list.py -v` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run pytest tests/unit/test_receipts_list.py -v`
 
-#### [x] Task 3.11: Auth Construct Hardening [H2 + H3 + M4]
+#### [ ] Task 3.11: Auth Construct Hardening [H2 + H3 + M4]
 - **Role:** devops-engineer
 - **Depends on:** none (M3 complete)
 - **Security ref:** SECURITY-REVIEW.md >> H2 (High — PASSWORD Auth), H3 (High — Wildcard Cognito IAM), M4 (Medium — Refresh Token TTL)
