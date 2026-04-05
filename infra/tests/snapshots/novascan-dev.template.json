@@ -57,6 +57,15 @@
     }
   },
   "Resources": {
+    "ApiApiAccessLog18CD98E4": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "LogGroupName": "/aws/apigateway/novascan-dev-access",
+        "RetentionInDays": 30
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete"
+    },
     "ApiApiFunctionAA82C666": {
       "DependsOn": [
         "ApiApiFunctionServiceRoleDefaultPolicyCC97891F",
@@ -65,7 +74,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "6fda72787d8af00fdca578bb9aa85078a0dfa62003bcf478c095e5f84d5ba892.zip"
+          "S3Key": "429558d03c367ad2b9971a70e9291da4506ef3690a8038a7af5f98d78ef0b282.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -211,16 +220,34 @@
             },
             {
               "Action": [
-                "s3:GetObject*",
-                "s3:GetBucket*",
-                "s3:List*",
-                "s3:DeleteObject*",
                 "s3:PutObject",
                 "s3:PutObjectLegalHold",
                 "s3:PutObjectRetention",
                 "s3:PutObjectTagging",
                 "s3:PutObjectVersionTagging",
                 "s3:Abort*"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "StorageReceiptsBucket73106E11",
+                        "Arn"
+                      ]
+                    },
+                    "/receipts/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -240,7 +267,7 @@
                           "Arn"
                         ]
                       },
-                      "/*"
+                      "/receipts/*"
                     ]
                   ]
                 }
@@ -382,10 +409,22 @@
     },
     "ApiHttpApiDefaultStageE708EF42": {
       "Properties": {
+        "AccessLogSettings": {
+          "DestinationArn": {
+            "Fn::GetAtt": [
+              "ApiApiAccessLog18CD98E4",
+              "Arn"
+            ]
+          }
+        },
         "ApiId": {
           "Ref": "ApiHttpApi4C294DC0"
         },
         "AutoDeploy": true,
+        "DefaultRouteSettings": {
+          "ThrottlingBurstLimit": 10,
+          "ThrottlingRateLimit": 5
+        },
         "StageName": "$default"
       },
       "Type": "AWS::ApiGatewayV2::Stage"
@@ -1163,7 +1202,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
+          "S3Key": "ebdf8097955ce2bb8adb2d6dfd7149899662c33f4111764b3649fc447ca6495b.zip"
         },
         "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
         "Environment": {
@@ -1273,7 +1312,32 @@
             {
               "Action": "bedrock:InvokeModel",
               "Effect": "Allow",
-              "Resource": "arn:aws:bedrock:*::foundation-model/amazon.nova-*"
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/amazon.nova-lite-v1:0"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/amazon.nova-pro-v1:0"
+                    ]
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -1295,7 +1359,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
+          "S3Key": "ebdf8097955ce2bb8adb2d6dfd7149899662c33f4111764b3649fc447ca6495b.zip"
         },
         "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
         "Environment": {
@@ -1506,7 +1570,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
+          "S3Key": "ebdf8097955ce2bb8adb2d6dfd7149899662c33f4111764b3649fc447ca6495b.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1632,7 +1696,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
+          "S3Key": "ebdf8097955ce2bb8adb2d6dfd7149899662c33f4111764b3649fc447ca6495b.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -1742,7 +1806,32 @@
             {
               "Action": "bedrock:InvokeModel",
               "Effect": "Allow",
-              "Resource": "arn:aws:bedrock:*::foundation-model/amazon.nova-*"
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/amazon.nova-lite-v1:0"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/amazon.nova-pro-v1:0"
+                    ]
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -2235,7 +2324,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "762540f34b3c97e4cd6a7cff1df6b0c16c9b955b674f7d20b66605ed994465a1.zip"
+          "S3Key": "ebdf8097955ce2bb8adb2d6dfd7149899662c33f4111764b3649fc447ca6495b.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {
