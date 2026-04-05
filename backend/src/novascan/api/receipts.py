@@ -59,6 +59,10 @@ def _decode_cursor(cursor: str, *, user_id: str) -> dict[str, Any]:
     if decoded.get("GSI1PK") != expected_gsi1pk:
         raise ValueError("Cursor GSI1PK does not match authenticated user")
 
+    expected_pk = f"USER#{user_id}"
+    if decoded.get("PK") != expected_pk:
+        raise ValueError("Cursor PK does not match authenticated user")
+
     return decoded  # type: ignore[no-any-return]
 
 

@@ -18,7 +18,7 @@ from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from boto3.dynamodb.conditions import Key
 
-from novascan.shared.constants import CUSTOMCAT, RECEIPT
+from novascan.shared.constants import CUSTOMCAT
 from novascan.shared.dynamo import get_table
 
 logger = Logger()
