@@ -35,6 +35,7 @@ def _pipeline_env(monkeypatch):
     monkeypatch.setenv("DEFAULT_PIPELINE", "ocr-ai")
     monkeypatch.setenv("STAGE", "dev")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("POWERTOOLS_SERVICE_NAME", "novascan-test")
     monkeypatch.setenv("POWERTOOLS_METRICS_NAMESPACE", "NovaScan")
