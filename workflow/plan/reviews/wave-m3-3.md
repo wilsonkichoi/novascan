@@ -268,3 +268,30 @@ Combined with fix 1 (fail early on empty userId), the failure mode is already ha
 | `ruff check .` (infra) | PASS (pre-existing unrelated lint in test file) |
 | `ruff check src/` (backend) | PASS |
 | `pytest -v` (backend, 144 tests) | PASS (144 passed, 0 failed) |
+
+### Fix Verification
+
+**Date:** 2026-04-04
+**Verifier:** QA (automated pipeline)
+
+All 4 applied fixes verified against the source code and synthesized CloudFormation template.
+
+| Fix | Verification | Result |
+|-----|-------------|--------|
+| 1. Empty userId fail-fast | `load_custom_categories.py:77-79`: `if not user_id: raise ValueError(...)` with receiptId in message | PASS |
+| 2. URL-decode S3 key | `load_custom_categories.py:14`: `import urllib.parse`; line 169: `urllib.parse.unquote_plus()` applied to S3 key | PASS |
+| 3. Scope Bedrock IAM | `pipeline.py:239,260`: Both `bedrock:InvokeModel` policies use `arn:aws:bedrock:*::foundation-model/amazon.nova-*` (not `*`) | PASS |
+| 4. Add DLQ | `pipeline.py:126-132`: DLQ created; lines 142-145: main queue references DLQ with `max_receive_count=3`. Synthesized template confirms `RedrivePolicy` with `maxReceiveCount: 3` | PASS |
+| 5. LoadCustomCategories Catch | DEFERRED (confirmed not needed — fix 1 makes failure loud and immediate) | N/A |
+
+**Full suite verification:**
+
+| Check | Result |
+|-------|--------|
+| `cdk synth --context stage=dev` | PASS |
+| `ruff check src/` (backend) | PASS |
+| `pytest -v` (backend, 144 tests) | PASS (144 passed, 0 failed) |
+| DLQ in synthesized CloudFormation | PASS (`PipelineReceiptDLQ7E5AE7D0` with `RedrivePolicy.maxReceiveCount=3`) |
+| Bedrock IAM grep (no `resources=["*"]` on InvokeModel) | PASS |
+
+**Verdict:** All fixes verified. No regressions.

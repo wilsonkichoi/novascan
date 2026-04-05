@@ -58,7 +58,7 @@ Last updated: 2026-04-04
 | 3.2  | OCR-AI Pipeline Lambdas (Textract + Nova) | backend-engineer | done | [task-3.2](reviews/task-3.2.md) | Completed 2026-04-04. Fixes verified 2026-04-04. |
 | 3.3  | AI-Multimodal Pipeline Lambda (Bedrock) | backend-engineer | done | [task-3.3](reviews/task-3.3.md) | Completed 2026-04-04. Fixes verified 2026-04-04. |
 | 3.4  | Finalize Lambda + LoadCustomCategories Lambda | backend-engineer | done | [task-3.4](reviews/task-3.4.md) | Completed 2026-04-04. Fixes verified 2026-04-04. |
-| 3.5  | Pipeline CDK Construct (SQS + Pipes + SFN) | devops-engineer | done | [task-3.5](reviews/task-3.5.md) | Completed 2026-04-04. MaximumConcurrency gap documented. |
+| 3.5  | Pipeline CDK Construct (SQS + Pipes + SFN) | devops-engineer | done | [task-3.5](reviews/task-3.5.md) | Completed 2026-04-04. Fixes verified 2026-04-04. MaximumConcurrency gap documented. |
 | 3.6  | Pipeline Lambda Unit Tests | qa-engineer | pending | | TEST |
 | 3.7  | Pipeline CDK + Integration Tests | qa-engineer | pending | | TEST |
 
