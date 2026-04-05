@@ -121,3 +121,20 @@ Both are minor and can be included at the implementer's discretion. The fix plan
 - ruff check — PASS
 - pytest (new tests) — PASS (50 tests)
 - pytest (full suite) — PASS (144 tests)
+
+### Fix Verification (qa-engineer AI — 2026-04-04)
+
+**SUGGESTION (missing extraction model tests) — Fixed**
+- Tests added: 50 tests in `test_extraction_models.py`
+- Fix plan coverage: complete — all 6 items covered:
+  - Merchant: required name, nullable address/phone (TestMerchant — 6 tests)
+  - LineItem: defaults (quantity=1.0, prices=0.00), nullable subcategory (TestLineItem — 9 tests)
+  - ExtractionResult: all defaults (currency=USD, category=other, subcategory=uncategorized, confidence=0.0, subtotal/tax/total=0.00, lineItems=[]), nullable fields (receiptDate, tip, paymentMethod) (TestExtractionResultDefaults — 9 tests, TestExtractionResultNullableFields — 4 tests)
+  - Confidence bounds: rejects <0.0 and >1.0, accepts 0.0, 1.0, and midpoint (TestConfidenceBounds — 7 tests)
+  - JSON round-trip: minimal, full, null fields, line items (TestJsonRoundTrip — 4 tests)
+  - Serialization format: monetary fields as numbers, receiptDate as "YYYY-MM-DD", nulls as null (TestSerializationFormat — 7 tests)
+  - Bonus: negative monetary values accepted (TestNegativeMonetaryValues — 4 tests)
+- All tests pass: yes (50/50 passed in 0.05s)
+- No regressions: yes (144/144 full suite passed in 3.50s)
+- Linting: ruff check tests/ — all checks passed
+- Verification: PASS
