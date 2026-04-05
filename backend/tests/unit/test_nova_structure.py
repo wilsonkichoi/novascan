@@ -66,13 +66,13 @@ _TEXTRACT_RESULT = {
         }
     ],
     "bucket": "test-bucket",
-    "key": "receipts/abc123.jpg",
+    "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg",
 }
 
 
 def _make_event(
     bucket: str = "test-bucket",
-    key: str = "receipts/abc123.jpg",
+    key: str = "receipts/01ABC123DEF456GHI789JKLM90.jpg",
     textract_result: dict[str, Any] | None = None,
     custom_categories: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -113,6 +113,7 @@ def _pipeline_env(monkeypatch):
     monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
     monkeypatch.setenv("POWERTOOLS_METRICS_NAMESPACE", "NovaScanTest")
     monkeypatch.setenv("NOVA_MODEL_ID", "amazon.nova-lite-v1:0")
+    monkeypatch.setenv("RECEIPTS_BUCKET", "test-bucket")
 
 
 @pytest.fixture
@@ -121,7 +122,7 @@ def s3_with_image():
     with mock_aws():
         s3 = boto3.client("s3", region_name="us-east-1")
         s3.create_bucket(Bucket="test-bucket")
-        s3.put_object(Bucket="test-bucket", Key="receipts/abc123.jpg", Body=b"fake-image-bytes")
+        s3.put_object(Bucket="test-bucket", Key="receipts/01ABC123DEF456GHI789JKLM90.jpg", Body=b"fake-image-bytes")
         yield s3
 
 
@@ -149,7 +150,7 @@ class TestNovaStructureSuccess:
     @patch("pipeline.nova_structure.s3_client")
     def test_returns_extraction_result(self, mock_s3, mock_bedrock):
         """Successful structuring returns extractionResult dict."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response(_VALID_EXTRACTION_JSON)
 
         result = _invoke_handler(_make_event())
@@ -161,7 +162,7 @@ class TestNovaStructureSuccess:
     @patch("pipeline.nova_structure.s3_client")
     def test_extraction_result_has_required_fields(self, mock_s3, mock_bedrock):
         """ExtractionResult must match SPEC Section 7 schema fields."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response(_VALID_EXTRACTION_JSON)
 
         result = _invoke_handler(_make_event())
@@ -178,7 +179,7 @@ class TestNovaStructureSuccess:
     @patch("pipeline.nova_structure.s3_client")
     def test_returns_model_id(self, mock_s3, mock_bedrock):
         """Response must include the Bedrock model ID used."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response(_VALID_EXTRACTION_JSON)
 
         result = _invoke_handler(_make_event())
@@ -191,7 +192,7 @@ class TestNovaStructureSuccess:
     @patch("pipeline.nova_structure.s3_client")
     def test_returns_processing_time_ms(self, mock_s3, mock_bedrock):
         """Response must include processingTimeMs as a non-negative integer."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response(_VALID_EXTRACTION_JSON)
 
         result = _invoke_handler(_make_event())
@@ -204,7 +205,7 @@ class TestNovaStructureSuccess:
     @patch("pipeline.nova_structure.s3_client")
     def test_no_error_key_on_success(self, mock_s3, mock_bedrock):
         """Success response must NOT contain error/errorType."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response(_VALID_EXTRACTION_JSON)
 
         result = _invoke_handler(_make_event())
@@ -217,7 +218,7 @@ class TestNovaStructureSuccess:
     def test_handles_markdown_wrapped_json(self, mock_s3, mock_bedrock):
         """Bedrock may wrap JSON in markdown code fences; handler must strip them."""
         wrapped = f"```json\n{_VALID_EXTRACTION_JSON}\n```"
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response(wrapped)
 
         result = _invoke_handler(_make_event())
@@ -229,7 +230,7 @@ class TestNovaStructureSuccess:
     @patch("pipeline.nova_structure.s3_client")
     def test_custom_categories_passed_through(self, mock_s3, mock_bedrock):
         """Custom categories from user should be included in the pipeline event."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response(_VALID_EXTRACTION_JSON)
 
         custom_cats = [{"slug": "costco", "displayName": "Costco", "parentCategory": "groceries-food"}]
@@ -254,7 +255,7 @@ class TestNovaStructureErrors:
         """Bedrock API exception should produce an error payload."""
         from botocore.exceptions import ClientError
 
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.side_effect = ClientError(
             {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}},
             "InvokeModel",
@@ -286,7 +287,7 @@ class TestNovaStructureErrors:
     @patch("pipeline.nova_structure.s3_client")
     def test_malformed_bedrock_response_returns_error_payload(self, mock_s3, mock_bedrock):
         """Invalid JSON from Bedrock should return error payload."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.return_value = _make_bedrock_response("not valid json at all {{{")
 
         result = _invoke_handler(_make_event())
@@ -299,7 +300,7 @@ class TestNovaStructureErrors:
     def test_error_payload_has_no_extraction_result(self, mock_s3, mock_bedrock):
         """Error payloads must NOT contain extractionResult."""
         mock_bedrock.invoke_model.side_effect = RuntimeError("boom")
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
 
         result = _invoke_handler(_make_event())
 
@@ -309,9 +310,35 @@ class TestNovaStructureErrors:
     @patch("pipeline.nova_structure.s3_client")
     def test_error_does_not_raise(self, mock_s3, mock_bedrock):
         """Handler must catch all exceptions and return payload."""
-        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image")}
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
         mock_bedrock.invoke_model.side_effect = Exception("Totally unexpected")
 
         result = _invoke_handler(_make_event())
         assert isinstance(result, dict)
         assert "error" in result
+        # H4 — Error sanitization: no raw exception text in error
+        assert result["error"] == "nova_structure_failed"
+
+    def test_missing_required_fields_returns_invalid_event(self):
+        """Missing required event fields should return invalid_event."""
+        result = _invoke_handler({"bucket": "test-bucket"})
+        assert result["error"] == "invalid_event"
+
+    def test_invalid_s3_key_returns_invalid_event(self):
+        """Invalid S3 key format should return invalid_event."""
+        result = _invoke_handler({
+            "textractResult": _TEXTRACT_RESULT,
+            "bucket": "test-bucket",
+            "key": "../../../etc/passwd",
+        })
+        assert result["error"] == "invalid_event"
+
+    @patch("pipeline.nova_structure.bedrock_client")
+    @patch("pipeline.nova_structure.s3_client")
+    def test_error_payload_never_contains_raw_exception(self, mock_s3, mock_bedrock):
+        """Error payloads must never contain the raw exception message."""
+        mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
+        mock_bedrock.invoke_model.side_effect = RuntimeError("secret internal error details")
+
+        result = _invoke_handler(_make_event())
+        assert "secret internal error details" not in result.get("error", "")

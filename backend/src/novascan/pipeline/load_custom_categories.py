@@ -11,6 +11,7 @@ This is a lightweight pre-step (~5-10ms) that runs once per receipt.
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 from typing import Any
 
@@ -23,6 +24,9 @@ from novascan.shared.dynamo import get_table
 
 logger = Logger()
 tracer = Tracer()
+
+# Receipt ID pattern: 26 chars of Crockford's Base32 (uppercase alphanumeric)
+_RECEIPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{26}$")
 
 
 @logger.inject_lambda_context
@@ -60,6 +64,7 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
     """
     # If the event came from EventBridge Pipes with an S3 event body, parse it
     if "s3EventBody" in event and "bucket" not in event:
+        logger.info("Received S3 event body, parsing")
         event = _parse_s3_event(event)
 
     key = event.get("key", "")
@@ -68,6 +73,9 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
     receipt_id = event.get("receiptId", "")
     if not receipt_id and key:
         receipt_id = _extract_receipt_id(key)
+        if not receipt_id:
+            logger.warning("Could not extract valid receiptId from key")
+            return {"error": "invalid_event", "errorType": "ValidationError"}
         event["receiptId"] = receipt_id
 
     # Look up userId from DynamoDB if not provided
@@ -75,21 +83,18 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
     if not user_id and receipt_id:
         user_id = _lookup_user_id(receipt_id)
         if not user_id:
-            raise ValueError(
-                f"Could not resolve userId for receiptId={receipt_id}"
-            )
+            logger.error("Could not resolve userId for receipt", extra={"receipt_id": receipt_id})
+            return {"error": "load_custom_categories_failed", "errorType": "LookupError"}
         event["userId"] = user_id
 
     logger.info("Loading custom categories", extra={"user_id": user_id})
 
     try:
         custom_categories = _query_custom_categories(user_id)
-    except Exception as e:
-        logger.exception(
-            "Failed to load custom categories",
-            extra={"user_id": user_id},
-        )
-        return {"error": str(e), "errorType": type(e).__name__}
+    except Exception:
+        # H4 — Error sanitization: no str(e) in return payload
+        logger.exception("Failed to load custom categories")
+        return {"error": "load_custom_categories_failed", "errorType": "QueryError"}
 
     logger.info(
         "Custom categories loaded",
@@ -161,14 +166,16 @@ def _parse_s3_event(event: dict[str, Any]) -> dict[str, Any]:
 
     records = s3_event.get("Records", [])
     if not records:
-        logger.error("No records in S3 event", extra={"s3_event": s3_event})
+        # L6/L7 — Log structure presence only, not full body
+        logger.error("No records in S3 event", extra={"record_count": 0})
         return event
 
     s3_record = records[0].get("s3", {})
     bucket = s3_record.get("bucket", {}).get("name", "")
     key = urllib.parse.unquote_plus(s3_record.get("object", {}).get("key", ""))
 
-    logger.info("Parsed S3 event", extra={"bucket": bucket, "key": key})
+    # L6/L7 — Log presence only, not full bucket/key values
+    logger.info("Parsed S3 event", extra={"has_bucket": bool(bucket), "has_key": bool(key)})
 
     return {
         "bucket": bucket,
@@ -180,12 +187,19 @@ def _extract_receipt_id(key: str) -> str:
     """Extract receiptId from S3 key.
 
     Expected format: receipts/{receiptId}.{ext}
-    Returns empty string if format doesn't match.
+    Returns empty string if format doesn't match or receiptId is invalid.
+
+    H5 — Validates the extracted ID matches ULID format (26 alphanumeric chars).
     """
     # Strip prefix
     filename = key.rsplit("/", 1)[-1] if "/" in key else key
     # Strip extension
     receipt_id = filename.rsplit(".", 1)[0] if "." in filename else filename
+
+    # Validate receipt ID format (ULID: 26 chars of Crockford's Base32)
+    if not _RECEIPT_ID_PATTERN.match(receipt_id):
+        return ""
+
     return receipt_id
 
 

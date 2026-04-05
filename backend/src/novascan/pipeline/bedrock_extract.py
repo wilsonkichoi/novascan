@@ -26,6 +26,12 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from novascan.models.extraction import ExtractionResult
 from novascan.pipeline.prompts import build_extraction_prompt
+from novascan.pipeline.validation import (
+    check_image_size,
+    validate_event_fields,
+    validate_model_id,
+    validate_s3_key,
+)
 
 logger = Logger()
 tracer = Tracer()
@@ -34,6 +40,11 @@ bedrock_client = boto3.client("bedrock-runtime")
 s3_client = boto3.client("s3")
 
 MODEL_ID = os.environ.get("NOVA_MODEL_ID", "amazon.nova-lite-v1:0")
+
+# M8 — Model ID validation at module load
+if not validate_model_id(MODEL_ID):
+    logger.error("Invalid MODEL_ID", extra={"model_id": MODEL_ID})
+    raise RuntimeError(f"NOVA_MODEL_ID '{MODEL_ID}' is not in the allowed model list")
 
 
 @logger.inject_lambda_context
@@ -63,16 +74,26 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             "errorType": "ExceptionClassName"
         }
     """
+    # H6 — Event validation: fail fast on missing required fields
+    validation_error = validate_event_fields(event, ["bucket", "key"])
+    if validation_error:
+        logger.warning("Invalid event payload", extra={"missing_fields": validation_error})
+        return {"error": "invalid_event", "errorType": "ValidationError"}
+
     try:
         bucket = event["bucket"]
         key = event["key"]
         custom_categories = event.get("customCategories")
 
+        # H5 — S3 key validation: regex + bucket match
+        expected_bucket = os.environ.get("RECEIPTS_BUCKET", "")
+        if not validate_s3_key(key, bucket, expected_bucket):
+            logger.warning("Invalid S3 key or bucket mismatch", extra={"key_present": bool(key)})
+            return {"error": "invalid_event", "errorType": "ValidationError"}
+
         logger.info(
             "Starting Bedrock multimodal extraction",
             extra={
-                "bucket": bucket,
-                "key": key,
                 "custom_category_count": len(custom_categories) if custom_categories else 0,
                 "model_id": MODEL_ID,
             },
@@ -107,17 +128,23 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         }
 
     except Exception as e:
+        # H4 — Error sanitization: no str(e) in return payload
         logger.exception("Bedrock multimodal extraction failed")
         return {
-            "error": str(e),
+            "error": "bedrock_extract_failed",
             "errorType": type(e).__name__,
         }
 
 
 @tracer.capture_method
 def _read_image_from_s3(bucket: str, key: str) -> bytes:
-    """Read the receipt image from S3."""
+    """Read the receipt image from S3.
+
+    L5 — Checks ContentLength before reading to guard against oversized images.
+    """
     response = s3_client.get_object(Bucket=bucket, Key=key)
+    content_length = response.get("ContentLength", 0)
+    check_image_size(content_length)
     return response["Body"].read()
 
 

@@ -9,11 +9,14 @@ Catch blocks can route them.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
+
+from novascan.pipeline.validation import validate_event_fields, validate_s3_key
 
 logger = Logger()
 tracer = Tracer()
@@ -41,14 +44,26 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
 
     On error:
         {
-            "error": "error message",
+            "error": "textract_extract_failed",
             "errorType": "ExceptionClassName"
         }
     """
-    bucket = event.get("bucket", "")
-    key = event.get("key", "")
+    # H6 — Event validation: fail fast on missing required fields
+    validation_error = validate_event_fields(event, ["bucket", "key"])
+    if validation_error:
+        logger.warning("Invalid event payload", extra={"missing_fields": validation_error})
+        return {"error": "invalid_event", "errorType": "ValidationError"}
 
-    logger.info("Starting Textract AnalyzeExpense", extra={"bucket": bucket, "key": key})
+    bucket = event["bucket"]
+    key = event["key"]
+
+    # H5 — S3 key validation: regex + bucket match
+    expected_bucket = os.environ.get("RECEIPTS_BUCKET", "")
+    if not validate_s3_key(key, bucket, expected_bucket):
+        logger.warning("Invalid S3 key or bucket mismatch", extra={"key_present": bool(key)})
+        return {"error": "invalid_event", "errorType": "ValidationError"}
+
+    logger.info("Starting Textract AnalyzeExpense", extra={"key_present": True})
 
     try:
         response = _call_textract(bucket, key)
@@ -66,9 +81,10 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.exception("Textract AnalyzeExpense failed", extra={"bucket": bucket, "key": key})
+        # H4 — Error sanitization: no str(e) in return payload
+        logger.exception("Textract AnalyzeExpense failed")
         return {
-            "error": str(e),
+            "error": "textract_extract_failed",
             "errorType": type(e).__name__,
         }
 

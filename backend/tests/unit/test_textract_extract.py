@@ -42,6 +42,7 @@ def _pipeline_env(monkeypatch):
     monkeypatch.setenv("POWERTOOLS_SERVICE_NAME", "novascan-test")
     monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
     monkeypatch.setenv("POWERTOOLS_METRICS_NAMESPACE", "NovaScanTest")
+    monkeypatch.setenv("RECEIPTS_BUCKET", "my-bucket")
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +108,7 @@ class TestTextractExtractSuccess:
         """Successful extraction returns expenseDocuments from Textract."""
         mock_client.analyze_expense.return_value = _make_textract_response()
 
-        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/abc123.jpg"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert "expenseDocuments" in result, "Success response must contain expenseDocuments"
         assert isinstance(result["expenseDocuments"], list)
@@ -118,17 +119,17 @@ class TestTextractExtractSuccess:
         """Success response echoes back the bucket and key for downstream use."""
         mock_client.analyze_expense.return_value = _make_textract_response()
 
-        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/abc123.jpg"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert result.get("bucket") == "my-bucket"
-        assert result.get("key") == "receipts/abc123.jpg"
+        assert result.get("key") == "receipts/01ABC123DEF456GHI789JKLM90.jpg"
 
     @patch("pipeline.textract_extract.textract_client")
     def test_no_error_key_on_success(self, mock_client):
         """A successful response must NOT contain 'error' or 'errorType'."""
         mock_client.analyze_expense.return_value = _make_textract_response()
 
-        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/abc123.jpg"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert "error" not in result, "Success response must not have 'error' key"
         assert "errorType" not in result
@@ -138,21 +139,21 @@ class TestTextractExtractSuccess:
         """Handler should pass the S3 reference to Textract AnalyzeExpense."""
         mock_client.analyze_expense.return_value = _make_textract_response()
 
-        _invoke_handler({"bucket": "test-bucket", "key": "receipts/test.jpg"})
+        _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         mock_client.analyze_expense.assert_called_once()
         call_args = mock_client.analyze_expense.call_args
         document = call_args[1].get("Document") or call_args[0][0] if call_args[0] else call_args[1]["Document"]
         s3_obj = document["S3Object"]
-        assert s3_obj["Bucket"] == "test-bucket"
-        assert s3_obj["Name"] == "receipts/test.jpg"
+        assert s3_obj["Bucket"] == "my-bucket"
+        assert s3_obj["Name"] == "receipts/01ABC123DEF456GHI789JKLM90.jpg"
 
     @patch("pipeline.textract_extract.textract_client")
     def test_empty_expense_documents_returned(self, mock_client):
         """Textract returning empty ExpenseDocuments is still a success."""
         mock_client.analyze_expense.return_value = {"ExpenseDocuments": []}
 
-        result = _invoke_handler({"bucket": "b", "key": "k"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert "expenseDocuments" in result
         assert result["expenseDocuments"] == []
@@ -177,12 +178,14 @@ class TestTextractExtractErrors:
             "AnalyzeExpense",
         )
 
-        result = _invoke_handler({"bucket": "bad-bucket", "key": "missing.jpg"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert "error" in result, "Error response must contain 'error' key"
         assert "errorType" in result, "Error response must contain 'errorType' key"
         assert isinstance(result["error"], str)
         assert isinstance(result["errorType"], str)
+        # H4 — Error sanitization: no raw exception text in error
+        assert result["error"] == "textract_extract_failed"
 
     @patch("pipeline.textract_extract.textract_client")
     def test_throttling_error_returns_error_payload(self, mock_client):
@@ -194,7 +197,7 @@ class TestTextractExtractErrors:
             "AnalyzeExpense",
         )
 
-        result = _invoke_handler({"bucket": "b", "key": "k"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert "error" in result
         assert "errorType" in result
@@ -204,18 +207,19 @@ class TestTextractExtractErrors:
         """Any unhandled exception should still return an error payload."""
         mock_client.analyze_expense.side_effect = RuntimeError("Unexpected failure")
 
-        result = _invoke_handler({"bucket": "b", "key": "k"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert "error" in result
         assert result["errorType"] == "RuntimeError"
-        assert "Unexpected failure" in result["error"]
+        # H4 — Error sanitization: error message should NOT contain raw exception text
+        assert result["error"] == "textract_extract_failed"
 
     @patch("pipeline.textract_extract.textract_client")
     def test_error_payload_has_no_expense_documents(self, mock_client):
         """Error payloads should NOT contain expenseDocuments."""
         mock_client.analyze_expense.side_effect = RuntimeError("fail")
 
-        result = _invoke_handler({"bucket": "b", "key": "k"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
 
         assert "expenseDocuments" not in result
 
@@ -230,6 +234,26 @@ class TestTextractExtractErrors:
         )
 
         # This should not raise — it should return an error dict
-        result = _invoke_handler({"bucket": "b", "key": "k"})
+        result = _invoke_handler({"bucket": "my-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
         assert isinstance(result, dict)
         assert "error" in result
+
+    def test_missing_bucket_returns_invalid_event(self):
+        """Missing bucket should return invalid_event immediately."""
+        result = _invoke_handler({"key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
+        assert result["error"] == "invalid_event"
+
+    def test_missing_key_returns_invalid_event(self):
+        """Missing key should return invalid_event immediately."""
+        result = _invoke_handler({"bucket": "my-bucket"})
+        assert result["error"] == "invalid_event"
+
+    def test_invalid_s3_key_format_returns_invalid_event(self):
+        """Invalid S3 key format should return invalid_event."""
+        result = _invoke_handler({"bucket": "my-bucket", "key": "../../../etc/passwd"})
+        assert result["error"] == "invalid_event"
+
+    def test_bucket_mismatch_returns_invalid_event(self):
+        """Bucket mismatch with RECEIPTS_BUCKET should return invalid_event."""
+        result = _invoke_handler({"bucket": "wrong-bucket", "key": "receipts/01ABC123DEF456GHI789JKLM90.jpg"})
+        assert result["error"] == "invalid_event"
