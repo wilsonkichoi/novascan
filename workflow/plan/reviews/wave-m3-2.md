@@ -237,3 +237,37 @@ No behavioral tests exist for any of the 7 new files. At minimum, these should b
 - `prompts.py`: Test `build_extraction_prompt` with/without custom categories, with/without textract output.
 
 These can be scheduled as a dedicated testing task in Wave 3 or 4.
+
+### Fix Plan Analysis (code-reviewer AI — 2026-04-04)
+
+**Verdict:** approve
+
+**BLOCKER 1: `MetricUnit.None_` -> `MetricUnit.NoUnit`**
+
+Confirmed correct. `MetricUnit.None_` raises `AttributeError` at import time (verified). `MetricUnit.NoUnit` exists and maps to CloudWatch's `"None"` unit, which is the standard unitless metric type. This is the right replacement. Trivial one-line fix.
+
+**BLOCKER 2: Metrics dimension overwrite / pollution — `single_metric` approach**
+
+Confirmed correct. The `single_metric` context manager is the idiomatic Powertools solution for this exact problem. Each `single_metric` block creates an isolated `SingleMetric` instance, adds the metric and dimensions, and flushes immediately on context exit — producing a separate EMF log line per metric. This prevents:
+1. Dimension overwrite within the loop (main pipeline dimensions are no longer clobbered by shadow pipeline dimensions).
+2. Dimension pollution across metric functions (dimensions from `_emit_pipeline_metrics` cannot leak into `_rank_and_get_winner` or `_emit_receipt_metrics`).
+
+Important implementation detail verified: `single_metric` only emits the one metric it was initialized with — additional `add_metric` calls inside the context are silently dropped. The fix plan's code correctly uses separate `single_metric` blocks for `PipelineCompleted` and `PipelineLatency`, which is the right pattern.
+
+Regarding the `@metrics.log_metrics(capture_cold_start_metric=True)` decorator: the fix plan correctly identifies the tension here. If all metrics move to `single_metric`, the shared `metrics` instance will have no metrics to flush at handler exit, which is fine — `log_metrics` will just emit the cold start metric on first invocation and nothing else. Keeping the decorator purely for `capture_cold_start_metric=True` is acceptable and simpler than reimplementing cold start detection manually. The fix should keep the decorator.
+
+**SUGGESTION: `load_custom_categories` error handling**
+
+The proposed try/except wrapper is the right approach. `load_custom_categories` runs as a Step Functions Task state *before* the Parallel state. If it raises unhandled, Step Functions marks the entire execution as failed with a Lambda error. Adding a try/except that returns `{"error": ..., "errorType": ...}` makes the failure mode consistent with all other pipeline Lambdas and gives the state machine definition the option to handle it via a Catch block or Choice state.
+
+One nuance: unlike the other pipeline Lambdas where an error payload is gracefully handled downstream (finalize treats them as "pipeline failed"), a `load_custom_categories` error payload would need explicit handling in the state machine definition (it can't just be passed through to the pipelines as-is). The fix should document this dependency — the state machine definition (presumably in a later CDK task) needs to either add a Catch on this state or check for the error field before entering the Parallel state.
+
+That said, the alternative (fail-fast, let the execution error out) is also defensible for MVP. Custom categories are optional prompt enrichment — if DynamoDB is down, the pipelines would fail later anyway when finalize tries to write results. The try/except is marginally better because it produces a cleaner error message in the Step Functions execution history.
+
+**SUGGESTION: `load_custom_categories` pagination**
+
+The proposed pagination loop is correct and follows the standard boto3 pattern. The `LastEvaluatedKey` / `ExclusiveStartKey` loop is the canonical way to paginate DynamoDB queries. At MVP scale (likely <20 custom categories per user), this will never trigger, but it is a trivial defensive measure that prevents a silent data truncation bug if a user somehow accumulates many categories. The code in the fix plan is correct as written.
+
+**SUGGESTION: `_compute_field_completeness` counts defaults as present**
+
+The review correctly identifies that Pydantic defaults inflate completeness scores. The fix plan does not propose a change for this item, which is appropriate — since ranking is purely comparative (both pipelines get the same inflation), the scores cancel out. This is a known limitation, not a bug. No action needed for MVP.
