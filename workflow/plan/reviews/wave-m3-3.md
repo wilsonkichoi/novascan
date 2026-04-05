@@ -199,3 +199,49 @@ At MVP scale (single user, low volume), this is a non-issue. But the documentati
 ### On the bundling pattern
 
 The pipeline bundling correctly excludes `auth/` and `api/` directories. However, both the API construct and Pipeline construct independently define `_UvLocalBundling` classes. If this pattern grows to a third construct, consider extracting a shared bundling module in `infra/cdkconstructs/bundling.py`. For now, two copies is fine per the "no premature abstraction" project preference.
+
+### Fix Plan Analysis (code-reviewer AI — 2026-04-04)
+
+**Verdict:** approve
+
+**Fix 1 — Empty userId should fail the pipeline early:** Approve. Apply now.
+
+This is the highest-priority fix. The current code at `load_custom_categories.py:74-76` sets `event["userId"] = ""` when `_lookup_user_id` returns an empty string, then happily continues. The downstream damage is confirmed: `finalize.py:293` writes `PK=USER#` (no user suffix) and `finalize.py:329` creates line items under the same orphaned PK. This silently creates garbage records that are invisible to any user and would require manual DynamoDB cleanup.
+
+The proposed fix (raise `ValueError`) is correct. The existing error-return pattern on lines 82-87 of `load_custom_categories.py` already handles exceptions by returning `{"error": ..., "errorType": ...}`, but that is for `_query_custom_categories` failures, not handler-level failures. A `ValueError` raised *before* the try block will propagate as an unhandled exception to Step Functions.
+
+Since LoadCustomCategories has no Catch block (fix 5), the state machine execution will fail outright. This is the correct behavior -- an unrecoverable error should not silently succeed. A failed execution is visible in the Step Functions console and CloudWatch, which is better than invisible orphaned data.
+
+Risk: None. A missing userId is already a broken state. Failing loudly is strictly better than failing silently.
+
+**Fix 2 — Add `urllib.parse.unquote_plus` to S3 key parsing:** Approve. Apply now.
+
+Standard defensive practice. The fix location is `_parse_s3_event` at line 164. The key should be decoded immediately after extraction (`key = unquote_plus(key)`) before it is returned in the event dict. This ensures `_extract_receipt_id` also receives the decoded key.
+
+At MVP scale with ULID-based filenames this will never fire, but it costs nothing and prevents a latent bug if filename patterns ever change. The `unquote_plus` function is stdlib, no new dependency.
+
+Risk: None.
+
+**Fix 3 — Scope Bedrock IAM to specific model ARNs:** Approve. Apply now.
+
+The fix replaces `resources=["*"]` with `resources=[f"arn:aws:bedrock:*::foundation-model/amazon.nova-*"]` on lines 224-228 and 244-248 of `pipeline.py`. The wildcard `amazon.nova-*` pattern covers `nova-lite-v1:0` and future Nova model versions without being overly specific.
+
+One subtlety: the ARN format for Bedrock foundation models uses an empty account ID segment (`arn:aws:bedrock:{region}::foundation-model/...`). The proposed ARN with `*` for region is correct -- it allows cross-region invocation if the Lambda region changes.
+
+Risk: Minimal. If the project switches to a non-Nova model (e.g., Claude), the IAM policy will deny the call and the error will be immediately obvious in Lambda logs. This is the desired fail-closed behavior.
+
+**Fix 4 — Add DLQ to SQS queue:** Approve. Apply now, but keep it simple.
+
+Add a DLQ with `max_receive_count=3`. This is a 5-line CDK change: create a `sqs.Queue` for the DLQ and set `dead_letter_queue=sqs.DeadLetterQueue(queue=dlq, max_receive_count=3)` on the main queue. No alarm or monitoring needed at MVP -- the DLQ's ApproximateNumberOfMessagesVisible metric is enough for manual inspection.
+
+Risk: None. This only affects messages that have already failed 3 times. It prevents infinite retry loops without changing the happy path.
+
+**Fix 5 — Add Catch to LoadCustomCategories:** Defer.
+
+The review itself notes this is spec-compliant as-is (the SPEC diagram shows Catch blocks on the parallel branch steps, not on LoadCustomCategories). Adding a Catch block here would mean LoadCustomCategories failures produce an error payload that gets passed to the Parallel state, which then passes it to Finalize -- but Finalize expects `bucket`, `key`, `userId`, `receiptId` fields in the event (line 65-68 of `finalize.py`). An error payload from a Catch block would not have these fields, causing Finalize to crash with a KeyError anyway.
+
+To make a Catch block useful, Finalize would need to handle the "LoadCustomCategories failed" case, which means it would need to extract the receipt info from somewhere else (not the event payload). This is more work than it's worth for MVP.
+
+Combined with fix 1 (fail early on empty userId), the failure mode is already handled correctly: the state machine execution fails, it's visible in CloudWatch, and no garbage data is written. Deferring this is the right call.
+
+**Summary:** Fixes 1-4 are straightforward, low-risk, 1-5 lines each. Apply all four. Fix 5 is deferred -- the fail-fast behavior from fix 1 makes a Catch block on LoadCustomCategories unnecessary at MVP scale.
