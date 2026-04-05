@@ -65,7 +65,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "39ad6ccad4cb6969fa3589f398fb1b6979e718ac9a79f42867c6c10de8216d4f.zip"
+          "S3Key": "f453231fa2879db053dbe1d9352414e7a0ed16e6549d29d28a4ab1d36749233a.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -1077,6 +1077,9 @@
           "DefaultCacheBehavior": {
             "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
             "Compress": true,
+            "ResponseHeadersPolicyId": {
+              "Ref": "FrontendSecurityHeadersPolicy1832CE86"
+            },
             "TargetOriginId": "novascandevFrontendDistributionOrigin1879D827F",
             "ViewerProtocolPolicy": "redirect-to-https"
           },
@@ -1119,6 +1122,36 @@
       },
       "Type": "AWS::CloudFront::OriginAccessControl"
     },
+    "FrontendSecurityHeadersPolicy1832CE86": {
+      "Properties": {
+        "ResponseHeadersPolicyConfig": {
+          "Name": "novascan-dev-security-headers",
+          "SecurityHeadersConfig": {
+            "ContentSecurityPolicy": {
+              "ContentSecurityPolicy": "default-src 'self'; connect-src 'self' https://*.amazonaws.com https://*.execute-api.*.amazonaws.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+              "Override": true
+            },
+            "ContentTypeOptions": {
+              "Override": true
+            },
+            "FrameOptions": {
+              "FrameOption": "DENY",
+              "Override": true
+            },
+            "ReferrerPolicy": {
+              "Override": true,
+              "ReferrerPolicy": "strict-origin-when-cross-origin"
+            },
+            "StrictTransportSecurity": {
+              "AccessControlMaxAgeSec": 63072000,
+              "IncludeSubdomains": true,
+              "Override": true
+            }
+          }
+        }
+      },
+      "Type": "AWS::CloudFront::ResponseHeadersPolicy"
+    },
     "PipelineBedrockExtractFn9B7F32EE": {
       "DependsOn": [
         "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34",
@@ -1127,7 +1160,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "1a53a6ce660b668113a6161ae784e5a4de0058021ec2020ee745838ae2ed335f.zip"
         },
         "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
         "Environment": {
@@ -1256,7 +1289,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "1a53a6ce660b668113a6161ae784e5a4de0058021ec2020ee745838ae2ed335f.zip"
         },
         "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
         "Environment": {
@@ -1464,7 +1497,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "1a53a6ce660b668113a6161ae784e5a4de0058021ec2020ee745838ae2ed335f.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1620,7 +1653,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "1a53a6ce660b668113a6161ae784e5a4de0058021ec2020ee745838ae2ed335f.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -2220,7 +2253,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "8924ba462f4a3096b84e1dacb4646fc0f30477a2c11d02222bd92296126ac672.zip"
+          "S3Key": "1a53a6ce660b668113a6161ae784e5a4de0058021ec2020ee745838ae2ed335f.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {
