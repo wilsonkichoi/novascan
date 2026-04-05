@@ -84,3 +84,27 @@ pytest -v         -> 94 passed in 3.48s (no regressions)
 **APPROVED.** The model is a correct, complete implementation of SPEC Section 7. Every field name, type, nullability, and default matches exactly. The code is clean, consistent with existing patterns, and passes all static analysis and existing tests. The missing test file is a suggestion, not a blocker.
 
 ## Review Discussion
+
+### Fix Plan Analysis (code-reviewer AI — 2026-04-04)
+
+**Verdict:** approve
+
+The fix plan is correct, complete, and feasible. Here is the detailed reasoning:
+
+**1. Does the fix plan address the suggestion?**
+Yes. The suggestion calls for a test file paralleling `test_receipt_models.py` that covers defaults, nullability, bounds, serialization, and round-trip for the extraction models. The fix plan enumerates exactly those test categories: Merchant required/nullable fields, LineItem defaults and nullable subcategory, ExtractionResult defaults and nullable fields, confidence bounds (reject <0.0 and >1.0, accept boundary values), JSON round-trip, and serialization format. This is a direct, complete response to the suggestion.
+
+**2. Overlap with Task 3.6 (Wave 4 — Pipeline Lambda Unit Tests)?**
+Minimal. Task 3.6 tests Lambda *handler* logic — given mocked AWS service responses, do the handlers produce valid `ExtractionResult` objects and handle errors correctly? Those tests treat `ExtractionResult` as an opaque output and assert on its presence and rough shape, not on the model's own validation behavior. The proposed `test_extraction_models.py` tests the model *in isolation*: default values, Pydantic validation rejection of out-of-bounds confidence, nullable field behavior, and JSON serialization format fidelity against SPEC Section 7. These are complementary, not overlapping. The model tests are also a prerequisite in spirit — if the model's own contract is wrong, the pipeline handler tests will give misleading results.
+
+**3. Feasibility and risk assessment?**
+- The implementation in `extraction.py` is 49 lines with three simple Pydantic models. Writing the proposed test file is straightforward — roughly 80-120 lines following the patterns already established in `test_receipt_models.py`.
+- No new dependencies are required. The tests use `pytest`, `pydantic.ValidationError`, and the extraction models — all already available.
+- Risk is negligible. The tests are additive (new file, no modifications to existing code) and purely verify existing behavior.
+
+**4. Any missing test cases?**
+The fix plan covers the important cases. Two minor additions worth considering during implementation (but not blockers to approving the plan):
+- Negative monetary values: the model does not constrain `subtotal`, `tax`, `total`, etc. to non-negative. A test documenting that negative values *are* accepted (intentional, since OCR may produce refund/credit amounts) would serve as executable documentation of that design decision.
+- `lineItems` as empty list by default: worth an explicit assertion since `default_factory=list` is a correctness-critical pattern.
+
+Both are minor and can be included at the implementer's discretion. The fix plan as written is sufficient.
