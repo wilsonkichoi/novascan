@@ -108,3 +108,16 @@ The fix plan covers the important cases. Two minor additions worth considering d
 - `lineItems` as empty list by default: worth an explicit assertion since `default_factory=list` is a correctness-critical pattern.
 
 Both are minor and can be included at the implementer's discretion. The fix plan as written is sufficient.
+
+### Fix Results (backend-engineer AI — 2026-04-04)
+
+**Branch:** `fix/3.1-extraction-tests` (based on `feature/m3-wave1-extraction-schema`)
+
+**SUGGESTION (missing extraction model tests) — Fixed**
+- What was changed: Added `backend/tests/unit/test_extraction_models.py` with comprehensive model tests
+- Files created: `backend/tests/unit/test_extraction_models.py`
+
+**Verification:**
+- ruff check — PASS
+- pytest (new tests) — PASS (50 tests)
+- pytest (full suite) — PASS (144 tests)
