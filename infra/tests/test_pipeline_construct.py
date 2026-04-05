@@ -509,6 +509,7 @@ class TestIAMPermissions:
         """Nova structure Lambda must have bedrock:InvokeModel permission.
 
         Spec Section 3: 'Lambda sends Textract output to Bedrock Nova'
+        M10: Bedrock ARN scoped to deployment region with specific model IDs.
         """
         dev_template.has_resource_properties(
             "AWS::IAM::Policy",
@@ -520,9 +521,9 @@ class TestIAMPermissions:
                                 {
                                     "Action": "bedrock:InvokeModel",
                                     "Effect": "Allow",
-                                    "Resource": Match.string_like_regexp(
-                                        r".*amazon\.nova.*"
-                                    ),
+                                    # M10: Resource is now a region-scoped ARN array
+                                    # (Fn::Join with AWS::Region), not a wildcard
+                                    "Resource": Match.any_value(),
                                 }
                             ),
                         ]
@@ -565,6 +566,7 @@ class TestIAMPermissions:
 
         Spec Section 12: 'IAM least-privilege for all Lambda execution roles'
         The pipeline only needs Nova models, not arbitrary Bedrock models.
+        M10: ARNs must be region-scoped (no wildcard region).
         """
         policies = dev_template.find_resources("AWS::IAM::Policy")
         bedrock_policies = []
@@ -588,12 +590,17 @@ class TestIAMPermissions:
 
         for stmt in bedrock_policies:
             resource = stmt.get("Resource", "")
-            resource_str = json.dumps(resource) if isinstance(resource, dict) else str(resource)
+            resource_str = json.dumps(resource) if isinstance(resource, (dict, list)) else str(resource)
             assert "nova" in resource_str.lower(), (
                 f"Bedrock InvokeModel resource '{resource_str}' does not appear "
                 "to be scoped to Nova models. "
                 "Spec Section 12: IAM least-privilege requires scoping to "
                 "amazon.nova-* foundation models only."
+            )
+            # M10: Verify no wildcard region (should use AWS::Region reference)
+            assert "bedrock:*:" not in resource_str, (
+                f"Bedrock ARN uses wildcard region: {resource_str}. "
+                "M10: Must be scoped to deployment region."
             )
 
 

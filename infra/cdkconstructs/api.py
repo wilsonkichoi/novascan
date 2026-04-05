@@ -21,7 +21,9 @@ import aws_cdk.aws_apigatewayv2_authorizers as apigwv2_authorizers
 import aws_cdk.aws_apigatewayv2_integrations as apigwv2_integrations
 import aws_cdk.aws_cognito as cognito
 import aws_cdk.aws_dynamodb as dynamodb
+import aws_cdk.aws_iam as iam
 import aws_cdk.aws_lambda as lambda_
+import aws_cdk.aws_logs as logs
 import aws_cdk.aws_s3 as s3
 import jsii
 from constructs import Construct
@@ -123,9 +125,10 @@ class ApiConstruct(Construct):
         # Grant DynamoDB access
         table.grant_read_write_data(self.api_function)
 
-        # Grant S3 access if receipts bucket provided
+        # M1 — Scope S3 grants to receipts/* prefix only
         if receipts_bucket:
-            receipts_bucket.grant_read_write(self.api_function)
+            receipts_bucket.grant_put(self.api_function, "receipts/*")
+            receipts_bucket.grant_read(self.api_function, "receipts/*")
 
         # --- Cognito JWT Authorizer ---
         authorizer = apigwv2_authorizers.HttpJwtAuthorizer(
@@ -179,6 +182,34 @@ class ApiConstruct(Construct):
             integration=integration,
             authorizer=authorizer,
         )
+
+        # --- M5: API Gateway Access Logging ---
+        api_log_group = logs.LogGroup(
+            self,
+            "ApiAccessLog",
+            log_group_name=f"/aws/apigateway/novascan-{stage}-access",
+            retention=logs.RetentionDays.ONE_MONTH,
+            removal_policy=cdk.RemovalPolicy.DESTROY,
+        )
+
+        # M5 — Apply route-level throttling and access logging via L1 escape hatch.
+        # CDK L2 HttpApi doesn't expose DefaultRouteSettings for throttling.
+        default_stage = self.http_api.default_stage
+        if default_stage:
+            cfn_stage = default_stage.node.default_child
+            cfn_stage.add_property_override(
+                "DefaultRouteSettings",
+                {
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 5,
+                },
+            )
+            cfn_stage.add_property_override(
+                "AccessLogSettings",
+                {
+                    "DestinationArn": api_log_group.log_group_arn,
+                },
+            )
 
         # --- Outputs ---
         self.api_url = self.http_api.api_endpoint

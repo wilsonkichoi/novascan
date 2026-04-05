@@ -226,6 +226,9 @@ class PipelineConstruct(Construct):
         receipts_bucket.grant_read(self.textract_extract_fn)
         self.textract_extract_fn.add_to_role_policy(
             iam.PolicyStatement(
+                # M9 — Textract does not support resource-level permissions.
+                # resources=["*"] is required per AWS documentation:
+                # https://docs.aws.amazon.com/textract/latest/dg/security_iam_service-with-iam.html
                 actions=["textract:AnalyzeExpense"],
                 resources=["*"],
             )
@@ -249,7 +252,11 @@ class PipelineConstruct(Construct):
         self.nova_structure_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["bedrock:InvokeModel"],
-                resources=["arn:aws:bedrock:*::foundation-model/amazon.nova-*"],
+                # M10 — Bedrock ARN scoped to deployment region
+                resources=[
+                    f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-lite-v1:0",
+                    f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-pro-v1:0",
+                ],
             )
         )
 
@@ -271,7 +278,11 @@ class PipelineConstruct(Construct):
         self.bedrock_extract_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["bedrock:InvokeModel"],
-                resources=["arn:aws:bedrock:*::foundation-model/amazon.nova-*"],
+                # M10 — Bedrock ARN scoped to deployment region
+                resources=[
+                    f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-lite-v1:0",
+                    f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-pro-v1:0",
+                ],
             )
         )
 
