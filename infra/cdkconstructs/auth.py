@@ -81,22 +81,22 @@ class AuthConstruct(Construct):
         # CDK L2 doesn't expose SignInPolicy yet — use CloudFormation escape hatch.
         cfn_user_pool = self.user_pool.node.default_child
         cfn_user_pool.add_property_override(
-            "Policies.SignInPolicy.AllowedFirstAuthFactors", ["EMAIL_OTP", "PASSWORD"]
+            "Policies.SignInPolicy.AllowedFirstAuthFactors", ["EMAIL_OTP"]
         )
 
         # Grant Post-Confirmation Lambda permission to add users to groups.
-        # Use a constructed ARN with wildcard instead of self.user_pool.user_pool_arn
+        # Use a constructed ARN scoped to novascan-* instead of self.user_pool.user_pool_arn
         # to break the circular dependency: IAM Policy -> User Pool -> Lambda -> Policy.
-        user_pool_wildcard_arn = cdk.Stack.of(self).format_arn(
+        user_pool_scoped_arn = cdk.Stack.of(self).format_arn(
             service="cognito-idp",
             resource="userpool",
-            resource_name="*",
+            resource_name="novascan-*",
             arn_format=cdk.ArnFormat.SLASH_RESOURCE_NAME,
         )
         post_confirmation_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["cognito-idp:AdminAddUserToGroup"],
-                resources=[user_pool_wildcard_arn],
+                resources=[user_pool_scoped_arn],
             )
         )
 
@@ -111,6 +111,7 @@ class AuthConstruct(Construct):
                 user_srp=False,
             ),
             generate_secret=False,
+            refresh_token_validity=cdk.Duration.days(7),
         )
 
         # --- Cognito Groups ---
