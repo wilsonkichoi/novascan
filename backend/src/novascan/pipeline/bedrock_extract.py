@@ -1,0 +1,195 @@
+"""Bedrock Extract Lambda — shadow pipeline for direct multimodal extraction.
+
+Receives an S3 image reference and optional custom categories from Step Functions.
+Reads the image from S3, constructs a multimodal Bedrock prompt (image + taxonomy,
+no Textract), calls invoke_model with Nova, and parses the response into an
+ExtractionResult JSON.
+
+This is the shadow pipeline path: it sends the receipt image directly to
+Bedrock Nova (multimodal) without prior Textract OCR.
+
+Errors are caught and returned as error payloads (not raised) so Step Functions
+Catch blocks can route them.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+import time
+from typing import Any
+
+import boto3
+from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools.utilities.typing import LambdaContext
+
+from novascan.models.extraction import ExtractionResult
+from novascan.pipeline.prompts import build_extraction_prompt
+
+logger = Logger()
+tracer = Tracer()
+
+bedrock_client = boto3.client("bedrock-runtime")
+s3_client = boto3.client("s3")
+
+MODEL_ID = os.environ.get("NOVA_MODEL_ID", "amazon.nova-lite-v1:0")
+
+
+@logger.inject_lambda_context
+@tracer.capture_lambda_handler
+def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
+    """Extract receipt data directly from image using Bedrock Nova multimodal.
+
+    Expected event shape (from Step Functions):
+        {
+            "bucket": "my-bucket",
+            "key": "receipts/abc123.jpg",
+            "customCategories": [
+                {"slug": "costco", "displayName": "Costco", "parentCategory": "groceries-food"}
+            ]
+        }
+
+    Returns:
+        {
+            "extractionResult": { ... ExtractionResult fields ... },
+            "modelId": "amazon.nova-lite-v1:0",
+            "processingTimeMs": 1234
+        }
+
+    On error:
+        {
+            "error": "error message",
+            "errorType": "ExceptionClassName"
+        }
+    """
+    try:
+        bucket = event["bucket"]
+        key = event["key"]
+        custom_categories = event.get("customCategories")
+
+        logger.info(
+            "Starting Bedrock multimodal extraction",
+            extra={
+                "bucket": bucket,
+                "key": key,
+                "custom_category_count": len(custom_categories) if custom_categories else 0,
+                "model_id": MODEL_ID,
+            },
+        )
+
+        # Build prompt WITHOUT textract_output — image-only extraction
+        prompt = build_extraction_prompt(custom_categories=custom_categories)
+
+        image_bytes = _read_image_from_s3(bucket, key)
+        media_type = _infer_media_type(key)
+
+        start_time = time.time()
+        raw_response = _call_bedrock(prompt, image_bytes, media_type)
+        processing_time_ms = int((time.time() - start_time) * 1000)
+
+        extraction_result = _parse_response(raw_response)
+
+        logger.info(
+            "Bedrock multimodal extraction completed",
+            extra={
+                "processing_time_ms": processing_time_ms,
+                "confidence": extraction_result.confidence,
+                "category": extraction_result.category,
+                "line_item_count": len(extraction_result.lineItems),
+            },
+        )
+
+        return {
+            "extractionResult": json.loads(extraction_result.model_dump_json()),
+            "modelId": MODEL_ID,
+            "processingTimeMs": processing_time_ms,
+        }
+
+    except Exception as e:
+        logger.exception("Bedrock multimodal extraction failed")
+        return {
+            "error": str(e),
+            "errorType": type(e).__name__,
+        }
+
+
+@tracer.capture_method
+def _read_image_from_s3(bucket: str, key: str) -> bytes:
+    """Read the receipt image from S3."""
+    response = s3_client.get_object(Bucket=bucket, Key=key)
+    return response["Body"].read()
+
+
+def _infer_media_type(key: str) -> str:
+    """Infer MIME type from the S3 key extension."""
+    lower_key = key.lower()
+    if lower_key.endswith(".png"):
+        return "image/png"
+    if lower_key.endswith(".jpg") or lower_key.endswith(".jpeg"):
+        return "image/jpeg"
+    # Default to JPEG for receipt images
+    return "image/jpeg"
+
+
+@tracer.capture_method
+def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
+    """Call Bedrock Nova with the extraction prompt and receipt image."""
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    body = json.dumps({
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "image": {
+                            "format": media_type.split("/")[1],
+                            "source": {
+                                "bytes": image_b64,
+                            },
+                        },
+                    },
+                    {
+                        "text": prompt,
+                    },
+                ],
+            },
+        ],
+        "inferenceConfig": {
+            "maxNewTokens": 4096,
+            "temperature": 0.1,
+        },
+    })
+
+    response = bedrock_client.invoke_model(
+        modelId=MODEL_ID,
+        contentType="application/json",
+        accept="application/json",
+        body=body,
+    )
+
+    response_body = json.loads(response["body"].read())
+    output_text = response_body["output"]["message"]["content"][0]["text"]
+    return output_text
+
+
+@tracer.capture_method
+def _parse_response(raw_response: str) -> ExtractionResult:
+    """Parse the raw Bedrock response into an ExtractionResult.
+
+    Handles cases where the model wraps JSON in markdown code blocks.
+    """
+    text = raw_response.strip()
+
+    # Strip markdown code fences if present
+    if text.startswith("```"):
+        # Remove opening fence (```json or ```)
+        first_newline = text.index("\n")
+        text = text[first_newline + 1 :]
+        # Remove closing fence
+        if text.endswith("```"):
+            text = text[:-3].strip()
+
+    data = json.loads(text)
+    return ExtractionResult.model_validate(data)
