@@ -496,7 +496,7 @@
   - `cd backend && uv run ruff check src/` passes
 - **Test command:** `cd backend && uv run ruff check src/ && uv run python -c "from novascan.pipeline.textract_extract import handler; from novascan.pipeline.nova_structure import handler; print('PASS')"`
 
-#### [ ] Task 3.3: AI-Multimodal Pipeline Lambda (Bedrock Extract)
+#### [x] Task 3.3: AI-Multimodal Pipeline Lambda (Bedrock Extract)
 - **Role:** backend-engineer
 - **Depends on:** 3.1
 - **Spec reference:** SPEC.md >> Section 3 (Processing Flow — Shadow pipeline)
