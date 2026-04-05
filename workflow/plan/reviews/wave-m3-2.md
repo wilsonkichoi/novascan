@@ -263,6 +263,37 @@ All 4 fixes applied successfully:
 - Kept `@metrics.log_metrics(capture_cold_start_metric=True)` on the finalize handler for cold start tracking; the shared `metrics` instance no longer accumulates stale dimensions since all business metrics use `single_metric`
 - The `load_custom_categories` error payload (`{"error": ..., "errorType": ...}`) will need a Catch or Choice state in the Step Functions definition (CDK task) to handle gracefully
 
+### Fix Verification (qa-engineer AI — 2026-04-04)
+
+**BLOCKER 1 (MetricUnit.None_) — Fixed**
+- Grep for `MetricUnit.None_` in backend: 0 matches (confirmed absent)
+- Grep for `MetricUnit.NoUnit` in backend: found at `finalize.py:246` (RankingScoreDelta metric)
+- Runtime import test: `MetricUnit.NoUnit` prints successfully
+
+**BLOCKER 2 (dimension overwrite) — Fixed**
+- All 6 pipeline metrics use `single_metric` context manager with independent dimensions:
+  - `RankingDecision` (line 237): `Winner` dimension
+  - `RankingScoreDelta` (line 244): `Winner` dimension, `MetricUnit.NoUnit`
+  - `PipelineCompleted` (line 490): `PipelineType` + `Outcome` dimensions
+  - `PipelineLatency` (line 500): `PipelineType` dimension
+  - `ReceiptStatus` (line 515): `Status` dimension
+  - `UsedFallback` (line 524): `Status` dimension
+- Zero `metrics.add_metric()` calls remain (shared instance only used for cold start via decorator)
+- Zero `metrics.add_dimension()` calls remain (all dimensions set on `single_metric` context)
+- `@metrics.log_metrics(capture_cold_start_metric=True)` correctly retained on handler
+
+**SUGGESTION (error handling) — Fixed**
+- `load_custom_categories.handler` body wrapped in try/except (lines 54-61)
+- Error returns `{"error": str(e), "errorType": type(e).__name__}` — matches pipeline Lambda convention
+
+**SUGGESTION (pagination) — Fixed**
+- `_query_custom_categories` uses `while True` loop with `LastEvaluatedKey`/`ExclusiveStartKey` (lines 90-95)
+- Pattern matches canonical boto3 pagination
+
+**Test suite:** `ruff check src/` — all checks passed. `pytest -v` — 144 passed, 0 failed (3.44s). No regressions.
+
+Verification: **PASS** — all 4 fixes confirmed.
+
 ### Fix Plan Analysis (code-reviewer AI — 2026-04-04)
 
 **Verdict:** approve
