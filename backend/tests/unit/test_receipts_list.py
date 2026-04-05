@@ -430,13 +430,46 @@ class TestListReceiptsPagination:
         assert response["statusCode"] == 200
 
     def test_invalid_cursor_returns_400(self, aws_env):
-        """An invalid cursor should return 400 VALIDATION_ERROR."""
+        """An invalid cursor should return 400 VALIDATION_ERROR with generic message."""
         event = _build_apigw_event(query_params={"cursor": "not-a-valid-cursor!!!"})
         response = _invoke_list(event)
 
         assert response["statusCode"] == 400
         body = json.loads(response["body"])
         assert body["error"]["code"] == "VALIDATION_ERROR"
+        # Error message must be generic — no internal details (M7 mitigation)
+        assert body["error"]["message"] == "Invalid pagination cursor"
+
+    def test_cursor_with_wrong_keys_returns_400(self, aws_env):
+        """A cursor with extra/missing keys should return 400."""
+        import base64
+
+        bad_cursor = base64.urlsafe_b64encode(
+            json.dumps({"GSI1PK": "USER#user-abc-123", "extra": "key"}).encode()
+        ).decode()
+        event = _build_apigw_event(query_params={"cursor": bad_cursor})
+        response = _invoke_list(event)
+
+        assert response["statusCode"] == 400
+
+    def test_cursor_targeting_other_user_returns_400(self, aws_env):
+        """A cursor with GSI1PK for another user must be rejected (H1 mitigation)."""
+        import base64
+
+        tampered_cursor = base64.urlsafe_b64encode(
+            json.dumps({
+                "GSI1PK": "USER#attacker-user",
+                "GSI1SK": "2026-03-25#01RECEIPT000001AAAAAA0001",
+                "PK": "USER#attacker-user",
+                "SK": "RECEIPT#01RECEIPT000001AAAAAA0001",
+            }).encode()
+        ).decode()
+        event = _build_apigw_event(query_params={"cursor": tampered_cursor})
+        response = _invoke_list(event)
+
+        assert response["statusCode"] == 400
+        body = json.loads(response["body"])
+        assert body["error"]["message"] == "Invalid pagination cursor"
 
 
 # ---------------------------------------------------------------------------
