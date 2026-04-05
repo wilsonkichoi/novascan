@@ -24,7 +24,14 @@ class NovascanStack(cdk.Stack):
 
         self.storage = StorageConstruct(self, "Storage", stage=stage, config=config)
         self.auth = AuthConstruct(self, "Auth", stage=stage, config=config)
-        self.pipeline = PipelineConstruct(self, "Pipeline", stage=stage, config=config)
+        self.pipeline = PipelineConstruct(
+            self,
+            "Pipeline",
+            stage=stage,
+            config=config,
+            table=self.storage.table,
+            receipts_bucket=self.storage.receipts_bucket,
+        )
         self.frontend = FrontendConstruct(
             self,
             "Frontend",

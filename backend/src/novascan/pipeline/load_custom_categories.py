@@ -10,13 +10,14 @@ This is a lightweight pre-step (~5-10ms) that runs once per receipt.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from boto3.dynamodb.conditions import Key
 
-from novascan.shared.constants import CUSTOMCAT
+from novascan.shared.constants import CUSTOMCAT, RECEIPT
 from novascan.shared.dynamo import get_table
 
 logger = Logger()
@@ -28,27 +29,52 @@ tracer = Tracer()
 def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
     """Load custom categories for a user and pass through pipeline input.
 
-    Expected event shape (from Step Functions):
+    Accepts two event shapes:
+
+    1. Direct invocation (bucket/key already extracted):
         {
             "bucket": "my-bucket",
             "key": "receipts/abc123.jpg",
-            "userId": "us-east-1:xxx",
-            "receiptId": "01ABC..."
+            "userId": "us-east-1:xxx",   (optional — looked up if missing)
+            "receiptId": "01ABC..."       (optional — extracted from key if missing)
         }
 
-    Returns the original event fields plus customCategories:
+    2. S3 -> SQS -> EventBridge Pipes (raw S3 event body as JSON string):
+        {
+            "s3EventBody": "{\"Records\":[{\"s3\":{\"bucket\":{\"name\":\"...\"},\"object\":{\"key\":\"...\"}}}]}"
+        }
+
+    In case 2, the S3 event is parsed to extract bucket and key. In either case,
+    receiptId is extracted from the key and userId is looked up from DynamoDB
+    if not already present.
+
+    Returns:
         {
             "bucket": "my-bucket",
             "key": "receipts/abc123.jpg",
             "userId": "us-east-1:xxx",
             "receiptId": "01ABC...",
-            "customCategories": [
-                {"slug": "costco", "displayName": "Costco", "parentCategory": "groceries-food"},
-                ...
-            ]
+            "customCategories": [...]
         }
     """
+    # If the event came from EventBridge Pipes with an S3 event body, parse it
+    if "s3EventBody" in event and "bucket" not in event:
+        event = _parse_s3_event(event)
+
+    key = event.get("key", "")
+
+    # Extract receiptId from S3 key if not provided
+    receipt_id = event.get("receiptId", "")
+    if not receipt_id and key:
+        receipt_id = _extract_receipt_id(key)
+        event["receiptId"] = receipt_id
+
+    # Look up userId from DynamoDB if not provided
     user_id = event.get("userId", "")
+    if not user_id and receipt_id:
+        user_id = _lookup_user_id(receipt_id)
+        event["userId"] = user_id
+
     logger.info("Loading custom categories", extra={"user_id": user_id})
 
     try:
@@ -112,3 +138,94 @@ def _query_custom_categories(user_id: str) -> list[dict[str, Any]]:
         categories.append(category)
 
     return categories
+
+
+def _parse_s3_event(event: dict[str, Any]) -> dict[str, Any]:
+    """Parse S3 event notification from the SQS message body.
+
+    The EventBridge Pipe passes the SQS message body as s3EventBody (a JSON
+    string containing the S3 event notification). This function parses it
+    and extracts bucket and key from the first S3 record.
+
+    Returns a new event dict with bucket, key, and any other original fields.
+    """
+    s3_event_body = event.get("s3EventBody", "")
+
+    # s3EventBody may be a string (JSON) or already parsed as a dict
+    s3_event = json.loads(s3_event_body) if isinstance(s3_event_body, str) else s3_event_body
+
+    records = s3_event.get("Records", [])
+    if not records:
+        logger.error("No records in S3 event", extra={"s3_event": s3_event})
+        return event
+
+    s3_record = records[0].get("s3", {})
+    bucket = s3_record.get("bucket", {}).get("name", "")
+    key = s3_record.get("object", {}).get("key", "")
+
+    logger.info("Parsed S3 event", extra={"bucket": bucket, "key": key})
+
+    return {
+        "bucket": bucket,
+        "key": key,
+    }
+
+
+def _extract_receipt_id(key: str) -> str:
+    """Extract receiptId from S3 key.
+
+    Expected format: receipts/{receiptId}.{ext}
+    Returns empty string if format doesn't match.
+    """
+    # Strip prefix
+    filename = key.rsplit("/", 1)[-1] if "/" in key else key
+    # Strip extension
+    receipt_id = filename.rsplit(".", 1)[0] if "." in filename else filename
+    return receipt_id
+
+
+@tracer.capture_method
+def _lookup_user_id(receipt_id: str) -> str:
+    """Look up the userId that owns a receipt by scanning for the receiptId attribute.
+
+    This is used when the pipeline is triggered via S3 event notification
+    (S3 -> SQS -> EventBridge Pipes -> Step Functions) where userId is not
+    available in the event payload.
+
+    The scan filters on receiptId attribute and entityType=RECEIPT. At MVP
+    scale (single user, low volume), this is acceptable. For production
+    scale, add a GSI on receiptId or encode userId in the S3 key.
+    """
+    table = get_table()
+
+    # Scan with filter — paginate until we find the receipt or exhaust the table.
+    # DynamoDB Limit restricts items *evaluated* (before filtering), not items
+    # *returned*. We use a modest Limit to avoid reading the entire table in one
+    # call while still finding the receipt within a few pages at MVP scale.
+    scan_kwargs: dict[str, Any] = {
+        "FilterExpression": "receiptId = :rid AND entityType = :et",
+        "ExpressionAttributeValues": {
+            ":rid": receipt_id,
+            ":et": RECEIPT,
+        },
+        "ProjectionExpression": "PK",
+        "Limit": 100,
+    }
+
+    while True:
+        response = table.scan(**scan_kwargs)
+        items = response.get("Items", [])
+        if items:
+            pk = items[0].get("PK", "")
+            user_id = pk.split("#", 1)[1] if "#" in pk else ""
+            logger.info(
+                "Looked up userId from receipt",
+                extra={"receipt_id": receipt_id, "user_id": user_id},
+            )
+            return user_id
+        if "LastEvaluatedKey" not in response:
+            break
+        scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+
+    logger.error("Receipt not found in DynamoDB", extra={"receipt_id": receipt_id})
+    return ""
