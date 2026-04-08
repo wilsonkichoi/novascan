@@ -251,3 +251,20 @@ The test files in this wave do not introduce security vulnerabilities and provid
 **Verification:**
 - `cd backend && uv run pytest tests/unit/test_pipeline_results.py -v` -- PASS (11/11)
 - `cd backend && uv run pytest` -- PASS (482/482, no regressions)
+
+### Fix Verification (Claude Opus 4.6 (1M context) -- 2026-04-08)
+
+**Status: 1/1 fixed, 0 not fixed, 0 regressions**
+
+**[S1] (Inconsistent `cognito:groups` format in test_pipeline_results.py) -- Fixed**
+
+Verified: Line 63 of `backend/tests/unit/test_pipeline_results.py` now reads `claims["cognito:groups"] = groups` (passing the list directly), matching the format in `test_receipt_crud.py:65` and `test_categories.py:63`. The previous `",".join(groups)` has been removed. Git diff from commit `fd1afe4` confirms a single-line change. All three test files now consistently pass groups as a list to match actual API Gateway JWT authorizer behavior.
+
+**Consistency check:** Ran `grep 'claims\["cognito:groups"\]'` across all backend test files -- all three occurrences use the list format. No remaining instances of `",".join(groups)`.
+
+**Verification commands:**
+- `cd backend && uv run pytest tests/unit/test_pipeline_results.py -v` -- PASS (11/11)
+- `cd backend && uv run pytest` -- PASS (482/482, no regressions)
+- `cd frontend && npm run test -- --run` -- PASS (253/253, no regressions)
+
+**Verdict:** 1/1 issues resolved. All tests pass. No regressions detected.
