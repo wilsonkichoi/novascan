@@ -80,3 +80,72 @@ class ReceiptListResponse(BaseModel):
 
     receipts: list[ReceiptListItem]
     nextCursor: str | None = None
+
+
+class ReceiptDetailLineItem(BaseModel):
+    """Line item in a receipt detail response."""
+
+    sortOrder: int
+    name: str
+    quantity: float
+    unitPrice: float
+    totalPrice: float
+    subcategory: str | None = None
+    subcategoryDisplay: str | None = None
+
+
+class ReceiptDetail(BaseModel):
+    """GET /api/receipts/{id} response — full receipt with line items."""
+
+    receiptId: str
+    receiptDate: str | None = None
+    merchant: str | None = None
+    merchantAddress: str | None = None
+    total: float | None = None
+    subtotal: float | None = None
+    tax: float | None = None
+    tip: float | None = None
+    category: str | None = None
+    categoryDisplay: str | None = None
+    subcategory: str | None = None
+    subcategoryDisplay: str | None = None
+    status: Literal["processing", "confirmed", "failed"]
+    usedFallback: bool | None = None
+    rankingWinner: Literal["ocr-ai", "ai-multimodal"] | None = None
+    imageUrl: str | None = None
+    paymentMethod: str | None = None
+    lineItems: list[ReceiptDetailLineItem] = Field(default_factory=list)
+    createdAt: str
+    updatedAt: str | None = None
+
+
+class ReceiptUpdateRequest(BaseModel):
+    """PUT /api/receipts/{id} request body — partial update."""
+
+    merchant: str | None = None
+    merchantAddress: str | None = None
+    receiptDate: str | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    total: float | None = None
+    subtotal: float | None = None
+    tax: float | None = None
+    tip: float | None = None
+    paymentMethod: str | None = None
+
+
+class LineItemInput(BaseModel):
+    """Single line item in a PUT /api/receipts/{id}/items request."""
+
+    sortOrder: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=200)
+    quantity: float = Field(gt=0)
+    unitPrice: float = Field(ge=0)
+    totalPrice: float = Field(ge=0)
+    subcategory: str | None = None
+
+
+class LineItemsUpdateRequest(BaseModel):
+    """PUT /api/receipts/{id}/items request body."""
+
+    items: list[LineItemInput] = Field(min_length=0, max_length=100)
