@@ -458,3 +458,74 @@ cd frontend && npx tsc --noEmit && npm run build
 - `cd frontend && npx tsc --noEmit` -- PASS
 - `cd frontend && npm run build` -- PASS
 
+### Fix Verification (Claude Opus 4.6 (1M context) -- 2026-04-08)
+
+**Verifier:** Independent agent (separate context from fix author)
+**Branch:** `feature/m4-wave2-categories-detail` (fixes merged in via commit `e838403`)
+
+#### Methodology
+
+1. Read the review file to understand all 8 issues (S1-S8) and their fix/defer status
+2. Read the implementation files: `categories.py`, `category.py`, `ReceiptDetailPage.tsx`
+3. Ran verification commands: `ruff check`, `pytest` (full suite: 386 passed), `npm run build`
+4. Verified each fix against the issue description and spec requirements
+
+#### Fixed Issues (4/4 verified)
+
+**[S1] Missing `createdAt` on custom category record -- VERIFIED RESOLVED**
+- `categories.py:13` imports `from datetime import UTC, datetime`
+- `categories.py:234` adds `"createdAt": datetime.now(UTC).isoformat()` to the `put_item` dict
+- Matches SPEC Section 5 requirement for `createdAt: S (ISO 8601)` on Custom Category Attributes
+- No regressions: 386/386 backend tests pass
+
+**[S4] No error feedback on delete failure -- VERIFIED RESOLVED**
+- `ReceiptDetailPage.tsx:77` adds `deleteError` state variable (`useState<string | null>(null)`)
+- `ReceiptDetailPage.tsx:128-130` adds `onError` callback setting the error message
+- `ReceiptDetailPage.tsx:339-341` displays red error text in dialog between description and footer
+- `ReceiptDetailPage.tsx:122,165` clears error on delete start and dialog open
+- Frontend builds successfully with `tsc -b && vite build`
+
+**[S6] displayName allows unrestricted Unicode -- VERIFIED RESOLVED**
+- `category.py:28` adds `pattern=r"^[a-zA-Z0-9 &/,.'()\-]+$"` to `CustomCategoryRequest.displayName`
+- Blocks control characters, zero-width Unicode, RTL overrides, newlines, and prompt injection payloads
+- Includes apostrophe for legitimate names like "Sam's Club" (per fix plan analysis)
+- Pydantic validates at API boundary, consistent with defense-in-depth pattern
+
+**[S8] No slug path parameter validation in DELETE -- VERIFIED RESOLVED**
+- `categories.py:46` defines `_SLUG_PATTERN = re.compile(r"^[a-z0-9-]{1,100}$")`
+- `categories.py:258-259` validates slug at top of `delete_category()` before any DynamoDB calls
+- Returns 400 with `"Invalid category slug format"` for invalid slugs
+- Consistent with `_ULID_PATTERN` validation used on receipt endpoints
+
+#### Deferred Issues (4/4 appropriately deferred)
+
+**[S2] `_slugify` strips `&` -- CORRECTLY DEFERRED**
+- Conflict checks at lines 206-212 (predefined) and 219-225 (custom) catch actual slug collisions
+- No behavioral bug; `&`-to-`and` conversion is a polish item, not a correctness fix
+
+**[S3] Pipeline-results endpoint in categories.py -- CORRECTLY DEFERRED**
+- Organizational concern only; moving would cause churn during active test writing (Wave 4)
+- No behavioral impact on any endpoint
+
+**[S5] `useReceipt` hook defensive check -- CORRECTLY DEFERRED**
+- `Boolean("")` is `false`, so `enabled: false` prevents the query from executing
+- Current code works correctly as-is
+
+**[S7] No rate limiting on POST /api/categories -- CORRECTLY DEFERRED**
+- Per-user PK-scoped; blast radius limited to attacker's own partition
+- Personal MVP; API Gateway provides baseline throttling
+- Security review itself says "No immediate code change needed"
+
+#### Verification Commands
+
+| Command | Result |
+|---------|--------|
+| `cd backend && uv run ruff check src/` | PASS (all checks passed) |
+| `cd backend && uv run pytest tests/ -v -k "categories"` | PASS (10/10) |
+| `cd backend && uv run pytest tests/ -v` | PASS (386/386, 0 failures) |
+| `cd frontend && npm run build` | PASS (tsc -b + vite build, 1.28s) |
+
+#### Verdict
+
+**All 4 fixed issues verified resolved. All 4 deferred issues appropriately deferred. Wave 2 review fixes are complete.**
+
