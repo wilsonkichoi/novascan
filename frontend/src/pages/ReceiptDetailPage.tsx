@@ -27,8 +27,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useReceipt, useDeleteReceipt } from "@/hooks/useReceipt";
+import { useReceipt, useDeleteReceipt, useUpdateReceipt } from "@/hooks/useReceipt";
+import { useAuth } from "@/hooks/useAuth";
 import { NotFoundError } from "@/api/receipts";
+import CategoryPicker from "@/components/CategoryPicker";
+import PipelineComparison from "@/components/PipelineComparison";
 
 const statusConfig = {
   processing: {
@@ -71,10 +74,14 @@ function formatDate(dateStr: string): string {
 export default function ReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: receipt, isLoading, error } = useReceipt(id ?? "");
+  const updateReceipt = useUpdateReceipt(id ?? "");
   const deleteReceipt = useDeleteReceipt();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const isStaff = user?.roles.includes("staff") || user?.roles.includes("admin");
 
   if (isLoading) {
     return (
@@ -220,12 +227,17 @@ export default function ReceiptDetailPage() {
                   </dd>
                 </div>
               )}
-              {receipt.categoryDisplay && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Category</dt>
-                  <dd className="text-sm">{receipt.categoryDisplay}</dd>
-                </div>
-              )}
+              <div className="space-y-1">
+                <dt className="text-muted-foreground text-sm">Category</dt>
+                <dd>
+                  <CategoryPicker
+                    value={receipt.category}
+                    onSelect={(slug) => {
+                      updateReceipt.mutate({ category: slug });
+                    }}
+                  />
+                </dd>
+              </div>
               {receipt.subcategoryDisplay && (
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground text-sm">Subcategory</dt>
@@ -321,6 +333,11 @@ export default function ReceiptDetailPage() {
                 </Table>
               </div>
             </div>
+          )}
+
+          {/* Pipeline comparison toggle (staff only) */}
+          {isStaff && (
+            <PipelineComparison receiptId={receipt.receiptId} />
           )}
         </section>
       </div>

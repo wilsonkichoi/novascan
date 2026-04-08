@@ -902,7 +902,7 @@
   - `cd frontend && npm run build` succeeds
 - **Test command:** `cd frontend && npm run build`
 
-#### [ ] Task 4.5: Category Picker + Pipeline Comparison Toggle
+#### [x] Task 4.5: Category Picker + Pipeline Comparison Toggle
 - **Role:** frontend-developer
 - **Depends on:** 4.2, 4.3
 - **Spec reference:** SPEC.md >> Section 8 (Custom Categories UX Flow), Milestone 4 Acceptance Criteria
