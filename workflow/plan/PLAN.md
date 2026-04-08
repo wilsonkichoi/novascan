@@ -884,7 +884,7 @@
 
 ### Wave 3: Detail Page Features
 
-#### [ ] Task 4.4: Line Item Editing UI
+#### [x] Task 4.4: Line Item Editing UI
 - **Role:** frontend-developer
 - **Depends on:** 4.1, 4.3
 - **Spec reference:** SPEC.md >> Milestone 4 Acceptance Criteria (line item editing)

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Loader2,
@@ -18,17 +18,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useReceipt, useDeleteReceipt } from "@/hooks/useReceipt";
+import { useReceipt, useDeleteReceipt, useUpdateItems } from "@/hooks/useReceipt";
 import { NotFoundError } from "@/api/receipts";
+import LineItemEditor from "@/components/LineItemEditor";
 
 const statusConfig = {
   processing: {
@@ -73,8 +66,31 @@ export default function ReceiptDetailPage() {
   const navigate = useNavigate();
   const { data: receipt, isLoading, error } = useReceipt(id ?? "");
   const deleteReceipt = useDeleteReceipt();
+  const updateItems = useUpdateItems(id ?? "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [saveItemsError, setSaveItemsError] = useState<string | null>(null);
+
+  const handleSaveItems = useCallback(
+    (
+      items: {
+        sortOrder: number;
+        name: string;
+        quantity: number;
+        unitPrice: number;
+        totalPrice: number;
+        subcategory?: string | null;
+      }[],
+    ) => {
+      setSaveItemsError(null);
+      updateItems.mutate(items, {
+        onError: (err: Error) => {
+          setSaveItemsError(err.message || "Failed to save line items");
+        },
+      });
+    },
+    [updateItems],
+  );
 
   if (isLoading) {
     return (
@@ -278,50 +294,13 @@ export default function ReceiptDetailPage() {
             </dl>
           </div>
 
-          {/* Line items */}
-          {receipt.lineItems.length > 0 && (
-            <div className="rounded-lg border">
-              <h2 className="p-4 pb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Line Items
-              </h2>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="hidden sm:table-cell">
-                        Subcategory
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {receipt.lineItems.map((item) => (
-                      <TableRow key={item.sortOrder}>
-                        <TableCell className="font-medium">
-                          {item.name}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(item.unitPrice)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(item.totalPrice)}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground hidden sm:table-cell">
-                          {item.subcategoryDisplay ?? "--"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
+          {/* Line items (editor) */}
+          <LineItemEditor
+            lineItems={receipt.lineItems}
+            onSave={handleSaveItems}
+            isSaving={updateItems.isPending}
+            saveError={saveItemsError}
+          />
         </section>
       </div>
 

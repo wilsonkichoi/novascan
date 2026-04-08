@@ -86,7 +86,7 @@ Last updated: 2026-04-08
 | 4.1  | Category Constants + Receipt CRUD Endpoints | backend-engineer | done | [task-4.1](reviews/task-4.1.md) | 2026-04-08. All 10 review issues resolved. |
 | 4.2  | Category + Pipeline Results Endpoints | backend-engineer | review | [task-4.2](reviews/task-4.2.md) | 2026-04-08 |
 | 4.3  | Receipt Detail Page | frontend-developer | review | [task-4.3](reviews/task-4.3.md) | 2026-04-08 |
-| 4.4  | Line Item Editing UI | frontend-developer | pending | | |
+| 4.4  | Line Item Editing UI | frontend-developer | review | [task-4.4](reviews/task-4.4.md) | 2026-04-08 |
 | 4.5  | Category Picker + Pipeline Comparison Toggle | frontend-developer | pending | | |
 | 4.6  | Receipt Management API Tests | qa-engineer | pending | | TEST |
 | 4.7  | Receipt Management UI Tests | qa-engineer | pending | | TEST |

@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getReceipt,
   deleteReceipt,
+  updateItems,
   type ReceiptDetail,
+  type LineItemInput,
 } from "@/api/receipts";
 
 export function useReceipt(id: string) {
@@ -21,6 +23,58 @@ export function useDeleteReceipt() {
     onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: ["receipt", id] });
       void queryClient.invalidateQueries({ queryKey: ["receipts"] });
+    },
+  });
+}
+
+export function useUpdateItems(receiptId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (items: LineItemInput[]) => updateItems(receiptId, items),
+    onMutate: async (newItems) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["receipt", receiptId] });
+
+      // Snapshot current data for rollback
+      const previous = queryClient.getQueryData<ReceiptDetail>([
+        "receipt",
+        receiptId,
+      ]);
+
+      // Optimistically update the cache
+      if (previous) {
+        queryClient.setQueryData<ReceiptDetail>(
+          ["receipt", receiptId],
+          {
+            ...previous,
+            lineItems: newItems.map((item) => ({
+              sortOrder: item.sortOrder,
+              name: item.name,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.totalPrice,
+              subcategory: item.subcategory ?? null,
+              subcategoryDisplay: null,
+            })),
+          },
+        );
+      }
+
+      return { previous };
+    },
+    onError: (_err, _newItems, context) => {
+      // Rollback on failure
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ["receipt", receiptId],
+          context.previous,
+        );
+      }
+    },
+    onSettled: () => {
+      // Refetch to get server truth
+      void queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
     },
   });
 }
