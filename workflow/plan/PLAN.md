@@ -945,7 +945,7 @@
   - `cd backend && uv run pytest tests/unit/test_receipt_crud.py tests/unit/test_categories.py tests/unit/test_pipeline_results.py tests/unit/test_category_constants.py -v` passes
 - **Test command:** `cd backend && uv run pytest tests/unit/ -v -k "receipt_crud or categories or pipeline_results or category_constants"`
 
-#### [ ] Task 4.7: Receipt Management UI Tests [TEST]
+#### [x] Task 4.7: Receipt Management UI Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 4.3, 4.4, 4.5
 - **Spec reference:** SPEC.md >> Milestone 4 Acceptance Criteria
