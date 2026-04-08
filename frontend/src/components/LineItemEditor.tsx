@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Plus, Trash2, Save, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +108,7 @@ interface LineItemEditorProps {
       subcategory?: string | null;
     }[],
   ) => void;
+  onSaveSuccess?: () => void;
   isSaving: boolean;
   saveError: string | null;
 }
@@ -115,6 +116,7 @@ interface LineItemEditorProps {
 export default function LineItemEditor({
   lineItems,
   onSave,
+  onSaveSuccess,
   isSaving,
   saveError,
 }: LineItemEditorProps) {
@@ -124,6 +126,21 @@ export default function LineItemEditor({
   );
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [pendingRemoveKey, setPendingRemoveKey] = useState<string | null>(null);
+
+  // Exit editing mode when the parent signals save success
+  const onSaveSuccessRef = useRef(onSaveSuccess);
+  onSaveSuccessRef.current = onSaveSuccess;
+  const prevIsSavingRef = useRef(isSaving);
+  useEffect(() => {
+    // Detect transition from saving -> not saving while in editing mode
+    // If onSaveSuccess is provided and isSaving went from true to false, the save succeeded
+    // (errors are handled separately via saveError prop)
+    if (prevIsSavingRef.current && !isSaving && isEditing && !saveError) {
+      setIsEditing(false);
+      onSaveSuccessRef.current?.();
+    }
+    prevIsSavingRef.current = isSaving;
+  }, [isSaving, isEditing, saveError]);
 
   const startEditing = useCallback(() => {
     setItems(toEditorItems(lineItems));

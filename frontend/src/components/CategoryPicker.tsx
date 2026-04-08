@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, Plus, Trash2, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ChevronDown, Plus, Trash2, Loader2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,6 +32,23 @@ export default function CategoryPicker({ value, onSelect }: CategoryPickerProps)
   const [newDisplayName, setNewDisplayName] = useState("");
   const [newParentCategory, setNewParentCategory] = useState<string | "">("");
   const [createError, setCreateError] = useState<string | null>(null);
+  const [pendingDeleteSlug, setPendingDeleteSlug] = useState<string | null>(null);
+
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Close dropdown on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   const categories = data?.categories ?? [];
   const predefined = categories.filter((c) => !c.isCustom);
@@ -46,12 +63,25 @@ export default function CategoryPicker({ value, onSelect }: CategoryPickerProps)
     setIsOpen(false);
   }
 
-  function handleDelete(
+  function handleDeleteRequest(
     e: React.MouseEvent,
     slug: string,
   ) {
     e.stopPropagation();
-    deleteCategoryMutation.mutate(slug);
+    setPendingDeleteSlug(slug);
+  }
+
+  function handleDeleteConfirm(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (pendingDeleteSlug) {
+      deleteCategoryMutation.mutate(pendingDeleteSlug);
+      setPendingDeleteSlug(null);
+    }
+  }
+
+  function handleDeleteCancel(e: React.MouseEvent) {
+    e.stopPropagation();
+    setPendingDeleteSlug(null);
   }
 
   function handleOpenCreate() {
@@ -95,6 +125,7 @@ export default function CategoryPicker({ value, onSelect }: CategoryPickerProps)
     <>
       <div className="relative">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           disabled={isLoading}
@@ -161,7 +192,10 @@ export default function CategoryPicker({ value, onSelect }: CategoryPickerProps)
                   category={cat}
                   isSelected={cat.slug === value}
                   onSelect={handleSelect}
-                  onDelete={handleDelete}
+                  onDelete={handleDeleteRequest}
+                  onDeleteConfirm={handleDeleteConfirm}
+                  onDeleteCancel={handleDeleteCancel}
+                  isPendingDelete={pendingDeleteSlug === cat.slug}
                   isDeleting={
                     deleteCategoryMutation.isPending &&
                     deleteCategoryMutation.variables === cat.slug
@@ -273,6 +307,9 @@ interface CategoryOptionProps {
   isSelected: boolean;
   onSelect: (slug: string) => void;
   onDelete?: (e: React.MouseEvent, slug: string) => void;
+  onDeleteConfirm?: (e: React.MouseEvent) => void;
+  onDeleteCancel?: (e: React.MouseEvent) => void;
+  isPendingDelete?: boolean;
   isDeleting?: boolean;
 }
 
@@ -281,6 +318,9 @@ function CategoryOption({
   isSelected,
   onSelect,
   onDelete,
+  onDeleteConfirm,
+  onDeleteCancel,
+  isPendingDelete,
   isDeleting,
 }: CategoryOptionProps) {
   return (
@@ -301,7 +341,27 @@ function CategoryOption({
       tabIndex={0}
     >
       <span>{category.displayName}</span>
-      {onDelete && (
+      {onDelete && isPendingDelete && (
+        <span className="ml-2 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onDeleteConfirm}
+            aria-label={`Confirm delete ${category.displayName}`}
+            className="rounded p-0.5 text-destructive hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <Check className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onDeleteCancel}
+            aria-label="Cancel delete"
+            className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <X className="size-3.5" />
+          </button>
+        </span>
+      )}
+      {onDelete && !isPendingDelete && (
         <button
           type="button"
           onClick={(e) => onDelete(e, category.slug)}

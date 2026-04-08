@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useReceipt, useDeleteReceipt, useUpdateItems, useUpdateReceipt } from "@/hooks/useReceipt";
 import { useAuth } from "@/hooks/useAuth";
+import { useCategories } from "@/hooks/useCategories";
 import { NotFoundError } from "@/api/receipts";
 import LineItemEditor from "@/components/LineItemEditor";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -97,7 +98,13 @@ export default function ReceiptDetailPage() {
     [updateItems],
   );
 
+  // UX convenience only -- backend enforces staff-only access on GET /api/receipts/{id}/pipeline-results (403 for non-staff)
   const isStaff = user?.roles.includes("staff") || user?.roles.includes("admin");
+  const { data: categoriesData } = useCategories();
+  const selectedCategoryData = categoriesData?.categories.find(
+    (c) => c.slug === receipt?.category,
+  );
+  const subcategories = selectedCategoryData?.subcategories ?? [];
 
   if (isLoading) {
     return (
@@ -249,12 +256,40 @@ export default function ReceiptDetailPage() {
                   <CategoryPicker
                     value={receipt.category}
                     onSelect={(slug) => {
-                      updateReceipt.mutate({ category: slug });
+                      // Clear subcategory when category changes
+                      updateReceipt.mutate({ category: slug, subcategory: "" });
                     }}
                   />
                 </dd>
               </div>
-              {receipt.subcategoryDisplay && (
+              {subcategories.length > 0 && (
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground text-sm">Subcategory</dt>
+                  <dd>
+                    <select
+                      value={receipt.subcategory ?? ""}
+                      onChange={(e) => {
+                        updateReceipt.mutate({
+                          subcategory: e.target.value || "",
+                        });
+                      }}
+                      aria-label="Select subcategory"
+                      className={cn(
+                        "flex w-full rounded-md border px-3 py-2 text-sm",
+                        "bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      )}
+                    >
+                      <option value="">None</option>
+                      {subcategories.map((sub) => (
+                        <option key={sub.slug} value={sub.slug}>
+                          {sub.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </dd>
+                </div>
+              )}
+              {subcategories.length === 0 && receipt.subcategoryDisplay && (
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground text-sm">Subcategory</dt>
                   <dd className="text-sm">{receipt.subcategoryDisplay}</dd>
