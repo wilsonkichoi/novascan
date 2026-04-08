@@ -969,7 +969,7 @@
 
 ### Wave 1: Backend APIs
 
-#### [ ] Task 5.1: Dashboard Summary Endpoint
+#### [x] Task 5.1: Dashboard Summary Endpoint
 - **Role:** backend-engineer
 - **Depends on:** none (M4 complete)
 - **Spec reference:** api-contracts.md >> GET /api/dashboard/summary
