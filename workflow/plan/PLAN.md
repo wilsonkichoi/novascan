@@ -859,7 +859,7 @@
   - `cd backend && uv run ruff check src/` passes
 - **Test command:** `cd backend && uv run ruff check src/`
 
-#### [ ] Task 4.3: Receipt Detail Page
+#### [x] Task 4.3: Receipt Detail Page
 - **Role:** frontend-developer
 - **Depends on:** 4.1
 - **Spec reference:** SPEC.md >> Milestone 4 Acceptance Criteria
