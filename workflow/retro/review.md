@@ -1,29 +1,30 @@
-# Retrospective Review: Milestone 3.1
+# Retrospective Review: Milestone 4
 
-**Retrospective file:** `workflow/retro/RETRO-M3.1.md`
-**Reviewer:** Claude Opus 4.6 (1M context) — QA Engineer role
-**Date:** 2026-04-05
+**Retrospective file:** `workflow/retro/RETRO-M4.md`
+**Reviewer:** Claude Opus 4.6 (1M context) -- QA Engineer role
+**Date:** 2026-04-08
 
 ## Verification Results
 
 | Suite | Result | Notes |
 |-------|--------|-------|
-| Backend (`cd backend && uv run pytest`) | 386/386 passed | 75 warnings (metrics flush — harmless) |
-| Infra (`cd infra && uv run pytest`) | 100/100 passed | Snapshot was stale — regenerated during verification |
-| Backend lint (`cd backend && uv run ruff check src/`) | Clean | Source files pass |
-| Backend lint (`cd backend && uv run ruff check tests/`) | 18 errors | Pre-existing from M3, not M3.1. All in M3 test files. |
-| README.md | Adequate | No stale placeholders found |
+| Backend (`cd backend && uv run pytest`) | 482/482 passed | 75 warnings (metrics flush -- harmless) |
+| Frontend (`cd frontend && npm run test -- --run`) | 253/253 passed | 13 test files |
+| Infra (`cd infra && uv run pytest`) | 100/100 passed | Snapshot was stale -- regenerated during verification |
+| CDK synth (`cd infra && uv run cdk synth --context stage=dev`) | PASS | |
+| Backend lint (`cd backend && uv run ruff check src/`) | Clean | |
+| README.md | Updated | Added M4 capabilities, test counts, pipeline architecture detail |
 
 ## Issues Found During Verification
 
-1. **CDK snapshot stale on `main`.** `infra/tests/snapshots/novascan-dev.template.json` did not reflect M3.1 CDK changes (GSI2, scoped IAM, lifecycle rules, security headers, throttling). Regenerated during this verification. This needs to be committed.
+1. **CDK snapshot stale on `main` (recurring).** Third consecutive milestone where `infra/tests/snapshots/novascan-dev.template.json` was out of date. Regenerated during verification. This is the same issue flagged in M3.1 retro.
 
-2. **Pre-existing lint errors in M3 test files.** 18 ruff errors (unused imports, import ordering) in `test_pipeline_flow.py`, `test_finalize.py`, `test_textract_extract.py`, `test_nova_structure.py`, `test_bedrock_extract.py`, `test_ranking.py`. These are not M3.1 regressions — they existed before the security hardening. Should be fixed as a chore.
+2. **PROGRESS.md had Tasks 4.2 and 4.3 stuck in `review` status.** Wave 2 fix verification was completed and documented in `wave-m4-2.md`, but PROGRESS.md was not updated to `done`. Fixed during verification.
 
 ## Areas of Low Confidence
 
-- **Section 5 (Test Separation Effectiveness):** The assessment that S3 (Nova error sanitization test) "would have been missed if the implementation and test authors were the same session" is plausible but not provable. The test was written by the same model in a different context window. Whether a separate human or a different model would have caught it is speculative.
+- **Section 5 (Test Separation Effectiveness):** Stated that tests did not catch implementation bugs. This could be interpreted as tests being insufficiently thorough, but the 174 tests cover all acceptance criteria and the review process (which did find 26 issues) compensated. The assessment is factually correct but the conclusion is ambiguous.
 
-- **Section 6 (Subagent type impact):** Stated the impact of wrong subagent types as "unclear." This is honest but unsatisfying. Without a controlled comparison (same tasks, correct roles), we cannot quantify the effect. The zero-defect Wave 2 result suggests role-specific prompting may not be critical for well-specified security tasks.
+- **Section 6 (agent count):** Estimated ~16 agents. The exact count depends on how fix and verify sub-sessions are counted. The number is approximate.
 
-- **Process failure completeness:** The 9 process failures were provided by the orchestrator. There may be additional process issues not surfaced (e.g., context window utilization, token costs, time-to-completion per agent). The retrospective can only cover what was reported.
+- **Recommendation #1 (snapshot automation):** This has been recommended for three milestones without implementation. The retrospective flags it again but cannot guarantee it will be acted upon.
