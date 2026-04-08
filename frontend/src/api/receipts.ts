@@ -101,6 +101,163 @@ export async function fetchReceipts(
   return (await res.json()) as ReceiptListResponse;
 }
 
+// --- Receipt detail types and API functions ---
+
+export interface ReceiptDetailLineItem {
+  sortOrder: number;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  subcategory: string | null;
+  subcategoryDisplay: string | null;
+}
+
+export interface ReceiptDetail {
+  receiptId: string;
+  receiptDate: string | null;
+  merchant: string | null;
+  merchantAddress: string | null;
+  total: number | null;
+  subtotal: number | null;
+  tax: number | null;
+  tip: number | null;
+  category: string | null;
+  categoryDisplay: string | null;
+  subcategory: string | null;
+  subcategoryDisplay: string | null;
+  status: "processing" | "confirmed" | "failed";
+  usedFallback: boolean | null;
+  rankingWinner: "ocr-ai" | "ai-multimodal" | null;
+  imageUrl: string | null;
+  paymentMethod: string | null;
+  lineItems: ReceiptDetailLineItem[];
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export async function getReceipt(id: string): Promise<ReceiptDetail> {
+  const token = await getValidIdToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_URL}/api/receipts/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 404) {
+    throw new NotFoundError("Receipt not found");
+  }
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch receipt (${res.status})`);
+  }
+
+  return (await res.json()) as ReceiptDetail;
+}
+
+export interface ReceiptUpdatePayload {
+  merchant?: string;
+  merchantAddress?: string;
+  receiptDate?: string;
+  category?: string;
+  subcategory?: string;
+  total?: number;
+  subtotal?: number;
+  tax?: number;
+  tip?: number | null;
+  paymentMethod?: string;
+}
+
+export async function updateReceipt(
+  id: string,
+  data: ReceiptUpdatePayload,
+): Promise<ReceiptDetail> {
+  const token = await getValidIdToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_URL}/api/receipts/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as ApiError | null;
+    const message =
+      errorBody?.error?.message ?? `Failed to update receipt (${res.status})`;
+    throw new Error(message);
+  }
+
+  return (await res.json()) as ReceiptDetail;
+}
+
+export async function deleteReceipt(id: string): Promise<void> {
+  const token = await getValidIdToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_URL}/api/receipts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 404) {
+    throw new NotFoundError("Receipt not found");
+  }
+
+  if (!res.ok) {
+    throw new Error(`Failed to delete receipt (${res.status})`);
+  }
+}
+
+export interface LineItemInput {
+  sortOrder: number;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  subcategory?: string | null;
+}
+
+export async function updateItems(
+  id: string,
+  items: LineItemInput[],
+): Promise<ReceiptDetail> {
+  const token = await getValidIdToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(
+    `${API_URL}/api/receipts/${encodeURIComponent(id)}/items`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ items }),
+    },
+  );
+
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as ApiError | null;
+    const message =
+      errorBody?.error?.message ?? `Failed to update items (${res.status})`;
+    throw new Error(message);
+  }
+
+  return (await res.json()) as ReceiptDetail;
+}
+
+/** Error thrown when a resource is not found (404). */
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
 // --- S3 upload ---
 
 export function uploadFileToS3(

@@ -821,7 +821,7 @@
 
 ### Wave 1: Backend Foundation
 
-#### [ ] Task 4.1: Category Constants + Receipt CRUD Endpoints
+#### [x] Task 4.1: Category Constants + Receipt CRUD Endpoints
 - **Role:** backend-engineer
 - **Depends on:** none (M3 complete)
 - **Spec reference:** SPEC.md >> Section 8, api-contracts.md >> GET/PUT/DELETE receipts, PUT items
@@ -843,7 +843,7 @@
 
 ### Wave 2: Category + Pipeline APIs + Receipt Detail UI
 
-#### [ ] Task 4.2: Category + Pipeline Results Endpoints
+#### [x] Task 4.2: Category + Pipeline Results Endpoints
 - **Role:** backend-engineer
 - **Depends on:** 4.1
 - **Spec reference:** api-contracts.md >> GET/POST/DELETE categories, GET pipeline-results
@@ -859,7 +859,7 @@
   - `cd backend && uv run ruff check src/` passes
 - **Test command:** `cd backend && uv run ruff check src/`
 
-#### [ ] Task 4.3: Receipt Detail Page
+#### [x] Task 4.3: Receipt Detail Page
 - **Role:** frontend-developer
 - **Depends on:** 4.1
 - **Spec reference:** SPEC.md >> Milestone 4 Acceptance Criteria
@@ -884,7 +884,7 @@
 
 ### Wave 3: Detail Page Features
 
-#### [ ] Task 4.4: Line Item Editing UI
+#### [x] Task 4.4: Line Item Editing UI
 - **Role:** frontend-developer
 - **Depends on:** 4.1, 4.3
 - **Spec reference:** SPEC.md >> Milestone 4 Acceptance Criteria (line item editing)
@@ -902,7 +902,7 @@
   - `cd frontend && npm run build` succeeds
 - **Test command:** `cd frontend && npm run build`
 
-#### [ ] Task 4.5: Category Picker + Pipeline Comparison Toggle
+#### [x] Task 4.5: Category Picker + Pipeline Comparison Toggle
 - **Role:** frontend-developer
 - **Depends on:** 4.2, 4.3
 - **Spec reference:** SPEC.md >> Section 8 (Custom Categories UX Flow), Milestone 4 Acceptance Criteria
@@ -927,7 +927,7 @@
 
 ### Wave 4: Tests
 
-#### [ ] Task 4.6: Receipt Management API Tests [TEST]
+#### [x] Task 4.6: Receipt Management API Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 4.1, 4.2
 - **Spec reference:** api-contracts.md >> all M4 endpoints
@@ -945,7 +945,7 @@
   - `cd backend && uv run pytest tests/unit/test_receipt_crud.py tests/unit/test_categories.py tests/unit/test_pipeline_results.py tests/unit/test_category_constants.py -v` passes
 - **Test command:** `cd backend && uv run pytest tests/unit/ -v -k "receipt_crud or categories or pipeline_results or category_constants"`
 
-#### [ ] Task 4.7: Receipt Management UI Tests [TEST]
+#### [x] Task 4.7: Receipt Management UI Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 4.3, 4.4, 4.5
 - **Spec reference:** SPEC.md >> Milestone 4 Acceptance Criteria
@@ -987,7 +987,7 @@
   - `cd backend && uv run ruff check src/` passes
 - **Test command:** `cd backend && uv run ruff check src/`
 
-#### [ ] Task 5.2: Transactions Endpoint
+#### [x] Task 5.2: Transactions Endpoint
 - **Role:** backend-engineer
 - **Depends on:** none (M4 complete)
 - **Spec reference:** api-contracts.md >> GET /api/transactions

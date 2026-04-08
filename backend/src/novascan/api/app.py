@@ -7,8 +7,10 @@ from aws_lambda_powertools.event_handler import APIGatewayHttpResolver
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
+from api.categories import router as categories_router
 from api.dashboard import router as dashboard_router
 from api.receipts import router as receipts_router
+from api.transactions import router as transactions_router
 from api.upload import router as upload_router
 
 logger = Logger()
@@ -18,6 +20,8 @@ app = APIGatewayHttpResolver()
 app.include_router(upload_router)
 app.include_router(receipts_router)
 app.include_router(dashboard_router)
+app.include_router(transactions_router)
+app.include_router(categories_router)
 
 
 @app.get("/api/health")

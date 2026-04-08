@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-04-04
+Last updated: 2026-04-08
 
 ## Prerequisites
 
@@ -83,20 +83,20 @@ Last updated: 2026-04-04
 
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
-| 4.1  | Category Constants + Receipt CRUD Endpoints | backend-engineer | pending | | |
-| 4.2  | Category + Pipeline Results Endpoints | backend-engineer | pending | | |
-| 4.3  | Receipt Detail Page | frontend-developer | pending | | |
-| 4.4  | Line Item Editing UI | frontend-developer | pending | | |
-| 4.5  | Category Picker + Pipeline Comparison Toggle | frontend-developer | pending | | |
-| 4.6  | Receipt Management API Tests | qa-engineer | pending | | TEST |
-| 4.7  | Receipt Management UI Tests | qa-engineer | pending | | TEST |
+| 4.1  | Category Constants + Receipt CRUD Endpoints | backend-engineer | done | [task-4.1](reviews/task-4.1.md) | 2026-04-08. All 10 review issues resolved. |
+| 4.2  | Category + Pipeline Results Endpoints | backend-engineer | done | [task-4.2](reviews/task-4.2.md) | 2026-04-08. All fixes verified. |
+| 4.3  | Receipt Detail Page | frontend-developer | done | [task-4.3](reviews/task-4.3.md) | 2026-04-08. All fixes verified. |
+| 4.4  | Line Item Editing UI | frontend-developer | done | [task-4.4](reviews/task-4.4.md) | 2026-04-08. All fixes verified. |
+| 4.5  | Category Picker + Pipeline Comparison Toggle | frontend-developer | done | [task-4.5](reviews/task-4.5.md) | 2026-04-08. All fixes verified. |
+| 4.6  | Receipt Management API Tests | qa-engineer | done | [task-4.6](reviews/task-4.6.md) | 96 tests. 2026-04-08. Fix verified. TEST |
+| 4.7  | Receipt Management UI Tests | qa-engineer | done | [task-4.7](reviews/task-4.7.md) | 78 tests. 2026-04-08. No issues. TEST |
 
 ## Milestone 5: Dashboard & Transactions
 
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
 | 5.1  | Dashboard Summary Endpoint | backend-engineer | review | [task-5.1](reviews/task-5.1.md) | 2026-04-08 |
-| 5.2  | Transactions Endpoint | backend-engineer | pending | | |
+| 5.2  | Transactions Endpoint | backend-engineer | review | [task-5.2](reviews/task-5.2.md) | 2026-04-08 |
 | 5.3  | Dashboard Page + Analytics Placeholder | frontend-developer | pending | | |
 | 5.4  | Transactions Page | frontend-developer | pending | | |
 | 5.5  | Dashboard + Transactions API Tests | qa-engineer | pending | | TEST |
