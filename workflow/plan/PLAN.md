@@ -821,7 +821,7 @@
 
 ### Wave 1: Backend Foundation
 
-#### [ ] Task 4.1: Category Constants + Receipt CRUD Endpoints
+#### [x] Task 4.1: Category Constants + Receipt CRUD Endpoints
 - **Role:** backend-engineer
 - **Depends on:** none (M3 complete)
 - **Spec reference:** SPEC.md >> Section 8, api-contracts.md >> GET/PUT/DELETE receipts, PUT items

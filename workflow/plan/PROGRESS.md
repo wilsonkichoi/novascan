@@ -83,7 +83,7 @@ Last updated: 2026-04-04
 
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
-| 4.1  | Category Constants + Receipt CRUD Endpoints | backend-engineer | pending | | |
+| 4.1  | Category Constants + Receipt CRUD Endpoints | backend-engineer | review | [task-4.1](reviews/task-4.1.md) | 2026-04-08 |
 | 4.2  | Category + Pipeline Results Endpoints | backend-engineer | pending | | |
 | 4.3  | Receipt Detail Page | frontend-developer | pending | | |
 | 4.4  | Line Item Editing UI | frontend-developer | pending | | |
