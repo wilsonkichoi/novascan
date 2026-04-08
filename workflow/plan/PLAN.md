@@ -843,7 +843,7 @@
 
 ### Wave 2: Category + Pipeline APIs + Receipt Detail UI
 
-#### [ ] Task 4.2: Category + Pipeline Results Endpoints
+#### [x] Task 4.2: Category + Pipeline Results Endpoints
 - **Role:** backend-engineer
 - **Depends on:** 4.1
 - **Spec reference:** api-contracts.md >> GET/POST/DELETE categories, GET pipeline-results
