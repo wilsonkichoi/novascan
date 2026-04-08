@@ -60,7 +60,7 @@ def _build_apigw_event(
 
     claims: dict[str, Any] = {"sub": user_id}
     if groups:
-        claims["cognito:groups"] = ",".join(groups)
+        claims["cognito:groups"] = groups
 
     event: dict[str, Any] = {
         "version": "2.0",
