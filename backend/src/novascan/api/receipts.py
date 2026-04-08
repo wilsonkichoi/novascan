@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -83,11 +84,9 @@ def _decode_cursor(cursor: str, *, user_id: str) -> dict[str, Any]:
 
 
 def _decimal_to_float(val: Any) -> float | None:
-    """Convert Decimal to float, return None for None/missing."""
+    """Convert numeric value to float, return None for None/missing."""
     if val is None:
         return None
-    if isinstance(val, Decimal):
-        return float(val)
     return float(val)
 
 
@@ -104,6 +103,17 @@ def _get_user_id() -> str:
     """Extract user ID from JWT sub claim."""
     user_id: str = router.current_event.request_context.authorizer.jwt_claim["sub"]  # type: ignore[attr-defined]
     return user_id
+
+
+# Crockford Base32 charset used by ULID: 0-9 A-H J K M N P-T V-Z (excludes I L O U)
+_ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+def _validate_receipt_id(receipt_id: str) -> Response[Any] | None:
+    """Validate receipt_id is a valid ULID format. Returns error response if invalid, None if valid."""
+    if not _ULID_PATTERN.match(receipt_id):
+        return _error_response(400, "VALIDATION_ERROR", "Invalid receipt ID format")
+    return None
 
 
 def _generate_image_url(image_key: str, bucket: str) -> str | None:
@@ -127,13 +137,16 @@ def _build_receipt_detail(
     detail_items = []
     for idx, item in enumerate(sorted_items, start=1):
         subcat = item.get("subcategory")
+        raw_qty = _decimal_to_float(item.get("quantity"))
+        raw_unit = _decimal_to_float(item.get("unitPrice"))
+        raw_total = _decimal_to_float(item.get("totalPrice"))
         detail_items.append(
             ReceiptDetailLineItem(
                 sortOrder=int(item.get("sortOrder", idx)),
                 name=str(item.get("name", "")),
-                quantity=_decimal_to_float(item.get("quantity")) or 1.0,
-                unitPrice=_decimal_to_float(item.get("unitPrice")) or 0.0,
-                totalPrice=_decimal_to_float(item.get("totalPrice")) or 0.0,
+                quantity=raw_qty if raw_qty is not None else 1.0,
+                unitPrice=raw_unit if raw_unit is not None else 0.0,
+                totalPrice=raw_total if raw_total is not None else 0.0,
                 subcategory=str(subcat) if subcat else None,
                 subcategoryDisplay=get_subcategory_display_name(str(subcat)) if subcat else None,
             )
@@ -272,6 +285,8 @@ def list_receipts() -> Response[Any]:
 @tracer.capture_method
 def get_receipt(receipt_id: str) -> Response[Any]:
     """Get receipt detail including line items."""
+    if err := _validate_receipt_id(receipt_id):
+        return err
     user_id = _get_user_id()
     table = get_table()
     bucket = os.environ["RECEIPTS_BUCKET"]
@@ -285,7 +300,7 @@ def get_receipt(receipt_id: str) -> Response[Any]:
     items: list[dict[str, Any]] = response.get("Items", [])
 
     if not items:
-        return _error_response(404, "NOT_FOUND", f"Receipt with ID {receipt_id} does not exist")
+        return _error_response(404, "NOT_FOUND", "Receipt not found")
 
     # Separate receipt from line items
     receipt_item: dict[str, Any] | None = None
@@ -298,7 +313,7 @@ def get_receipt(receipt_id: str) -> Response[Any]:
             line_items.append(item)
 
     if receipt_item is None:
-        return _error_response(404, "NOT_FOUND", f"Receipt with ID {receipt_id} does not exist")
+        return _error_response(404, "NOT_FOUND", "Receipt not found")
 
     image_key = str(receipt_item.get("imageKey", ""))
     image_url = _generate_image_url(image_key, bucket)
@@ -316,6 +331,8 @@ def get_receipt(receipt_id: str) -> Response[Any]:
 @tracer.capture_method
 def update_receipt(receipt_id: str) -> Response[Any]:
     """Update receipt-level fields. Only provided fields are updated."""
+    if err := _validate_receipt_id(receipt_id):
+        return err
     user_id = _get_user_id()
 
     try:
@@ -371,11 +388,14 @@ def update_receipt(receipt_id: str) -> Response[Any]:
     update_parts: list[str] = []
     expr_names: dict[str, str] = {}
     expr_values: dict[str, Any] = {}
+    monetary_fields = {"total", "subtotal", "tax", "tip"}
 
     for field_name, value in update_data.items():
         attr_name = f"#{field_name}"
         attr_value = f":{field_name}"
         expr_names[attr_name] = field_name
+        if field_name in monetary_fields and value is not None:
+            value = Decimal(str(value))
         expr_values[attr_value] = value
         update_parts.append(f"{attr_name} = {attr_value}")
 
@@ -414,7 +434,7 @@ def update_receipt(receipt_id: str) -> Response[Any]:
             ConditionExpression=Attr("PK").exists(),
         )
     except table.meta.client.exceptions.ConditionalCheckFailedException:
-        return _error_response(404, "NOT_FOUND", f"Receipt with ID {receipt_id} does not exist")
+        return _error_response(404, "NOT_FOUND", "Receipt not found")
 
     # Return the updated receipt with line items
     return get_receipt(receipt_id)
@@ -428,6 +448,8 @@ def delete_receipt(receipt_id: str) -> Response[Any]:
     Access pattern #6: Query PK=USER#{userId}, SK begins_with RECEIPT#{ulid}
     then BatchWriteItem to delete all.
     """
+    if err := _validate_receipt_id(receipt_id):
+        return err
     user_id = _get_user_id()
     table = get_table()
     bucket = os.environ["RECEIPTS_BUCKET"]
@@ -441,7 +463,7 @@ def delete_receipt(receipt_id: str) -> Response[Any]:
     items: list[dict[str, Any]] = response.get("Items", [])
 
     if not items:
-        return _error_response(404, "NOT_FOUND", f"Receipt with ID {receipt_id} does not exist")
+        return _error_response(404, "NOT_FOUND", "Receipt not found")
 
     # Find the receipt record (for the image key)
     image_key: str | None = None
@@ -480,6 +502,8 @@ def update_items(receipt_id: str) -> Response[Any]:
 
     Deletes existing line items, then inserts the provided list.
     """
+    if err := _validate_receipt_id(receipt_id):
+        return err
     user_id = _get_user_id()
 
     try:
@@ -508,7 +532,7 @@ def update_items(receipt_id: str) -> Response[Any]:
     receipt_response = table.get_item(Key={"PK": pk, "SK": sk})
     receipt_item = receipt_response.get("Item")
     if not receipt_item:
-        return _error_response(404, "NOT_FOUND", f"Receipt with ID {receipt_id} does not exist")
+        return _error_response(404, "NOT_FOUND", "Receipt not found")
 
     now_iso = datetime.now(UTC).isoformat()
 
@@ -519,30 +543,28 @@ def update_items(receipt_id: str) -> Response[Any]:
     )
     existing_items: list[dict[str, Any]] = existing_items_response.get("Items", [])
 
+    # Delete existing + insert new in a single batch_writer to minimize the
+    # window where the receipt has no items (S7: reduce race condition window).
     with table.batch_writer() as batch:
         for item in existing_items:
             batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
-
-    # Insert new line items
-    if request.items:
-        with table.batch_writer() as batch:
-            for line_item in request.items:
-                item_sk = f"RECEIPT#{receipt_id}#ITEM#{line_item.sortOrder:03d}"
-                batch.put_item(
-                    Item={
-                        "PK": pk,
-                        "SK": item_sk,
-                        "entityType": ITEM,
-                        "receiptId": receipt_id,
-                        "sortOrder": line_item.sortOrder,
-                        "name": line_item.name,
-                        "quantity": Decimal(str(line_item.quantity)),
-                        "unitPrice": Decimal(str(line_item.unitPrice)),
-                        "totalPrice": Decimal(str(line_item.totalPrice)),
-                        **({"subcategory": line_item.subcategory} if line_item.subcategory else {}),
-                        "createdAt": now_iso,
-                    }
-                )
+        for line_item in request.items:
+            item_sk = f"RECEIPT#{receipt_id}#ITEM#{line_item.sortOrder:03d}"
+            batch.put_item(
+                Item={
+                    "PK": pk,
+                    "SK": item_sk,
+                    "entityType": ITEM,
+                    "receiptId": receipt_id,
+                    "sortOrder": line_item.sortOrder,
+                    "name": line_item.name,
+                    "quantity": Decimal(str(line_item.quantity)),
+                    "unitPrice": Decimal(str(line_item.unitPrice)),
+                    "totalPrice": Decimal(str(line_item.totalPrice)),
+                    **({"subcategory": line_item.subcategory} if line_item.subcategory else {}),
+                    "createdAt": now_iso,
+                }
+            )
 
     # Update receipt updatedAt
     table.update_item(

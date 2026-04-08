@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UploadFileRequest(BaseModel):
@@ -120,18 +120,25 @@ class ReceiptDetail(BaseModel):
 
 
 class ReceiptUpdateRequest(BaseModel):
-    """PUT /api/receipts/{id} request body — partial update."""
+    """PUT /api/receipts/{id} request body — partial update.
 
-    merchant: str | None = None
-    merchantAddress: str | None = None
-    receiptDate: str | None = None
-    category: str | None = None
-    subcategory: str | None = None
+    Note: Uses exclude_none=True in the endpoint, so explicit null and absent
+    fields are indistinguishable. If null-setting is needed later, switch to
+    exclude_unset=True and handle None values with REMOVE expressions.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    merchant: str | None = Field(None, max_length=500)
+    merchantAddress: str | None = Field(None, max_length=1000)
+    receiptDate: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    category: str | None = Field(None, max_length=100)
+    subcategory: str | None = Field(None, max_length=100)
     total: float | None = None
     subtotal: float | None = None
     tax: float | None = None
     tip: float | None = None
-    paymentMethod: str | None = None
+    paymentMethod: str | None = Field(None, max_length=200)
 
 
 class LineItemInput(BaseModel):
