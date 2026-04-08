@@ -987,7 +987,7 @@
   - `cd backend && uv run ruff check src/` passes
 - **Test command:** `cd backend && uv run ruff check src/`
 
-#### [ ] Task 5.2: Transactions Endpoint
+#### [x] Task 5.2: Transactions Endpoint
 - **Role:** backend-engineer
 - **Depends on:** none (M4 complete)
 - **Spec reference:** api-contracts.md >> GET /api/transactions
