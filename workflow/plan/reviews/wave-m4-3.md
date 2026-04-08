@@ -364,3 +364,34 @@ The fix plan is well-structured and its proposed fixes for S1-S3 are correct. Fo
 - `npm run build` -- PASS (clean build)
 - `npm run test -- --run` -- PASS (175/175 tests passed)
 
+### Fix Verification (Claude Opus 4.6 (1M context) -- 2026-04-08)
+
+**Status: 5/5 fixed, 0 not fixed, 0 regressions (1 deferred -- S6, no action needed)**
+
+**[S1] (Editor stays in editing mode after successful save) -- Fixed** ✓
+Verified: `LineItemEditor.tsx:131-143` adds a `useEffect` that tracks `isSaving` transitions via `prevIsSavingRef`. When `isSaving` transitions from `true` to `false` while `isEditing` is `true` and `saveError` is `null`, the effect calls `setIsEditing(false)` and fires the optional `onSaveSuccess` callback. The `onSaveSuccessRef` pattern avoids stale closures. Critically, the exit happens on the `isSaving false` transition (which corresponds to mutation `onSettled`), not on `onMutate`, so the editor only exits after the server round-trip completes. If `saveError` is non-null (mutation failed), the editor stays open -- correct behavior. The `onSaveSuccess` prop (line 111) is optional and the parent does not currently pass it, which is fine -- the `useEffect` handles the exit independently.
+
+**[S2] (Category picker dropdown has no Escape key handling) -- Fixed** ✓
+Verified: `CategoryPicker.tsx:39-51` adds a `useEffect` gated on `isOpen`. When `isOpen` is `true`, registers a `document` `keydown` listener. On Escape press: calls `e.stopPropagation()` (prevents bubbling to parent Dialog), calls `setIsOpen(false)`, and calls `triggerRef.current?.focus()` to return focus to the trigger button. The cleanup function (`return () => document.removeEventListener(...)`) correctly removes the listener when `isOpen` goes `false` or on unmount. `triggerRef` (line 37) is attached to the trigger button via `ref={triggerRef}` (line 128). No conflicts with the create modal's Escape handling since `setIsOpen(false)` is called in `handleOpenCreate` (line 88) before the modal opens, which removes the document listener via the cleanup.
+
+**[S3] (No delete confirmation for custom categories) -- Fixed** ✓
+Verified: `CategoryPicker.tsx:35` adds `pendingDeleteSlug` state. `handleDeleteRequest` (line 66-72) sets `pendingDeleteSlug` on trash icon click instead of immediately mutating. `handleDeleteConfirm` (line 74-80) executes the mutation and clears pending state. `handleDeleteCancel` (line 82-85) clears pending state. All three handlers use `e.stopPropagation()` to prevent triggering category selection. In `CategoryOption` (line 341-378), when `isPendingDelete` is `true`, the trash icon is replaced with Check (confirm) and X (cancel) icons in a flex row -- same visual pattern as `LineItemEditor`'s inline confirm. Both buttons are small (`size-3.5`) icons that fit within the dropdown row without horizontal overflow.
+
+**[S4] (No subcategory picker) -- Fixed** ✓
+Verified: `ReceiptDetailPage.tsx:103-107` calls `useCategories()` to access category data, finds the selected category via `categoriesData?.categories.find(c => c.slug === receipt?.category)`, and extracts `subcategories` array. Lines 265-291 render a native `<select>` element when `subcategories.length > 0`, with a "None" option and all subcategory options. On change, calls `updateReceipt.mutate({ subcategory: e.target.value || "" })`. Lines 258-261 correctly clear the subcategory when the category changes by sending `{ category: slug, subcategory: "" }` -- this matches the fix plan analysis recommendation (clear to null/empty rather than auto-selecting). Lines 292-297 provide fallback read-only display when subcategories are empty but `subcategoryDisplay` exists (covers cases where the current category has no subcategory list but the receipt has a previously assigned subcategory). The implementation uses an inline `<select>` in ReceiptDetailPage rather than creating a separate component file -- correct per the fix plan analysis recommendation.
+
+**[S5] (Staff role check is client-side only -- defense-in-depth gap) -- Fixed** ✓
+Verified: `ReceiptDetailPage.tsx:101` now has the comment: `// UX convenience only -- backend enforces staff-only access on GET /api/receipts/{id}/pipeline-results (403 for non-staff)`. The comment is directly above the `isStaff` const (line 102). No functional code change -- documentation only. Future developers will understand that the client-side check is not a security boundary.
+
+**[S6] (Category displayName not sanitized for XSS) -- Deferred (no action needed)** ✓
+Confirmed: React JSX interpolation (`<span>{category.displayName}</span>` at `CategoryPicker.tsx:343`) escapes HTML by default. Backend M3.1 (Task 3.8) validates category names against an allowlist pattern excluding `<`, `>`, `"`, `'`. Double protection in place. No code change required.
+
+**Verification commands:**
+- `npx tsc --noEmit` -- PASS (0 errors)
+- `npm run build` -- PASS (clean build, 2408 modules)
+- `npm run test -- --run` -- PASS (175/175 tests, 9 test files, 2.16s)
+
+**Regression check:** No regressions detected. The git diff shows 121 insertions and 9 deletions across 3 files. All changes are additive (new state, new effects, new handlers, new JSX branches). No existing logic was removed or modified in a way that could break prior behavior. The 175 existing tests all pass.
+
+**Verdict:** 5/5 issues resolved. S6 correctly deferred (no action needed). All verification commands pass. Tasks 4.4 and 4.5 are ready to be marked `done`.
+
