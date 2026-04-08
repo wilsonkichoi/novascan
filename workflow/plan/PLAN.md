@@ -927,7 +927,7 @@
 
 ### Wave 4: Tests
 
-#### [ ] Task 4.6: Receipt Management API Tests [TEST]
+#### [x] Task 4.6: Receipt Management API Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 4.1, 4.2
 - **Spec reference:** api-contracts.md >> all M4 endpoints

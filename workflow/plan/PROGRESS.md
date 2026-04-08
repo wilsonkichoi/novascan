@@ -88,7 +88,7 @@ Last updated: 2026-04-08
 | 4.3  | Receipt Detail Page | frontend-developer | review | [task-4.3](reviews/task-4.3.md) | 2026-04-08 |
 | 4.4  | Line Item Editing UI | frontend-developer | done | [task-4.4](reviews/task-4.4.md) | 2026-04-08. All fixes verified. |
 | 4.5  | Category Picker + Pipeline Comparison Toggle | frontend-developer | done | [task-4.5](reviews/task-4.5.md) | 2026-04-08. All fixes verified. |
-| 4.6  | Receipt Management API Tests | qa-engineer | pending | | TEST |
+| 4.6  | Receipt Management API Tests | qa-engineer | review | [task-4.6](reviews/task-4.6.md) | 96 tests. 2026-04-08. TEST |
 | 4.7  | Receipt Management UI Tests | qa-engineer | pending | | TEST |
 
 ## Milestone 5: Dashboard & Transactions
