@@ -74,6 +74,7 @@ export default function ReceiptDetailPage() {
   const { data: receipt, isLoading, error } = useReceipt(id ?? "");
   const deleteReceipt = useDeleteReceipt();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -118,10 +119,14 @@ export default function ReceiptDetailPage() {
 
   function handleDelete() {
     if (!id) return;
+    setDeleteError(null);
     deleteReceipt.mutate(id, {
       onSuccess: () => {
         setShowDeleteDialog(false);
         navigate("/receipts");
+      },
+      onError: (error: Error) => {
+        setDeleteError(error.message || "Failed to delete receipt");
       },
     });
   }
@@ -156,7 +161,10 @@ export default function ReceiptDetailPage() {
           <Button
             variant="outline"
             size="icon-sm"
-            onClick={() => setShowDeleteDialog(true)}
+            onClick={() => {
+              setDeleteError(null);
+              setShowDeleteDialog(true);
+            }}
             aria-label="Delete receipt"
           >
             <Trash2 className="size-4" />
@@ -328,6 +336,9 @@ export default function ReceiptDetailPage() {
               permanently removed.
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <p className="text-destructive text-sm">{deleteError}</p>
+          )}
           <DialogFooter>
             <Button
               variant="outline"

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -40,6 +41,9 @@ router = Router()  # type: ignore[no-untyped-call]
 
 # Crockford Base32 charset used by ULID: 0-9 A-H J K M N P-T V-Z (excludes I L O U)
 _ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+
+# Slugs produced by _slugify are lowercase alphanumeric with hyphens
+_SLUG_PATTERN = re.compile(r"^[a-z0-9-]{1,100}$")
 
 
 def _error_response(status_code: int, code: str, message: str) -> Response[Any]:
@@ -227,6 +231,7 @@ def create_category() -> Response[Any]:
         "entityType": CUSTOMCAT,
         "displayName": request.displayName,
         "slug": slug,
+        "createdAt": datetime.now(UTC).isoformat(),
     }
     if request.parentCategory is not None:
         item["parentCategory"] = request.parentCategory
@@ -250,6 +255,9 @@ def create_category() -> Response[Any]:
 @tracer.capture_method
 def delete_category(slug: str) -> Response[Any]:
     """Delete a custom category. Predefined categories cannot be deleted."""
+    if not _SLUG_PATTERN.match(slug):
+        return _error_response(400, "VALIDATION_ERROR", "Invalid category slug format")
+
     user_id = _get_user_id()
 
     # Check if this is a predefined category

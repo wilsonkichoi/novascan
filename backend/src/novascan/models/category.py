@@ -25,7 +25,7 @@ class Category(BaseModel):
 class CustomCategoryRequest(BaseModel):
     """POST /api/categories request body."""
 
-    displayName: str = Field(min_length=1, max_length=100)
+    displayName: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9 &/,.'()\-]+$")
     parentCategory: str | None = None
 
 
