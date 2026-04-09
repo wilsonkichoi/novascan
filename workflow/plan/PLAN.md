@@ -1111,7 +1111,7 @@
   - Stack outputs include CloudFront distribution domain name (for CNAME target)
 - **Test command:** `cd infra && uv run cdk synth --context stage=prod | python -c "import sys,json; t=json.load(sys.stdin); certs=[v for v in t['Resources'].values() if v['Type']=='AWS::CertificateManager::Certificate']; assert len(certs)>=1; print('PASS')"`
 
-#### [ ] Task 6.2: UX Polish — Error Boundaries, Skeletons, Empty States, 404
+#### [x] Task 6.2: UX Polish — Error Boundaries, Skeletons, Empty States, 404
 - **Role:** frontend-developer
 - **Depends on:** none (M5 complete)
 - **Spec reference:** SPEC.md >> Milestone 6 Acceptance Criteria

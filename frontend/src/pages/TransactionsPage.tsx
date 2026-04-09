@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Loader2, ArrowLeftRight } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionTable, {
@@ -8,6 +8,8 @@ import TransactionTable, {
 import TransactionFilters, {
   type FilterValues,
 } from "@/components/TransactionFilters";
+import { TransactionTableSkeleton } from "@/components/LoadingSkeleton";
+import { NoTransactionsEmpty } from "@/components/EmptyState";
 import type { SortBy, SortOrder } from "@/api/transactions";
 
 const INITIAL_FILTERS: FilterValues = {
@@ -71,9 +73,7 @@ export default function TransactionsPage() {
       <TransactionFilters values={filters} onChange={setFilters} />
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="text-muted-foreground size-6 animate-spin" />
-        </div>
+        <TransactionTableSkeleton />
       ) : error ? (
         <div className="py-20 text-center">
           <p className="text-destructive text-sm">
@@ -81,12 +81,7 @@ export default function TransactionsPage() {
           </p>
         </div>
       ) : transactions.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16">
-          <ArrowLeftRight className="text-muted-foreground size-10" />
-          <p className="text-muted-foreground text-sm">
-            No transactions found.
-          </p>
-        </div>
+        <NoTransactionsEmpty />
       ) : (
         <>
           {/* Desktop table view (hidden below md) */}

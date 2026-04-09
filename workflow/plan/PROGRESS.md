@@ -107,7 +107,7 @@ Last updated: 2026-04-08
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
 | 6.1  | Custom Domain CDK (ACM + CloudFront) | devops-engineer | pending | | |
-| 6.2  | UX Polish (Error Boundaries, Skeletons, Empty States, 404) | frontend-developer | pending | | |
+| 6.2  | UX Polish (Error Boundaries, Skeletons, Empty States, 404) | frontend-developer | review | [task-6.2](reviews/task-6.2.md) | 2026-04-09 |
 | 6.3  | Prod Stack Deploy + Cloudflare DNS Setup | devops-engineer (human) | pending | | MANUAL |
 | 6.4  | Deploy & Teardown Guide | devops-engineer | pending | | |
 | 6.5  | Monitoring Guide | devops-engineer | pending | | |

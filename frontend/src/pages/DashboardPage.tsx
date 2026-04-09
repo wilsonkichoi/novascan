@@ -1,8 +1,10 @@
-import { Loader2, Receipt } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import StatCard from "@/components/StatCard";
 import CategoryBreakdown from "@/components/CategoryBreakdown";
 import RecentActivity from "@/components/RecentActivity";
+import { DashboardSkeleton } from "@/components/LoadingSkeleton";
+import { DashboardWelcome } from "@/components/EmptyState";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -15,12 +17,7 @@ export default function DashboardPage() {
   const { data, isLoading, error } = useDashboard();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20" role="status">
-        <Loader2 className="text-muted-foreground size-6 animate-spin" aria-hidden="true" />
-        <span className="sr-only">Loading dashboard</span>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -35,6 +32,15 @@ export default function DashboardPage() {
 
   if (!data) {
     return null;
+  }
+
+  if (data.receiptCount === 0) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <DashboardWelcome />
+      </div>
+    );
   }
 
   return (

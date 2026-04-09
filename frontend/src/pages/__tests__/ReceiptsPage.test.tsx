@@ -128,7 +128,7 @@ describe("ReceiptsPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: /receipts/i }),
+        screen.getByRole("heading", { level: 1, name: /receipts/i }),
       ).toBeInTheDocument();
     });
   });
