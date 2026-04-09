@@ -220,3 +220,15 @@ No security issues found.
 
 **Overall security posture:** The Wave 2 frontend implementation (Tasks 5.3 and 5.4) follows sound security practices. All API calls require authentication via JWT, error messages are generic, data rendering uses React's built-in XSS protection, and user input (filter values) is passed as query parameters with server-side validation. The code follows the same established security patterns as prior milestones (M1-M4) with no deviations. No sensitive data is cached, logged, or exposed beyond what the authenticated user is entitled to see.
 
+### Fix Plan Analysis (Claude Opus 4.6 -- 2026-04-08)
+
+**[B1] (Category filter slugs do not match category-taxonomy.md) -- Approve**
+
+My approach: Reading `TransactionFilters.tsx:12-27` independently, I cross-referenced each entry in the `CATEGORY_OPTIONS` array against the 13 headings in `category-taxonomy.md`. I found exactly 4 correct slugs (`groceries-food`, `health-wellness`, `gifts-donations`, `other`) and 9 incorrect ones. The incorrect entries fall into three failure modes: (1) wrong slug with close-but-wrong label (e.g., `dining-restaurants` instead of `dining`, `shopping-retail` instead of `retail-shopping`), (2) nonexistent categories that conflate two real ones (e.g., `utilities-bills` and `travel-lodging` are not real categories -- their concepts are merged into `home-utilities` and `entertainment-travel` respectively), and (3) entirely missing categories (`pets`, `financial-insurance`, `office-business`, `automotive-transit`) that have no representation at all. The fix is a straight data replacement of the array contents -- no structural or logic changes to the component.
+
+Plan's approach: Replace the `CATEGORY_OPTIONS` array with the exact 13 slugs and labels from `category-taxonomy.md`. Aligns with my analysis because the bug is purely a data mismatch -- the component logic (select element, `handleChange` callback, filter propagation) is correct. Only the hardcoded values are wrong.
+
+Risk assessment agreement: The plan identifies the only meaningful risk -- that the backend `constants.py` might use different slugs than `category-taxonomy.md`. I verified that `category-taxonomy.md` is declared as the canonical source in SPEC.md Section 8 ("See category-taxonomy.md for the full predefined category and subcategory list") and that PLAN.md Task 4.1 specifies "slugs matching category-taxonomy.md exactly" for the backend constants. The risk is negligible.
+
+No revisions needed. The plan is correct and complete for this single-issue scope.
+
