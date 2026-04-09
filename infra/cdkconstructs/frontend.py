@@ -2,14 +2,16 @@
 
 Creates:
 - CloudFront distribution with S3 origin access control
-- Custom error responses for SPA routing (403/404 → /index.html 200)
+- Custom error responses for SPA routing (403/404 -> /index.html 200)
+- ACM certificate + alternate domain name (prod only)
 
-See: SPEC.md Section 13 (CloudFront SPA Routing, Deployment Architecture).
+See: SPEC.md Section 13 (CloudFront SPA Routing, Deployment Architecture, Custom Domain Setup).
 """
 
 from typing import Any
 
 import aws_cdk as cdk
+import aws_cdk.aws_certificatemanager as acm
 import aws_cdk.aws_cloudfront as cloudfront
 import aws_cdk.aws_cloudfront_origins as origins
 import aws_cdk.aws_s3 as s3
@@ -28,6 +30,20 @@ class FrontendConstruct(Construct):
         **kwargs: Any,
     ) -> None:
         super().__init__(scope, id, **kwargs)
+
+        # --- ACM Certificate (prod only) ---
+        # SPEC Section 13: CDK creates ACM certificate for subdomain.example.com in us-east-1
+        # DNS validation — Cloudflare DNS records added manually from stack outputs
+        domain_name: str | None = config.get("domainName")
+        certificate: acm.Certificate | None = None
+
+        if domain_name:
+            certificate = acm.Certificate(
+                self,
+                "Certificate",
+                domain_name=domain_name,
+                validation=acm.CertificateValidation.from_dns(),
+            )
 
         # --- Security Response Headers (SECURITY-REVIEW M2) ---
         security_headers_policy = cloudfront.ResponseHeadersPolicy(
@@ -90,8 +106,13 @@ class FrontendConstruct(Construct):
                 ),
             ],
             comment=f"NovaScan frontend ({stage})",
+            # Custom domain (prod only) — conditional on domainName in config
+            domain_names=[domain_name] if domain_name else None,
+            certificate=certificate,
         )
 
         # --- Outputs ---
         self.domain_name = self.distribution.distribution_domain_name
         self.distribution_id = self.distribution.distribution_id
+        self.custom_domain = domain_name
+        self.certificate = certificate

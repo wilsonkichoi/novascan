@@ -16,7 +16,8 @@
         "maxUploadFiles": 10,
         "maxUploadSizeMb": 10,
         "logLevel": "INFO",
-        "defaultPipeline": "ocr-ai"
+        "defaultPipeline": "ocr-ai",
+        "domainName": "subdomain.example.com"
       }
     }
   }

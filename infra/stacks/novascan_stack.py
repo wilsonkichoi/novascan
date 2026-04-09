@@ -39,6 +39,14 @@ class NovascanStack(cdk.Stack):
             config=config,
             frontend_bucket=self.storage.frontend_bucket,
         )
+
+        # --- CORS allowed origins ---
+        # Always include the CloudFront default domain.
+        # For prod, also include the custom domain (SPEC Section 13: CORS Configuration).
+        allowed_origins = [f"https://{self.frontend.domain_name}"]
+        if self.frontend.custom_domain:
+            allowed_origins.append(f"https://{self.frontend.custom_domain}")
+
         self.api = ApiConstruct(
             self,
             "Api",
@@ -47,7 +55,7 @@ class NovascanStack(cdk.Stack):
             user_pool=self.auth.user_pool,
             app_client=self.auth.app_client,
             table=self.storage.table,
-            allowed_origins=[f"https://{self.frontend.domain_name}"],
+            allowed_origins=allowed_origins,
             receipts_bucket=self.storage.receipts_bucket,
         )
 
@@ -89,3 +97,22 @@ class NovascanStack(cdk.Stack):
             value=self.frontend.distribution_id,
             description="CloudFront distribution ID for cache invalidation",
         )
+
+        # --- Custom Domain Outputs (prod only) ---
+        if self.frontend.custom_domain:
+            cdk.CfnOutput(
+                self,
+                "CustomDomain",
+                value=self.frontend.custom_domain,
+                description="Custom domain name for the frontend",
+            )
+            # DNS CNAME target: point the custom domain to the CloudFront distribution
+            cdk.CfnOutput(
+                self,
+                "CloudFrontCnameTarget",
+                value=self.frontend.domain_name,
+                description=(
+                    "CNAME target for custom domain — "
+                    "add CNAME record in Cloudflare (DNS-only, proxy OFF)"
+                ),
+            )

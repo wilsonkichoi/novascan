@@ -106,7 +106,7 @@ Last updated: 2026-04-04
 
 | Task | Title | Role | Status | Review | Notes |
 |------|-------|------|--------|--------|-------|
-| 6.1  | Custom Domain CDK (ACM + CloudFront) | devops-engineer | pending | | |
+| 6.1  | Custom Domain CDK (ACM + CloudFront) | devops-engineer | review | [task-6.1](reviews/task-6.1.md) | 2026-04-09 |
 | 6.2  | UX Polish (Error Boundaries, Skeletons, Empty States, 404) | frontend-developer | pending | | |
 | 6.3  | UX Polish Tests | qa-engineer | pending | | TEST |
 | 6.4  | Production Deployment + DNS + E2E Verification | devops-engineer | pending | | |
