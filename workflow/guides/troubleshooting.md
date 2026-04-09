@@ -491,7 +491,7 @@ Common causes:
 Cognito token lifetimes:
 - **ID token:** 1 hour (not configurable for hosted UI, configurable via API)
 - **Access token:** 1 hour
-- **Refresh token:** 30 days (configurable in User Pool settings)
+- **Refresh token:** 7 days (configured in `infra/cdkconstructs/auth.py`)
 
 If the ID token expired and the refresh token is still valid, the frontend should silently refresh. If it does not, check the frontend auth service.
 
@@ -501,7 +501,7 @@ If the ID token expired and the refresh token is still valid, the frontend shoul
   ```
   Cognito InitiateAuth with AuthFlow=REFRESH_TOKEN_AUTH
   ```
-- If the refresh token is also expired (30 days), the user must re-authenticate.
+- If the refresh token is also expired (7 days), the user must re-authenticate.
 - Check the User Pool refresh token expiration setting:
   ```bash
   aws cognito-idp describe-user-pool \
@@ -521,7 +521,7 @@ If the ID token expired and the refresh token is still valid, the frontend shoul
 
 Common causes:
 - Refresh token was revoked (admin action or user signed out on another device)
-- Refresh token expired (default 30 days)
+- Refresh token expired (default 7 days)
 - The app client ID changed (token was issued by a different app client)
 - User was disabled or deleted in Cognito
 
@@ -872,16 +872,13 @@ aws dynamodb query \
   --table-name "novascan-{stage}" \
   --index-name "GSI1" \
   --key-condition-expression "GSI1PK = :pk" \
-  --expression-attribute-values '{
-    ":pk": {"S": "USER#USER_ID"}
-  }' \
-  --select COUNT \
   --filter-expression "#s = :status" \
   --expression-attribute-names '{"#s": "status"}' \
   --expression-attribute-values '{
     ":pk": {"S": "USER#USER_ID"},
     ":status": {"S": "failed"}
-  }'
+  }' \
+  --select COUNT
 ```
 
 ### Check the DLQ for unprocessed messages

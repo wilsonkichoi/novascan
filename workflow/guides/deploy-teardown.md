@@ -137,7 +137,7 @@ curl -s -o /dev/null -w "%{http_code}" https://d1234abcdef.cloudfront.net
 # Expected: 200
 
 # Check API health
-curl -s https://abc123.execute-api.us-east-1.amazonaws.com/health
+curl -s https://abc123.execute-api.us-east-1.amazonaws.com/api/health
 ```
 
 ### Update (Subsequent Deploys)
@@ -227,7 +227,7 @@ curl -sI https://subdomain.example.com | grep -E "strict-transport|x-frame|x-con
 #   x-content-type-options: nosniff
 
 # Check API
-curl -s https://<ApiUrl from outputs>/health
+curl -s https://<ApiUrl from outputs>/api/health
 ```
 
 ### Update Prod Stack
