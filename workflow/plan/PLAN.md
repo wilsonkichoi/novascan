@@ -1160,7 +1160,7 @@
   - Existing MX/TXT email records for `example.com` remain unaffected
 - **Test command:** `curl -s -o /dev/null -w "%{http_code}" https://subdomain.example.com`
 
-#### [ ] Task 6.4: Deploy & Teardown Guide
+#### [x] Task 6.4: Deploy & Teardown Guide
 - **Role:** devops-engineer
 - **Depends on:** 6.1
 - **Spec reference:** SPEC.md >> Section 13 (Manual Deployment Steps)
