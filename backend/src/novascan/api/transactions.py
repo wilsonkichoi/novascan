@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import base64
 import json
+import re
 from typing import Any
 
 from aws_lambda_powertools import Logger, Tracer
@@ -13,6 +13,8 @@ from boto3.dynamodb.conditions import Attr, ConditionBase, Key
 
 from shared.constants import get_category_display_name, get_subcategory_display_name
 from shared.dynamo import get_table
+from shared.pagination import decode_cursor, encode_cursor
+from shared.responses import error_response
 
 logger = Logger()
 tracer = Tracer()
@@ -21,53 +23,7 @@ router = Router()  # type: ignore[no-untyped-call]
 _VALID_SORT_BY = {"date", "amount", "merchant"}
 _VALID_SORT_ORDER = {"asc", "desc"}
 _VALID_STATUS = {"processing", "confirmed", "failed"}
-
-# Expected keys in a valid GSI1 pagination cursor
-_VALID_CURSOR_KEYS = {"GSI1PK", "GSI1SK", "PK", "SK"}
-
-
-def _encode_cursor(last_key: dict[str, Any]) -> str:
-    """Base64-encode DynamoDB LastEvaluatedKey as opaque pagination cursor."""
-    return base64.urlsafe_b64encode(json.dumps(last_key).encode()).decode()
-
-
-def _decode_cursor(cursor: str, *, user_id: str) -> dict[str, Any]:
-    """Decode and validate opaque pagination cursor.
-
-    Validates that:
-    - Decoded JSON has exactly {GSI1PK, GSI1SK, PK, SK} keys
-    - GSI1PK and PK match USER#{authenticated_userId}
-
-    Raises:
-        ValueError: If cursor is invalid or targets another user.
-    """
-    try:
-        decoded = json.loads(base64.urlsafe_b64decode(cursor))
-    except Exception as e:
-        raise ValueError(f"Cursor decode failed: {type(e).__name__}") from e
-
-    if not isinstance(decoded, dict):
-        raise ValueError("Cursor must decode to a JSON object")
-
-    if set(decoded.keys()) != _VALID_CURSOR_KEYS:
-        raise ValueError(f"Cursor has invalid keys: {set(decoded.keys())}")
-
-    expected_user = f"USER#{user_id}"
-    if decoded.get("GSI1PK") != expected_user:
-        raise ValueError("Cursor GSI1PK does not match authenticated user")
-    if decoded.get("PK") != expected_user:
-        raise ValueError("Cursor PK does not match authenticated user")
-
-    return decoded
-
-
-def _error_response(status_code: int, code: str, message: str) -> Response[Any]:
-    """Build a standard error response."""
-    return Response(
-        status_code=status_code,
-        content_type=content_types.APPLICATION_JSON,
-        body=json.dumps({"error": {"code": code, "message": message}}),
-    )
+_DATE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
 
 def _decimal_to_float(val: Any) -> float | None:
@@ -133,6 +89,8 @@ def _fetch_all_matching(
 
     Used when sortBy=amount|merchant requires in-memory sorting of all results.
     Also applies merchant search filter.
+
+    # TODO(post-MVP): Add safety cap per SECURITY-REVIEW S5 to prevent Lambda OOM
     """
     all_items: list[dict[str, Any]] = []
     # Remove Limit from kwargs for full fetch — we'll apply limit after sorting
@@ -175,17 +133,21 @@ def list_transactions() -> Response[Any]:
 
     # Validate enum parameters
     if sort_by not in _VALID_SORT_BY:
-        return _error_response(
+        return error_response(
             400, "VALIDATION_ERROR", f"sortBy must be one of: {', '.join(sorted(_VALID_SORT_BY))}"
         )
     if sort_order not in _VALID_SORT_ORDER:
-        return _error_response(
+        return error_response(
             400, "VALIDATION_ERROR", f"sortOrder must be one of: {', '.join(sorted(_VALID_SORT_ORDER))}"
         )
     if status_filter and status_filter not in _VALID_STATUS:
-        return _error_response(
+        return error_response(
             400, "VALIDATION_ERROR", f"status must be one of: {', '.join(sorted(_VALID_STATUS))}"
         )
+    if start_date and not _DATE_RE.match(start_date):
+        return error_response(400, "VALIDATION_ERROR", "startDate must be in YYYY-MM-DD format")
+    if end_date and not _DATE_RE.match(end_date):
+        return error_response(400, "VALIDATION_ERROR", "endDate must be in YYYY-MM-DD format")
 
     try:
         limit = min(max(int(params.get("limit", "50")), 1), 100)
@@ -220,31 +182,28 @@ def list_transactions() -> Response[Any]:
         query_kwargs["FilterExpression"] = filter_expr
 
     # Branching logic based on sortBy
-    if sort_by == "date":
-        # Native GSI1 sort — use DynamoDB pagination directly
+    if sort_by == "date" and not merchant_search:
+        # Native GSI1 sort without merchant search — use DynamoDB pagination directly
         query_kwargs["Limit"] = limit
 
         if cursor:
             try:
-                query_kwargs["ExclusiveStartKey"] = _decode_cursor(cursor, user_id=user_id)
+                query_kwargs["ExclusiveStartKey"] = decode_cursor(cursor, user_id=user_id)
             except Exception as e:
                 logger.warning(
                     "Invalid pagination cursor",
                     extra={"error": str(e), "user_id": user_id},
                 )
-                return _error_response(400, "VALIDATION_ERROR", "Invalid pagination cursor")
+                return error_response(400, "VALIDATION_ERROR", "Invalid pagination cursor")
 
         # Run data query
         response = table.query(**query_kwargs)
         items: list[dict[str, Any]] = response.get("Items", [])
         last_key = response.get("LastEvaluatedKey")
 
-        # Apply merchant search (case-insensitive substring in Lambda)
-        items = _apply_post_query_filters(items, merchant_search=merchant_search)
-
         # Build transactions
         transactions = [_build_transaction(item) for item in items]
-        next_cursor = _encode_cursor(last_key) if last_key else None
+        next_cursor = encode_cursor(last_key) if last_key else None
 
         # Parallel Count query for totalCount
         count_kwargs: dict[str, Any] = {
@@ -264,57 +223,8 @@ def list_transactions() -> Response[Any]:
                 break
             count_kwargs["ExclusiveStartKey"] = count_last_key
 
-        # If merchant search is active, totalCount from Count query won't account for it.
-        # We can't get an exact count without fetching all records, so for merchant search
-        # we fall through to the in-memory path below for accuracy.
-        if merchant_search:
-            # Need to fetch all records for accurate merchant-filtered count.
-            # Re-fetch everything, apply merchant filter, then paginate in memory.
-            all_items = _fetch_all_matching(
-                table, query_kwargs, merchant_search=merchant_search
-            )
-            total_count = len(all_items)
-
-            # Apply cursor-based offset for in-memory pagination
-            start_idx = 0
-            if cursor:
-                try:
-                    decoded = _decode_cursor(cursor, user_id=user_id)
-                    # Find the cursor position in the sorted list
-                    cursor_gsi1sk = decoded.get("GSI1SK", "")
-                    cursor_pk = decoded.get("PK", "")
-                    cursor_sk = decoded.get("SK", "")
-                    for i, item in enumerate(all_items):
-                        if (
-                            item.get("GSI1SK") == cursor_gsi1sk
-                            and item.get("PK") == cursor_pk
-                            and item.get("SK") == cursor_sk
-                        ):
-                            start_idx = i + 1
-                            break
-                except Exception:
-                    pass  # Already validated above
-
-            # Sort direction already applied by DynamoDB ScanIndexForward
-            page = all_items[start_idx : start_idx + limit]
-            transactions = [_build_transaction(item) for item in page]
-
-            if start_idx + limit < len(all_items):
-                last_item = page[-1] if page else None
-                if last_item:
-                    next_cursor = _encode_cursor({
-                        "GSI1PK": f"USER#{user_id}",
-                        "GSI1SK": last_item.get("GSI1SK", ""),
-                        "PK": last_item.get("PK", ""),
-                        "SK": last_item.get("SK", ""),
-                    })
-                else:
-                    next_cursor = None
-            else:
-                next_cursor = None
-
     else:
-        # sortBy=amount or sortBy=merchant — fetch all, sort in-memory, paginate
+        # sortBy=amount|merchant, or sortBy=date with merchant search — fetch all, paginate in memory
         all_items = _fetch_all_matching(
             table, query_kwargs, merchant_search=merchant_search
         )
@@ -329,7 +239,7 @@ def list_transactions() -> Response[Any]:
             )
         elif sort_by == "merchant":
             # Sort None/missing merchants to end regardless of direction
-            no_merchant = "" if not reverse else "\uffff"
+            no_merchant = "\uffff" if not reverse else ""
             all_items.sort(
                 key=lambda x: (
                     str(x.get("merchant", "")).lower() if x.get("merchant") else no_merchant
@@ -341,7 +251,7 @@ def list_transactions() -> Response[Any]:
         start_idx = 0
         if cursor:
             try:
-                decoded = _decode_cursor(cursor, user_id=user_id)
+                decoded = decode_cursor(cursor, user_id=user_id)
                 cursor_gsi1sk = decoded.get("GSI1SK", "")
                 cursor_pk = decoded.get("PK", "")
                 cursor_sk = decoded.get("SK", "")
@@ -358,7 +268,7 @@ def list_transactions() -> Response[Any]:
                     "Invalid pagination cursor",
                     extra={"error": str(e), "user_id": user_id},
                 )
-                return _error_response(400, "VALIDATION_ERROR", "Invalid pagination cursor")
+                return error_response(400, "VALIDATION_ERROR", "Invalid pagination cursor")
 
         page = all_items[start_idx : start_idx + limit]
         transactions = [_build_transaction(item) for item in page]
@@ -366,7 +276,7 @@ def list_transactions() -> Response[Any]:
         if start_idx + limit < len(all_items):
             last_item = page[-1] if page else None
             if last_item:
-                next_cursor = _encode_cursor({
+                next_cursor = encode_cursor({
                     "GSI1PK": f"USER#{user_id}",
                     "GSI1SK": last_item.get("GSI1SK", ""),
                     "PK": last_item.get("PK", ""),

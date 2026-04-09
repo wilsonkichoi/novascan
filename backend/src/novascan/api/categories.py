@@ -34,6 +34,7 @@ from shared.constants import (
     get_all_category_slugs,
 )
 from shared.dynamo import get_table
+from shared.responses import error_response
 
 logger = Logger()
 tracer = Tracer()
@@ -44,15 +45,6 @@ _ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
 
 # Slugs produced by _slugify are lowercase alphanumeric with hyphens
 _SLUG_PATTERN = re.compile(r"^[a-z0-9-]{1,100}$")
-
-
-def _error_response(status_code: int, code: str, message: str) -> Response[Any]:
-    """Build a standard error response."""
-    return Response(
-        status_code=status_code,
-        content_type=content_types.APPLICATION_JSON,
-        body=json.dumps({"error": {"code": code, "message": message}}),
-    )
 
 
 def _get_user_id() -> str:
@@ -96,7 +88,7 @@ def _slugify(display_name: str) -> str:
 def _validate_receipt_id(receipt_id: str) -> Response[Any] | None:
     """Validate receipt_id is a valid ULID format. Returns error response if invalid, None if valid."""
     if not _ULID_PATTERN.match(receipt_id):
-        return _error_response(400, "VALIDATION_ERROR", "Invalid receipt ID format")
+        return error_response(400, "VALIDATION_ERROR", "Invalid receipt ID format")
     return None
 
 
@@ -185,13 +177,13 @@ def create_category() -> Response[Any]:
         )
     except (TypeError, json.JSONDecodeError) as e:
         logger.warning("Category request parse error", extra={"error_type": type(e).__name__})
-        return _error_response(400, "VALIDATION_ERROR", "Invalid request body")
+        return error_response(400, "VALIDATION_ERROR", "Invalid request body")
 
     # Validate parentCategory against predefined slugs
     if request.parentCategory is not None:
         predefined_slugs = get_all_category_slugs()
         if request.parentCategory not in predefined_slugs:
-            return _error_response(
+            return error_response(
                 400,
                 "VALIDATION_ERROR",
                 f"parentCategory '{request.parentCategory}' is not a valid predefined category slug",
@@ -200,12 +192,12 @@ def create_category() -> Response[Any]:
     # Auto-generate slug from displayName
     slug = _slugify(request.displayName)
     if not slug:
-        return _error_response(400, "VALIDATION_ERROR", "Display name produces an empty slug")
+        return error_response(400, "VALIDATION_ERROR", "Display name produces an empty slug")
 
     # Check for conflict with predefined category slugs
     predefined_slugs = get_all_category_slugs()
     if slug in predefined_slugs:
-        return _error_response(
+        return error_response(
             409,
             "CONFLICT",
             f"Category slug '{slug}' conflicts with a predefined category",
@@ -218,7 +210,7 @@ def create_category() -> Response[Any]:
 
     existing = table.get_item(Key={"PK": pk, "SK": sk})
     if existing.get("Item"):
-        return _error_response(
+        return error_response(
             409,
             "CONFLICT",
             f"Custom category with slug '{slug}' already exists",
@@ -256,14 +248,14 @@ def create_category() -> Response[Any]:
 def delete_category(slug: str) -> Response[Any]:
     """Delete a custom category. Predefined categories cannot be deleted."""
     if not _SLUG_PATTERN.match(slug):
-        return _error_response(400, "VALIDATION_ERROR", "Invalid category slug format")
+        return error_response(400, "VALIDATION_ERROR", "Invalid category slug format")
 
     user_id = _get_user_id()
 
     # Check if this is a predefined category
     predefined_slugs = get_all_category_slugs()
     if slug in predefined_slugs:
-        return _error_response(
+        return error_response(
             403,
             "FORBIDDEN",
             "Cannot delete predefined categories",
@@ -276,7 +268,7 @@ def delete_category(slug: str) -> Response[Any]:
     # Check if the custom category exists
     existing = table.get_item(Key={"PK": pk, "SK": sk})
     if not existing.get("Item"):
-        return _error_response(404, "NOT_FOUND", f"Custom category '{slug}' not found")
+        return error_response(404, "NOT_FOUND", f"Custom category '{slug}' not found")
 
     # Delete it
     table.delete_item(Key={"PK": pk, "SK": sk})
@@ -301,7 +293,7 @@ def get_pipeline_results(receipt_id: str) -> Response[Any]:
     # Check staff role
     groups = _get_user_groups()
     if "staff" not in groups and "admin" not in groups:
-        return _error_response(
+        return error_response(
             403,
             "FORBIDDEN",
             "Pipeline results require staff role",
@@ -316,7 +308,7 @@ def get_pipeline_results(receipt_id: str) -> Response[Any]:
     receipt_response = table.get_item(Key={"PK": pk, "SK": receipt_sk})
     receipt_item = receipt_response.get("Item")
     if not receipt_item:
-        return _error_response(404, "NOT_FOUND", "Receipt not found")
+        return error_response(404, "NOT_FOUND", "Receipt not found")
 
     # Query pipeline results: SK begins_with RECEIPT#{ulid}#PIPELINE#
     pipeline_response = table.query(

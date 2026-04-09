@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import os
 import re
@@ -33,6 +32,8 @@ from shared.constants import (
     get_subcategory_slugs_for_category,
 )
 from shared.dynamo import get_table
+from shared.pagination import decode_cursor, encode_cursor
+from shared.responses import error_response
 
 logger = Logger()
 tracer = Tracer()
@@ -40,63 +41,11 @@ router = Router()  # type: ignore[no-untyped-call]
 s3_client = boto3.client("s3")
 
 
-def _encode_cursor(last_key: dict[str, Any]) -> str:
-    """Base64-encode DynamoDB LastEvaluatedKey as opaque pagination cursor."""
-    return base64.urlsafe_b64encode(json.dumps(last_key).encode()).decode()
-
-
-# Expected keys in a valid GSI1 pagination cursor
-_VALID_CURSOR_KEYS = {"GSI1PK", "GSI1SK", "PK", "SK"}
-
-
-def _decode_cursor(cursor: str, *, user_id: str) -> dict[str, Any]:
-    """Decode and validate opaque pagination cursor.
-
-    Validates that:
-    - Decoded JSON has exactly {GSI1PK, GSI1SK, PK, SK} keys (H1 mitigation)
-    - GSI1PK matches USER#{authenticated_userId} (ownership check)
-
-    Raises:
-        ValueError: If cursor is invalid or targets another user.
-    """
-    try:
-        decoded = json.loads(base64.urlsafe_b64decode(cursor))
-    except Exception as e:
-        raise ValueError(f"Cursor decode failed: {type(e).__name__}") from e
-
-    if not isinstance(decoded, dict):
-        raise ValueError("Cursor must decode to a JSON object")
-
-    if set(decoded.keys()) != _VALID_CURSOR_KEYS:
-        raise ValueError(
-            f"Cursor has invalid keys: {set(decoded.keys())}"
-        )
-
-    expected_gsi1pk = f"USER#{user_id}"
-    if decoded.get("GSI1PK") != expected_gsi1pk:
-        raise ValueError("Cursor GSI1PK does not match authenticated user")
-
-    expected_pk = f"USER#{user_id}"
-    if decoded.get("PK") != expected_pk:
-        raise ValueError("Cursor PK does not match authenticated user")
-
-    return decoded  # type: ignore[no-any-return]
-
-
 def _decimal_to_float(val: Any) -> float | None:
     """Convert numeric value to float, return None for None/missing."""
     if val is None:
         return None
     return float(val)
-
-
-def _error_response(status_code: int, code: str, message: str) -> Response[Any]:
-    """Build a standard error response."""
-    return Response(
-        status_code=status_code,
-        content_type=content_types.APPLICATION_JSON,
-        body=json.dumps({"error": {"code": code, "message": message}}),
-    )
 
 
 def _get_user_id() -> str:
@@ -112,7 +61,7 @@ _ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
 def _validate_receipt_id(receipt_id: str) -> Response[Any] | None:
     """Validate receipt_id is a valid ULID format. Returns error response if invalid, None if valid."""
     if not _ULID_PATTERN.match(receipt_id):
-        return _error_response(400, "VALIDATION_ERROR", "Invalid receipt ID format")
+        return error_response(400, "VALIDATION_ERROR", "Invalid receipt ID format")
     return None
 
 
@@ -230,7 +179,7 @@ def list_receipts() -> Response[Any]:
         query_kwargs["FilterExpression"] = filter_expr
     if cursor:
         try:
-            query_kwargs["ExclusiveStartKey"] = _decode_cursor(
+            query_kwargs["ExclusiveStartKey"] = decode_cursor(
                 cursor, user_id=user_id
             )
         except Exception as e:
@@ -239,7 +188,7 @@ def list_receipts() -> Response[Any]:
                 "Invalid pagination cursor",
                 extra={"error": str(e), "user_id": user_id},
             )
-            return _error_response(400, "VALIDATION_ERROR", "Invalid pagination cursor")
+            return error_response(400, "VALIDATION_ERROR", "Invalid pagination cursor")
 
     response = table.query(**query_kwargs)
     items: list[dict[str, Any]] = response.get("Items", [])
@@ -271,7 +220,7 @@ def list_receipts() -> Response[Any]:
             )
         )
 
-    next_cursor = _encode_cursor(last_key) if last_key else None
+    next_cursor = encode_cursor(last_key) if last_key else None
     result = ReceiptListResponse(receipts=receipts, nextCursor=next_cursor)
 
     return Response(
@@ -300,7 +249,7 @@ def get_receipt(receipt_id: str) -> Response[Any]:
     items: list[dict[str, Any]] = response.get("Items", [])
 
     if not items:
-        return _error_response(404, "NOT_FOUND", "Receipt not found")
+        return error_response(404, "NOT_FOUND", "Receipt not found")
 
     # Separate receipt from line items
     receipt_item: dict[str, Any] | None = None
@@ -313,7 +262,7 @@ def get_receipt(receipt_id: str) -> Response[Any]:
             line_items.append(item)
 
     if receipt_item is None:
-        return _error_response(404, "NOT_FOUND", "Receipt not found")
+        return error_response(404, "NOT_FOUND", "Receipt not found")
 
     image_key = str(receipt_item.get("imageKey", ""))
     image_url = _generate_image_url(image_key, bucket)
@@ -351,7 +300,7 @@ def update_receipt(receipt_id: str) -> Response[Any]:
         )
     except (TypeError, json.JSONDecodeError) as e:
         logger.warning("Receipt update parse error", extra={"error_type": type(e).__name__})
-        return _error_response(400, "VALIDATION_ERROR", "Invalid request body")
+        return error_response(400, "VALIDATION_ERROR", "Invalid request body")
 
     # Validate category/subcategory against taxonomy
     update_data = request.model_dump(exclude_none=True)
@@ -369,7 +318,7 @@ def update_receipt(receipt_id: str) -> Response[Any]:
         subcat_slug = update_data["subcategory"]
         valid_subcats = get_subcategory_slugs_for_category(cat_slug)
         if valid_subcats and subcat_slug not in valid_subcats:
-            return _error_response(
+            return error_response(
                 400,
                 "VALIDATION_ERROR",
                 f"Subcategory '{subcat_slug}' is not valid for category '{cat_slug}'",
@@ -434,7 +383,7 @@ def update_receipt(receipt_id: str) -> Response[Any]:
             ConditionExpression=Attr("PK").exists(),
         )
     except table.meta.client.exceptions.ConditionalCheckFailedException:
-        return _error_response(404, "NOT_FOUND", "Receipt not found")
+        return error_response(404, "NOT_FOUND", "Receipt not found")
 
     # Return the updated receipt with line items
     return get_receipt(receipt_id)
@@ -463,7 +412,7 @@ def delete_receipt(receipt_id: str) -> Response[Any]:
     items: list[dict[str, Any]] = response.get("Items", [])
 
     if not items:
-        return _error_response(404, "NOT_FOUND", "Receipt not found")
+        return error_response(404, "NOT_FOUND", "Receipt not found")
 
     # Find the receipt record (for the image key)
     image_key: str | None = None
@@ -522,7 +471,7 @@ def update_items(receipt_id: str) -> Response[Any]:
         )
     except (TypeError, json.JSONDecodeError) as e:
         logger.warning("Line items parse error", extra={"error_type": type(e).__name__})
-        return _error_response(400, "VALIDATION_ERROR", "Invalid request body")
+        return error_response(400, "VALIDATION_ERROR", "Invalid request body")
 
     table = get_table()
     pk = f"USER#{user_id}"
@@ -532,7 +481,7 @@ def update_items(receipt_id: str) -> Response[Any]:
     receipt_response = table.get_item(Key={"PK": pk, "SK": sk})
     receipt_item = receipt_response.get("Item")
     if not receipt_item:
-        return _error_response(404, "NOT_FOUND", "Receipt not found")
+        return error_response(404, "NOT_FOUND", "Receipt not found")
 
     now_iso = datetime.now(UTC).isoformat()
 

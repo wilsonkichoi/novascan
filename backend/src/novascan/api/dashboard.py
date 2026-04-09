@@ -64,7 +64,10 @@ class DashboardSummaryResponse(BaseModel):
 
 
 def _query_all_gsi1(table: Any, user_id: str, start_date: str, end_date: str) -> list[dict[str, Any]]:
-    """Query all receipts from GSI1 within a date range, paginating through all pages."""
+    """Query all receipts from GSI1 within a date range, paginating through all pages.
+
+    # TODO(post-MVP): Add safety cap per SECURITY-REVIEW S5 to prevent Lambda OOM
+    """
     items: list[dict[str, Any]] = []
     key_cond = Key("GSI1PK").eq(f"USER#{user_id}") & Key("GSI1SK").between(start_date, f"{end_date}~")
 
