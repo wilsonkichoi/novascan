@@ -108,8 +108,12 @@ Last updated: 2026-04-08
 |------|-------|------|--------|--------|-------|
 | 6.1  | Custom Domain CDK (ACM + CloudFront) | devops-engineer | pending | | |
 | 6.2  | UX Polish (Error Boundaries, Skeletons, Empty States, 404) | frontend-developer | pending | | |
-| 6.3  | UX Polish Tests | qa-engineer | pending | | TEST |
-| 6.4  | Production Deployment + DNS + E2E Verification | devops-engineer | pending | | |
+| 6.3  | Prod Stack Deploy + Cloudflare DNS Setup | devops-engineer (human) | pending | | MANUAL |
+| 6.4  | Deploy & Teardown Guide | devops-engineer | pending | | |
+| 6.5  | Monitoring Guide | devops-engineer | pending | | |
+| 6.6  | Troubleshooting Guide | devops-engineer | pending | | |
+| 6.7  | UX Polish Tests | qa-engineer | pending | | TEST |
+| 6.8  | Production E2E Verification | devops-engineer | pending | | |
 
 ## Summary
 
@@ -122,8 +126,8 @@ Last updated: 2026-04-08
 | M3.1      | 12         | 10             | 2    | 0            |
 | M4        | 7          | 5              | 2    | 0            |
 | M5        | 6          | 4              | 2    | 0            |
-| M6        | 4          | 3              | 1    | 0            |
-| **Total** | **57**     | **42**         | **13** | **2**      |
+| M6        | 8          | 6              | 1    | 1            |
+| **Total** | **61**     | **45**         | **13** | **3**      |
 
 ## Wave 1 Review Fixes
 

@@ -1135,9 +1135,84 @@
 
 ---
 
-### Wave 2: Tests + Production Deployment
+### Wave 2: Manual DNS + Runbooks
 
-#### [ ] Task 6.3: UX Polish Tests [TEST]
+#### [ ] Task 6.3: Prod Stack Deploy + Cloudflare DNS Setup [MANUAL]
+- **Role:** devops-engineer (human)
+- **Depends on:** 6.1
+- **Manual:** yes — auto pipeline stops at this task. Human completes steps and marks done.
+- **Spec reference:** SPEC.md >> Section 13 (Custom Domain Setup)
+- **Reference guide:** `workflow/guides/cloudflare-custom-domain.md`
+- **Files:**
+  - none (manual operations only)
+- **Steps:**
+  1. Run `cd infra && uv run cdk deploy --context stage=prod` — deploy will block waiting for ACM certificate validation
+  2. While deploy is waiting, note the ACM CNAME name/value from console output
+  3. In Cloudflare DNS: add CNAME record for ACM validation (DNS-only / gray cloud)
+  4. Wait for ACM certificate status = ISSUED (~5-15 min)
+  5. Deploy completes — CloudFront distribution gets `subdomain.example.com` as alternate domain
+  6. In Cloudflare DNS: add CNAME `novascan` → `{distribution}.cloudfront.net` (DNS-only / gray cloud)
+  7. Verify: `curl -I https://subdomain.example.com` returns HTTP 200 with security headers
+- **Acceptance criteria:**
+  - ACM certificate status = ISSUED
+  - `dig subdomain.example.com CNAME +short` resolves to `*.cloudfront.net`
+  - `curl -I https://subdomain.example.com` returns HTTP 200 with HSTS, CSP, X-Frame-Options headers
+  - Existing MX/TXT email records for `example.com` remain unaffected
+- **Test command:** `curl -s -o /dev/null -w "%{http_code}" https://subdomain.example.com`
+
+#### [ ] Task 6.4: Deploy & Teardown Guide
+- **Role:** devops-engineer
+- **Depends on:** 6.1
+- **Spec reference:** SPEC.md >> Section 13 (Manual Deployment Steps)
+- **Files:**
+  - `workflow/guides/deploy-teardown.md` (create)
+- **Acceptance criteria:**
+  - Covers dev stack lifecycle: deploy, update, teardown (`cdk deploy/destroy --context stage=dev`)
+  - Covers prod stack lifecycle: deploy, update, teardown (with ACM/DNS prereqs)
+  - Includes frontend build + S3 upload + CloudFront invalidation steps
+  - Includes environment variable reference (stage-specific config values from `cdk.json`)
+  - Includes pre-deploy checklist (tests pass, CDK snapshot current, env vars set)
+  - Includes rollback instructions (redeploy previous commit)
+- **Test command:** `test -f workflow/guides/deploy-teardown.md && echo "PASS"`
+
+#### [ ] Task 6.5: Monitoring Guide
+- **Role:** devops-engineer
+- **Depends on:** none (M5 complete)
+- **Spec reference:** SPEC.md >> Section 12 (Observability)
+- **Files:**
+  - `workflow/guides/monitoring.md` (create)
+- **Acceptance criteria:**
+  - Documents all CloudWatch metrics published by pipeline Lambdas (PipelineCompleted, PipelineLatency, RankingDecision, RankingScoreDelta, ReceiptStatus, UsedFallback)
+  - Includes at least 5 CloudWatch Logs Insights queries (pipeline failures, slow executions, error rates by Lambda, API 4xx/5xx rates, auth failures)
+  - Lists key CloudWatch log groups and how to locate them (Lambda function names from CDK stack)
+  - Covers Step Functions console usage for inspecting pipeline executions
+  - Includes manual alarm setup instructions (SNS topic + CloudWatch alarm for pipeline failures)
+  - Includes cost monitoring guidance (S3, DynamoDB, Lambda, Textract, Bedrock usage)
+- **Test command:** `test -f workflow/guides/monitoring.md && echo "PASS"`
+
+#### [ ] Task 6.6: Troubleshooting Guide
+- **Role:** devops-engineer
+- **Depends on:** none (M5 complete)
+- **Spec reference:** SPEC.md >> Section 12 (Observability)
+- **Files:**
+  - `workflow/guides/troubleshooting.md` (create)
+- **Acceptance criteria:**
+  - Covers at least 10 failure scenarios with symptoms → diagnosis → fix:
+    - Pipeline: Textract timeout, Bedrock throttling, both pipelines fail, S3 event not triggering SQS
+    - API: 401 (expired token), 403 (wrong user), 500 (Lambda error), CORS errors
+    - Auth: OTP not received, session expired, refresh token invalid
+    - Frontend: blank page (S3 deploy issue), stale cache (CloudFront invalidation needed)
+    - CDK: deploy fails (resource limit, IAM permission), drift detection
+  - Documents how to read Lambda Powertools structured logs (correlation ID, tracing)
+  - Includes how to replay a failed pipeline execution (re-upload image or manual SFN trigger)
+  - Includes DynamoDB inspection examples (AWS CLI queries for receipt records)
+- **Test command:** `test -f workflow/guides/troubleshooting.md && echo "PASS"`
+
+---
+
+### Wave 3: Tests + E2E Verification
+
+#### [ ] Task 6.7: UX Polish Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 6.2
 - **Spec reference:** SPEC.md >> Milestone 6 Acceptance Criteria
@@ -1155,20 +1230,17 @@
   - `cd frontend && npm run test -- --run` passes
 - **Test command:** `cd frontend && npm run test -- --run`
 
-#### [ ] Task 6.4: Production Deployment + DNS + E2E Verification
+#### [ ] Task 6.8: Production E2E Verification
 - **Role:** devops-engineer
-- **Depends on:** 6.1, 6.2
-- **Spec reference:** SPEC.md >> Milestone 6 Acceptance Criteria, Section 13 (Manual Deployment Steps, Custom Domain Setup)
+- **Depends on:** 6.3, 6.2
+- **Spec reference:** SPEC.md >> Milestone 6 Acceptance Criteria
 - **Files:**
   - `workflow/plan/PROGRESS.md` (modify — update all M6 task statuses)
 - **Acceptance criteria:**
-  - `cdk deploy --context stage=prod` completes without errors
-  - ACM certificate validated (Cloudflare DNS CNAME added)
   - Frontend built with prod stack outputs and uploaded to prod S3 bucket
   - CloudFront invalidation completed
   - `https://subdomain.example.com` loads the frontend
   - HTTPS enforced (HTTP redirects)
   - Full flow: sign up → sign in → upload receipt → see processing → see confirmed receipt → view detail → edit line items → dashboard shows totals → transactions shows entry → sign out
-  - `cdk destroy --context stage=prod` removes all resources
   - Dev and prod are isolated (separate stacks, separate resources)
 - **Test command:** `curl -s -o /dev/null -w "%{http_code}" https://subdomain.example.com`

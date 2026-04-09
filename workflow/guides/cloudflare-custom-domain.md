@@ -5,12 +5,23 @@ This guide covers the manual DNS steps required after `cdk deploy --context stag
 ## Prerequisites
 
 - Cloudflare account managing the `example.com` zone
-- AWS CDK prod stack deployed: `cd infra && uv run cdk deploy --context stage=prod`
-- Stack outputs visible (ACM CNAME records + CloudFront distribution domain)
+- AWS CDK prod stack ready to deploy: `cd infra && uv run cdk synth --context stage=prod` succeeds
+- AWS CLI configured with the correct profile/region
 
-## Step 1: ACM Certificate Validation
+## Existing DNS Context
 
-After `cdk deploy`, the stack outputs two values for ACM certificate validation:
+The `example.com` zone already has these records (do NOT modify them):
+- **NS** — `eugene.ns.cloudflare.com`, `miki.ns.cloudflare.com` (Cloudflare nameservers)
+- **MX** — Cloudflare email routing (`route1/2/3.mx.cloudflare.net`)
+- **TXT** — DKIM (`cf2024-1._domainkey`) and SPF (`v=spf1 include:_spf.mx.cloudflare.net`)
+
+Adding CNAME records for the `novascan` subdomain does NOT affect any of these. Subdomain DNS records are independent of zone-level records.
+
+## Step 1: Deploy Prod Stack + ACM Certificate Validation
+
+Run `cd infra && uv run cdk deploy --context stage=prod`. The deploy will **block** waiting for ACM certificate validation. You must add the DNS CNAME record in Cloudflare WHILE the deploy is running. If the deploy times out (~30 min), re-run it after DNS is configured — ACM will pick up the existing CNAME.
+
+The deploy outputs two values for ACM certificate validation:
 
 | Output Key | Example Value |
 |-----------|---------------|
@@ -136,3 +147,17 @@ After setup, your Cloudflare DNS should have these records for the `example.com`
 |------|------|---------|-------|
 | CNAME | `_abc123.novascan` | `_def456.acm-validations.aws.` | DNS only |
 | CNAME | `novascan` | `d1234abcdef.cloudfront.net` | DNS only |
+
+## Multi-Provider Subdomains
+
+The `example.com` zone can host subdomains pointing to different cloud providers simultaneously:
+
+- `subdomain.example.com` → AWS CloudFront (this setup)
+- `other.example.com` → GCP (future)
+- `another.example.com` → any provider (future)
+
+Each subdomain gets its own independent CNAME/A record. There are no cross-provider conflicts because:
+
+1. **TLS certificates are per-subdomain.** NovaScan's ACM certificate covers only `subdomain.example.com`. Other subdomains use their own provider's certificates.
+2. **Cloudflare proxy setting is per-record.** DNS-only (gray cloud) for the `novascan` CNAME doesn't affect proxy settings on other subdomain records. Future subdomains can independently choose proxied or DNS-only.
+3. **No wildcard certificate.** We use a single-domain cert, not `*.example.com`, so there's no ownership conflict between providers.
