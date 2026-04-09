@@ -231,3 +231,44 @@ Both endpoints extract `user_id` from `router.current_event.request_context.auth
 ```bash
 cd backend && uv run ruff check src/ && uv run mypy src/novascan/api/transactions.py src/novascan/api/receipts.py && uv run pytest tests/ -v
 ```
+
+### Fix Plan Analysis (Claude Opus 4.6 (1M context) — 2026-04-08)
+
+**Scope check:** The fix plan covers 3 code review SUGGESTIONs (S1, S2, S3) and defers NITs. However, the security review identified 3 additional SUGGESTIONs (S4, S5, S6). The fix plan does not address these. S4 (date param validation) is actionable and low-risk. S5 (unbounded fetch) is an acknowledged MVP trade-off — deferral is reasonable. S6 (silent cursor exception) is a minor inconsistency worth fixing alongside S1/S2. Recommendation: add S4 and S6 to the fix scope; defer S5 with a TODO comment.
+
+**[S1] (sortBy=date with merchant search double-fetches from DynamoDB) — Approve**
+My approach: Reading `transactions.py:223-314` independently, I traced the `sortBy == "date"` code path. At line 237, the code runs a paginated DynamoDB query with `Limit`. At lines 250-265, it runs a Count query loop. Then at line 270, it checks `if merchant_search` and calls `_fetch_all_matching` — which re-queries the entire partition. The initial paginated query (line 237-239) and the Count query (lines 250-265) are thrown away. The fix is to check `merchant_search` before line 237 and branch early to the in-memory path, skipping both the paginated query and the Count query.
+Plan's approach: Restructure into two sub-branches within `sortBy == "date"` — merchant-search goes to `_fetch_all_matching` directly, non-merchant stays on the DynamoDB-paginated path. Aligns with my analysis. The risk note about cursor divergence between the `sortBy=date+merchant` path and the `sortBy=amount|merchant` path is valid and well-identified. The suggestion to extract in-memory pagination into a helper (linking to S2) is a good mitigation.
+
+**[S2] (Duplicated cursor/pagination helpers) — Revise**
+My approach: Comparing `receipts.py:43-83` and `transactions.py:28-61` side by side, the `_encode_cursor`, `_decode_cursor`, `_VALID_CURSOR_KEYS`, `_error_response`, and `_decimal_to_float` are functionally identical. I would extract `encode_cursor`, `decode_cursor`, and `VALID_CURSOR_KEYS` into `shared/pagination.py`. I would extract `error_response` into `shared/responses.py`. I would NOT extract `_decimal_to_float` — the dashboard has `_to_float` with different semantics (returns 0.0 for None vs None for None). Extracting both under a shared name would create confusion about which behavior is expected, and callers have different needs. Keeping `_decimal_to_float` local avoids a false abstraction.
+Plan's approach includes extracting `decimal_to_float` into `shared/responses.py`. This is flawed because:
+1. `_decimal_to_float` in `receipts.py:86-90` and `transactions.py:73-77` return `None` for `None` input. The dashboard's `_to_float` (line 88-94) returns `0.0` for `None`. Extracting one version creates a naming collision risk.
+2. `_decimal_to_float` is a 3-line function. Per project convention ("three similar lines > one unnecessary helper"), it does not clear the threshold for extraction despite appearing in two files. The security argument that justified extracting `_decode_cursor` (30+ lines of security-critical code) does not apply to a trivial type conversion.
+3. `_error_response` is also used in `receipts.py`, `transactions.py`, `upload.py`, and `categories.py` — but not all copies are identical (`upload.py` has a different error shape for validation errors). Extracting only the standard version is fine, but scope it carefully.
+**Alternative:** Extract only `encode_cursor`, `decode_cursor`, `VALID_CURSOR_KEYS` into `shared/pagination.py`. Extract `error_response` into `shared/responses.py`. Leave `_decimal_to_float` and `_to_float` as module-local helpers.
+
+**[S3] (Merchant sort places None merchants inconsistently) — Approve**
+My approach: At `transactions.py:332`, when `reverse=False` (ascending), `no_merchant = ""`. Empty string sorts before all real merchant names, placing None merchants at the start, not the end. When `reverse=True` (descending), `no_merchant = "\uffff"`. In raw order, `"\uffff"` sorts last; after `reverse=True`, it ends up first. Both directions put None merchants at the beginning. The fix: `no_merchant = "\uffff" if not reverse else ""`. Ascending: `"\uffff"` sorts after all real names -> None at end. Descending: `""` sorts first in raw order, reversed to last -> None at end.
+Plan's approach: Identical. Swap the sentinel values. The risk assessment (low, no downstream dependencies on None-merchant position) is accurate.
+
+**[S4] (startDate/endDate lack format validation — from security review) — Missing from fix plan**
+My approach: Reading `transactions.py:167-168`, `startDate` and `endDate` are used directly in DynamoDB KeyConditionExpression without validation. The dashboard validates its `month` param with `_MONTH_RE` regex (line 24). The transactions endpoint should do the same for date params. Add `_DATE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")` and validate both params, returning 400 on mismatch. This is a quick addition that matches the established pattern and should be included in the fix scope.
+
+**[S5] (Unbounded full-partition data fetch — from security review) — Acceptable deferral**
+The security review itself acknowledges this is an accepted MVP trade-off (SPEC line 681). Adding a safety cap is a good idea for a future iteration but not urgent. Recommend adding a `# TODO(post-MVP): Add safety cap per SECURITY-REVIEW S5` comment at `dashboard.py:66` and `transactions.py:126` so it is not lost.
+
+**[S6] (Silent cursor exception at transactions.py:295 — from security review) — Missing from fix plan**
+My approach: At `transactions.py:295-296`, the `except Exception: pass` silently swallows cursor decode errors in the merchant-search re-pagination path. The cursor was already validated at line 228-235 (where errors return 400). Reaching line 295 with an invalid cursor means something changed between the two decode calls — logically impossible in a single request, but the silent `pass` makes debugging future issues harder. Fix: replace `pass` with `logger.warning("Cursor re-decode failed in merchant search path", extra={"user_id": user_id})`. Low risk, improves observability.
+
+**Execution order (revised to include S4 and S6):**
+1. [S3] — one-line sentinel swap, no dependencies
+2. [S4] — add date regex validation to transactions.py (independent, quick)
+3. [S6] — replace silent `except: pass` with logger.warning (independent, quick)
+4. [S2] — extract shared modules (revised: pagination.py + responses.py, but NOT decimal_to_float)
+5. [S1] — restructure transactions.py merchant-search branch
+
+**Verification:**
+```bash
+cd backend && uv run ruff check src/ && uv run mypy src/novascan/api/transactions.py src/novascan/api/receipts.py src/novascan/shared/pagination.py src/novascan/shared/responses.py && uv run pytest tests/ -v
+```
