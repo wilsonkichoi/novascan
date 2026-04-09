@@ -1190,7 +1190,7 @@
   - Includes cost monitoring guidance (S3, DynamoDB, Lambda, Textract, Bedrock usage)
 - **Test command:** `test -f workflow/guides/monitoring.md && echo "PASS"`
 
-#### [ ] Task 6.6: Troubleshooting Guide
+#### [x] Task 6.6: Troubleshooting Guide
 - **Role:** devops-engineer
 - **Depends on:** none (M5 complete)
 - **Spec reference:** SPEC.md >> Section 12 (Observability)
