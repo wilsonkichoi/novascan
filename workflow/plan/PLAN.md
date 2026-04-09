@@ -1175,7 +1175,7 @@
   - Includes rollback instructions (redeploy previous commit)
 - **Test command:** `test -f workflow/guides/deploy-teardown.md && echo "PASS"`
 
-#### [ ] Task 6.5: Monitoring Guide
+#### [x] Task 6.5: Monitoring Guide
 - **Role:** devops-engineer
 - **Depends on:** none (M5 complete)
 - **Spec reference:** SPEC.md >> Section 12 (Observability)
