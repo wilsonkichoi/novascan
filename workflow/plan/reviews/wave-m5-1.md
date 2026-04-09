@@ -305,3 +305,33 @@ cd backend && uv run ruff check src/ && uv run mypy src/novascan/api/transaction
 - `ruff check src/` -- PASS
 - `mypy src/novascan/api/transactions.py src/novascan/api/receipts.py src/novascan/api/categories.py src/novascan/shared/pagination.py src/novascan/shared/responses.py` -- PASS
 - `pytest tests/ -v` -- PASS (482 passed)
+
+### Fix Verification (Claude Opus 4.6 (1M context) -- 2026-04-08)
+
+**Status: 5/5 fixed, 0 not fixed, 0 regressions (1 deferred as planned)**
+
+**[S1] (sortBy=date with merchant search double-fetches from DynamoDB) -- Fixed** ✓
+Verified: `transactions.py:185` branch condition changed from `if sort_by == "date":` to `if sort_by == "date" and not merchant_search:`. When merchant search is active, the code falls through directly to the `else` branch (line 226) which calls `_fetch_all_matching` once. The entire old merchant-search re-fetch block (former lines 270-314 with double DynamoDB query + Count query + silent `except Exception: pass`) has been removed. No wasteful double-fetch remains.
+
+**[S2] (Duplicated cursor/pagination helpers) -- Fixed** ✓
+Verified: `shared/pagination.py` (49 lines) contains `encode_cursor`, `decode_cursor`, `VALID_CURSOR_KEYS`. `shared/responses.py` (21 lines) contains `error_response`. Confirmed no local `_encode_cursor`, `_decode_cursor`, `_VALID_CURSOR_KEYS`, or `_error_response` definitions remain in any API module (grep returns zero matches). `receipts.py`, `transactions.py`, and `categories.py` all import from shared modules. Per fix plan analysis revision, `_decimal_to_float` and `_to_float` were intentionally left module-local (different semantics, below extraction threshold). `upload.py` retains its own error handling (different error shape for validation errors).
+
+**[S3] (Merchant sort places None merchants inconsistently) -- Fixed** ✓
+Verified: `transactions.py:242` now reads `no_merchant = "\uffff" if not reverse else ""`. Ascending (`reverse=False`): `"\uffff"` sorts after all real merchant names, placing None merchants at end. Descending (`reverse=True`): `""` sorts first in raw order, `reverse=True` puts it last, placing None merchants at end. Both directions now correctly place None merchants at end.
+
+**[S4] (startDate/endDate lack format validation) -- Fixed** ✓
+Verified: `transactions.py:26` adds `_DATE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")`. Lines 147-150 validate `startDate` and `endDate` against this regex, returning 400 VALIDATION_ERROR for malformed dates. Matches the established pattern from dashboard's `_MONTH_RE`.
+
+**[S5] (Unbounded full-partition data fetch) -- Deferred (as planned)** ✓
+Verified: TODO comments added at `dashboard.py:69` (`# TODO(post-MVP): Add safety cap per SECURITY-REVIEW S5 to prevent Lambda OOM`) and `transactions.py:93` (identical comment). Accepted MVP trade-off per SPEC. No code change required.
+
+**[S6] (Silent cursor exception at transactions.py:295) -- Fixed** ✓
+Verified: The silent `except Exception: pass` was entirely eliminated by the [S1] restructure. The `sortBy=date` + merchant path now uses the `else` branch (line 226+), which has proper `logger.warning` + `error_response` on cursor decode failure (lines 266-271). No silent exception swallowing remains anywhere in `transactions.py`.
+
+**Verification commands:**
+- `ruff check src/` -- PASS
+- `mypy src/novascan/api/transactions.py src/novascan/api/receipts.py src/novascan/api/categories.py src/novascan/shared/pagination.py src/novascan/shared/responses.py` -- PASS (0 issues)
+- `pytest tests/ -v` -- PASS (482 passed, 0 failed)
+- `grep -r "_encode_cursor\|_decode_cursor\|_VALID_CURSOR_KEYS\|_error_response" backend/src/novascan/api/` -- 0 matches (no local duplicates)
+
+**Verdict:** 5/5 issues resolved. 1 issue (S5) deferred as planned with TODO comments. All verification commands pass. No regressions detected.
