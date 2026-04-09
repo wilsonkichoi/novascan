@@ -112,6 +112,87 @@ See [S1], [S2], [S3] above (scoped to Task 5.2).
 
 **Overall verdict:** Solid implementation. Both endpoints are functionally correct, spec-compliant, and follow established project patterns. The three SUGGESTIONs are quality improvements: [S1] is a performance concern (double DynamoDB fetch), [S2] is a maintainability concern (duplicated security-sensitive code), and [S3] is a correctness bug in edge-case sorting behavior for null merchants. No BLOCKERs.
 
+## Security Review
+
+Reviewed: 2026-04-08
+Reviewer: Claude Opus 4.6 (1M context) (security-reviewer)
+Methodology: STRIDE threat model, OWASP Top 10, CWE Top 25
+
+### Threat Model Summary
+
+| Component | Threats Assessed | Findings |
+|-----------|-----------------|----------|
+| GET /api/dashboard/summary | S: user_id from JWT (OK). T: aggregation read-only (OK). R: no mutations (OK). I: date params unvalidated (S4). D: unbounded full-partition fetch (S5). E: user_id scoped queries (OK). | S4, S5 |
+| GET /api/transactions | S: user_id from JWT (OK). T: read-only (OK). R: no mutations (OK). I: error logging leaks cursor details in str(e) (S6). D: unbounded full-partition fetch same as dashboard (S5). E: cursor ownership checked (OK). | S5, S6 |
+| Shared cursor/pagination code | S: cursor ownership validated (OK). T: cursor key validation (OK). I: cursor ValueError messages include internal structure (S6). | S6 |
+| API Gateway auth | All /api/{proxy+} routes use Cognito JWT authorizer. /api/health excluded (correct). No new auth gaps. | None |
+
+### Issues Found
+
+**[S4] -- SUGGESTION: startDate/endDate query parameters lack format validation in transactions.py**
+
+`transactions.py:167-168` -- The `startDate` and `endDate` parameters are taken directly from query string and used in DynamoDB KeyConditionExpressions without any format validation. While DynamoDB treats these as string comparisons (so a malformed date like `"x"` or `"9999-99-99"` won't cause a crash or data corruption), the lack of validation has two consequences:
+
+1. **Unexpected query behavior.** A `startDate` of `"abc"` would match against GSI1SK strings like `"2026-04-08#01HQ..."`, returning zero results silently rather than a 400 error. This violates the principle of failing fast on invalid input (CWE-20: Improper Input Validation).
+2. **No injection risk.** DynamoDB KeyConditionExpressions use parameterized conditions (via boto3 `Key().between()`), so there is no injection vector here -- this is purely a validation gap, not a security vulnerability.
+
+This is a pre-existing pattern carried over from `receipts.py:195-213` (M2), but this wave copies and extends it in `transactions.py`. The dashboard endpoint validates its `month` parameter with a regex (`_MONTH_RE`), which is the correct pattern.
+
+OWASP: A03:2021 Injection (low -- parameterized queries mitigate). CWE-20: Improper Input Validation.
+
+Suggested fix: Add a `_DATE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")` validation in `transactions.py` (and backport to `receipts.py` in the shared extraction from [S2]). Return 400 VALIDATION_ERROR for malformed dates.
+
+**[S5] -- SUGGESTION: Unbounded full-partition data fetch in dashboard and transactions endpoints enables resource exhaustion**
+
+`dashboard.py:66-85` (`_query_all_gsi1`) and `transactions.py:126-150` (`_fetch_all_matching`) -- Both functions paginate through ALL matching DynamoDB records in the user's partition with no upper bound. For the dashboard, this happens on every request (lines 158 and 226 -- two separate full-partition fetches per call). For transactions, this happens when `sortBy=amount|merchant` or when merchant search is active.
+
+At MVP scale (~100 receipts/month), this is fine. But the design has no circuit breaker:
+- A user with 10,000 receipts would cause the Lambda to fetch all records into memory, consuming ~50MB+ of Lambda memory and potentially timing out (30s limit).
+- An attacker with a valid JWT could submit many concurrent dashboard requests, each triggering two full-partition scans, amplifying DynamoDB read consumption.
+
+STRIDE: Denial of Service. CWE-400: Uncontrolled Resource Consumption. OWASP: A04:2021 Insecure Design (missing resource limits).
+
+This is an accepted trade-off at MVP scale (SPEC line 681 acknowledges this: "O(all receipts for the month) per request... First candidate for pre-computed aggregates if performance degrades"). Flagging it here to ensure the trade-off is documented, not to mandate a fix.
+
+Suggested mitigation (if desired): Add a safety cap (e.g., 10,000 items) to `_query_all_gsi1` and `_fetch_all_matching`. If the cap is hit, return the result with a warning or log an alert. This prevents Lambda OOM without changing the business logic.
+
+**[S6] -- SUGGESTION: Cursor decode error messages expose internal cursor structure**
+
+`transactions.py:47` and `transactions.py:53` -- When cursor decoding fails, the `ValueError` messages include internal details:
+- `"Cursor decode failed: {type(e).__name__}"` -- leaks the exception class name
+- `"Cursor has invalid keys: {set(decoded.keys())}"` -- leaks the actual keys the attacker sent, confirming to them what the expected structure is
+
+These messages are caught by the handler at lines 231-235 and logged server-side (correctly), but the same ValueError is also caught at `transactions.py:295-296` with `except Exception: pass` -- meaning in the merchant-search re-pagination path, a malformed cursor is silently ignored rather than returning an error. This is inconsistent with the primary cursor validation path.
+
+The same pattern exists in `receipts.py:63-68` (pre-existing from M3.1 security hardening). However, the M3.1 hardening specifically addressed this issue (SECURITY-REVIEW.md H1/M7), and the current `transactions.py` copy preserves the fix for the primary path but introduces a silent-ignore path at line 295.
+
+STRIDE: Information Disclosure (minor). CWE-209: Generation of Error Message Containing Sensitive Information. OWASP: A04:2021 Insecure Design (inconsistent error handling).
+
+Suggested fix: The silent `except Exception: pass` at `transactions.py:295-296` should log a warning (matching the pattern at line 231) rather than silently ignoring the error. The cursor has already been validated once at line 229, so reaching line 295 with an invalid cursor indicates a programming error, not a user input issue -- but silent suppression makes debugging harder.
+
+### Data Classification Assessment
+
+| Data Element | Classification | Protection | Verdict |
+|-------------|---------------|-----------|---------|
+| User receipts (merchant, total, category) | Confidential (PII-adjacent financial data) | Scoped to PK=USER#{userId}, JWT-authenticated | PASS |
+| Spending totals/aggregates | Confidential | Computed in Lambda memory, not cached, scoped to user | PASS |
+| Pagination cursors | Internal | Base64-encoded DynamoDB keys, ownership-validated | PASS |
+| Error messages to client | Public | Generic messages, no internal state leaked | PASS (minor concern in S6) |
+| Server-side logs | Internal | Detailed errors logged to CloudWatch only | PASS |
+
+### Auth/Authz Verification
+
+| Endpoint | Auth Required | User Scoping | Role Check | Verdict |
+|----------|-------------|-------------|-----------|---------|
+| GET /api/dashboard/summary | JWT via API Gateway | `user_id` from `sub` claim, GSI1PK=USER#{userId} | None (correct -- all users) | PASS |
+| GET /api/transactions | JWT via API Gateway | `user_id` from `sub` claim, GSI1PK=USER#{userId} | None (correct -- all users) | PASS |
+
+Both endpoints extract `user_id` from `router.current_event.request_context.authorizer.jwt_claim["sub"]` which is populated by the API Gateway Cognito JWT authorizer. All DynamoDB queries are scoped to `GSI1PK = USER#{user_id}`. No cross-user data access is possible through these endpoints.
+
+### Security Assessment
+
+**Overall security posture:** The M5 Wave 1 implementation follows the security patterns established during M3.1 hardening. Authentication and data isolation are correctly implemented on both endpoints. The three suggestions are all low-to-medium severity: [S4] is an input validation gap that doesn't enable exploitation (parameterized queries prevent injection), [S5] is an acknowledged MVP trade-off for unbounded data fetches, and [S6] is a minor inconsistency in error handling on a secondary code path. No blockers. The cursor ownership validation and error sanitization patterns from M3.1 have been correctly carried forward.
+
 ## Review Discussion
 
 ### Fix Plan (Claude Opus 4.6 (1M context) -- 2026-04-08)
