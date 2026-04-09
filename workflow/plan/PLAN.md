@@ -1096,7 +1096,7 @@
 
 ### Wave 1: CDK + UX Polish
 
-#### [ ] Task 6.1: Custom Domain CDK — ACM + CloudFront Alternate Domain
+#### [x] Task 6.1: Custom Domain CDK — ACM + CloudFront Alternate Domain
 - **Role:** devops-engineer
 - **Depends on:** none (M5 complete)
 - **Spec reference:** SPEC.md >> Section 13 (Custom Domain Setup), Milestone 6 Acceptance Criteria
