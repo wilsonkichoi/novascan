@@ -245,3 +245,32 @@ No revisions needed. The plan is correct and complete for this single-issue scop
 - `cd frontend && npm run build` -- PASS
 - `cd frontend && npm run test -- --run` -- PASS (175 tests, 9 suites)
 
+### Fix Verification (Claude Opus 4.6 (1M context) -- 2026-04-08)
+
+**Status: 1/1 fixed, 0 not fixed, 0 regressions**
+
+**[B1] (Category filter slugs do not match category-taxonomy.md) -- Fixed** ✓
+Verified by:
+1. **Diff inspection:** `git diff feature/m5-wave2-frontend-pages..fix/5.4-category-filter-slugs -- frontend/src/components/TransactionFilters.tsx` confirms all 9 incorrect slugs were replaced and 3 missing categories were added. The diff touches only lines 12-27 (the `CATEGORY_OPTIONS` array) with no unrelated changes.
+2. **Slug-by-slug cross-reference against `category-taxonomy.md`:** All 13 category slugs and display labels in the fixed code match the canonical taxonomy exactly:
+   - `groceries-food` / "Groceries & Food" -- matches `### Groceries & Food (\`groceries-food\`)`
+   - `dining` / "Dining" -- matches `### Dining (\`dining\`)`
+   - `retail-shopping` / "Retail & Shopping" -- matches `### Retail & Shopping (\`retail-shopping\`)`
+   - `automotive-transit` / "Automotive & Transit" -- matches `### Automotive & Transit (\`automotive-transit\`)`
+   - `health-wellness` / "Health & Wellness" -- matches `### Health & Wellness (\`health-wellness\`)`
+   - `entertainment-travel` / "Entertainment & Travel" -- matches `### Entertainment & Travel (\`entertainment-travel\`)`
+   - `home-utilities` / "Home & Utilities" -- matches `### Home & Utilities (\`home-utilities\`)`
+   - `education` / "Education" -- matches `### Education (\`education\`)`
+   - `pets` / "Pets" -- matches `### Pets (\`pets\`)`
+   - `gifts-donations` / "Gifts & Donations" -- matches `### Gifts & Donations (\`gifts-donations\`)`
+   - `financial-insurance` / "Financial & Insurance" -- matches `### Financial & Insurance (\`financial-insurance\`)`
+   - `office-business` / "Office & Business" -- matches `### Office & Business (\`office-business\`)`
+   - `other` / "Other" -- matches `### Other (\`other\`)`
+3. **No stale references:** Grep for old incorrect slugs (`dining-restaurants`, `shopping-retail`, `entertainment-leisure`, `home-garden`, `utilities-bills`, `travel-lodging`, `education-office`, `personal-care`, `transportation`) across `frontend/src/` returned zero matches.
+4. **No regressions:** No other files were modified by the fix commit.
+
+**Verification commands:**
+- `cd frontend && npm run build` -- PASS (built in 1.18s)
+- `cd frontend && npm run test -- --run` -- PASS (175 tests, 9 suites, 0 failures)
+
+**Verdict:** 1/1 issues resolved. The category filter dropdown now uses the exact slugs and display names from `category-taxonomy.md`. The fix is correct and complete.

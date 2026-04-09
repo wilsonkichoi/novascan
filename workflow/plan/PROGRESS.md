@@ -97,8 +97,8 @@ Last updated: 2026-04-04
 |------|-------|------|--------|--------|-------|
 | 5.1  | Dashboard Summary Endpoint | backend-engineer | pending | | |
 | 5.2  | Transactions Endpoint | backend-engineer | pending | | |
-| 5.3  | Dashboard Page + Analytics Placeholder | frontend-developer | review | [task-5.3](reviews/task-5.3.md) | 2026-04-08 |
-| 5.4  | Transactions Page | frontend-developer | review | [task-5.4](reviews/task-5.4.md) | 2026-04-08 |
+| 5.3  | Dashboard Page + Analytics Placeholder | frontend-developer | done | [task-5.3](reviews/task-5.3.md) | 2026-04-08. Verified 2026-04-08. |
+| 5.4  | Transactions Page | frontend-developer | done | [task-5.4](reviews/task-5.4.md) | 2026-04-08. Fix verified 2026-04-08 (B1 category slugs). |
 | 5.5  | Dashboard + Transactions API Tests | qa-engineer | pending | | TEST |
 | 5.6  | Dashboard + Transactions UI Tests | qa-engineer | pending | | TEST |
 
