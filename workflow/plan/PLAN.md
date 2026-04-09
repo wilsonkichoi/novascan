@@ -1071,7 +1071,7 @@
   - `cd backend && uv run pytest tests/unit/test_dashboard.py tests/unit/test_transactions.py -v` passes
 - **Test command:** `cd backend && uv run pytest tests/unit/ -v -k "dashboard or transactions"`
 
-#### [ ] Task 5.6: Dashboard + Transactions UI Tests [TEST]
+#### [x] Task 5.6: Dashboard + Transactions UI Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 5.3, 5.4
 - **Spec reference:** SPEC.md >> Milestone 5 Acceptance Criteria
