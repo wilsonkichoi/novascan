@@ -1057,7 +1057,7 @@
 
 ### Wave 3: Tests
 
-#### [ ] Task 5.5: Dashboard + Transactions API Tests [TEST]
+#### [x] Task 5.5: Dashboard + Transactions API Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 5.1, 5.2
 - **Spec reference:** api-contracts.md >> GET /api/dashboard/summary, GET /api/transactions

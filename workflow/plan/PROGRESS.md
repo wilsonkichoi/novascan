@@ -99,7 +99,7 @@ Last updated: 2026-04-08
 | 5.2  | Transactions Endpoint | backend-engineer | done | [task-5.2](reviews/task-5.2.md) | 2026-04-08. All fixes verified. |
 | 5.3  | Dashboard Page + Analytics Placeholder | frontend-developer | done | [task-5.3](reviews/task-5.3.md) | 2026-04-08. Verified 2026-04-08. |
 | 5.4  | Transactions Page | frontend-developer | done | [task-5.4](reviews/task-5.4.md) | 2026-04-08. Fix verified 2026-04-08 (B1 category slugs). |
-| 5.5  | Dashboard + Transactions API Tests | qa-engineer | pending | | TEST |
+| 5.5  | Dashboard + Transactions API Tests | qa-engineer | review | [task-5.5](reviews/task-5.5.md) | 71 tests. 2026-04-08. TEST |
 | 5.6  | Dashboard + Transactions UI Tests | qa-engineer | pending | | TEST |
 
 ## Milestone 6: Custom Domain & Production Polish
