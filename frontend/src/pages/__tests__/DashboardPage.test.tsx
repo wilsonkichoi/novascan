@@ -420,8 +420,8 @@ describe("DashboardPage", () => {
       makeSummary({
         totalSpent: 0,
         weeklySpent: 0,
-        receiptCount: 0,
-        confirmedCount: 0,
+        receiptCount: 1,
+        confirmedCount: 1,
         processingCount: 0,
         failedCount: 0,
         monthlyChangePercent: null,
@@ -438,6 +438,25 @@ describe("DashboardPage", () => {
       // Should render zero amounts
       const zeroElements = screen.getAllByText("$0.00");
       expect(zeroElements.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows welcome empty state when there are no receipts", async () => {
+    mockFetchDashboardSummary.mockResolvedValue(
+      makeSummary({
+        receiptCount: 0,
+        confirmedCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        topCategories: [],
+        recentActivity: [],
+      }),
+    );
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText(/welcome to novascan/i)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /scan your first receipt/i })).toBeInTheDocument();
     });
   });
 

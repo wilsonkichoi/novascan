@@ -1,7 +1,9 @@
-import { Loader2, Receipt } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReceipts } from "@/hooks/useReceipts";
 import ReceiptCard from "@/components/ReceiptCard";
+import { ReceiptListSkeleton } from "@/components/LoadingSkeleton";
+import { NoReceiptsEmpty } from "@/components/EmptyState";
 
 export default function ReceiptsPage() {
   const {
@@ -14,11 +16,7 @@ export default function ReceiptsPage() {
   } = useReceipts();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="text-muted-foreground size-6 animate-spin" />
-      </div>
-    );
+    return <ReceiptListSkeleton />;
   }
 
   if (error) {
@@ -38,10 +36,7 @@ export default function ReceiptsPage() {
       <h1 className="text-2xl font-bold tracking-tight">Receipts</h1>
 
       {receipts.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16">
-          <Receipt className="text-muted-foreground size-10" />
-          <p className="text-muted-foreground text-sm">No receipts yet.</p>
-        </div>
+        <NoReceiptsEmpty />
       ) : (
         <div className="space-y-3">
           {receipts.map((receipt) => (
