@@ -160,3 +160,63 @@ const CATEGORY_OPTIONS = [
 - `cd frontend && npm run build` -- must pass
 - Visual inspection: the dropdown should list all 13 categories from `category-taxonomy.md`
 
+## Security Review
+
+Reviewed: 2026-04-08
+Reviewer: Claude Opus 4.6 (security-reviewer)
+Methodology: STRIDE threat model, OWASP Top 10, CWE Top 25
+
+### Threat Model Summary
+
+| Component | Threats Assessed | Findings |
+|-----------|-----------------|----------|
+| `dashboard.ts` API client | Spoofing, Tampering, Information Disclosure | No issues -- JWT auth enforced, generic error messages |
+| `transactions.ts` API client | Spoofing, Tampering, Information Disclosure | No issues -- JWT auth enforced, generic error messages |
+| `useDashboard.ts` hook | Denial of Service | No issues -- TanStack Query deduplication/caching |
+| `useTransactions.ts` hook | Denial of Service, Tampering | No issues -- infinite query with cursor pagination |
+| `TransactionFilters.tsx` | Injection, Denial of Service | No issues -- debounced input, values passed as query params, server-side validation |
+| `TransactionTable.tsx` | Injection (XSS), Information Disclosure | No issues -- React JSX escaping, no dangerouslySetInnerHTML |
+| `DashboardPage.tsx` | Information Disclosure | No issues -- renders only authenticated user's own data |
+| `StatCard.tsx` | Injection (XSS) | No issues -- numeric values rendered via Intl.NumberFormat |
+| `CategoryBreakdown.tsx` | Injection (XSS) | No issues -- React JSX escaping |
+| `RecentActivity.tsx` | Injection (XSS), Open Redirect (CWE-601) | No issues -- links use trusted receiptId from API response |
+| `AnalyticsPage.tsx` | N/A | Static content, no data flow |
+
+### STRIDE Assessment Detail
+
+**Spoofing:** Both `fetchDashboardSummary()` and `fetchTransactions()` call `getValidIdToken()` before every request. If no valid token exists (null return), both functions throw `"Not authenticated"` before any network call is made. The token is passed as `Authorization: Bearer {token}`. The API Gateway Cognito authorizer validates the JWT server-side. No bypass paths exist.
+
+**Tampering:** All data flows are read-only (GET requests). Filter parameters (dates, category slug, merchant search, status, sort) are passed as URL query parameters -- the backend is responsible for input validation and sanitization. The frontend does not construct any DynamoDB queries or SQL. The `as` type assertions on JSON responses are a standard TypeScript pattern for trusted API responses and do not create a tampering vector.
+
+**Repudiation:** Not applicable. These are read-only dashboard and transaction listing operations with no state mutations.
+
+**Information Disclosure:** Error messages are generic (e.g., `"Failed to fetch dashboard summary (${res.status})"`) and do not leak server internals, stack traces, or response bodies. The `DashboardSummary` and `Transaction` TypeScript interfaces match the API contracts exactly -- no extra fields are requested or exposed. All data belongs to the authenticated user (enforced server-side via `PK = USER#{sub}`).
+
+**Denial of Service:** The merchant search field uses a 300ms debounce with cleanup on component unmount, preventing excessive API calls from rapid typing. TanStack Query provides request deduplication and caching. The `useInfiniteQuery` pattern accumulates pages in client memory, which at MVP scale (~1200 items/year, 50 per page = ~24 pages max) is acceptable. No explicit limit is passed by the frontend, but the backend defaults to 50 per page per api-contracts.md.
+
+**Elevation of Privilege:** Dashboard and Transactions pages contain no role-gated features. All data access is scoped to the authenticated user by the backend (`PK = USER#{userId}` in DynamoDB queries). No client-side role checks are needed because these are user-level views, and the backend enforces isolation regardless.
+
+### OWASP Top 10 / CWE Top 25 Check
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| A01:2021 Broken Access Control | PASS | JWT required for all API calls; server-side user isolation |
+| A02:2021 Cryptographic Failures | N/A | No client-side crypto in scope; tokens handled by auth module |
+| A03:2021 Injection (XSS) | PASS | All rendering via React JSX (auto-escaped); no `dangerouslySetInnerHTML`; no dynamic script/HTML construction |
+| A04:2021 Insecure Design | PASS | Read-only data fetching pattern, no business logic on client |
+| A05:2021 Security Misconfiguration | PASS | `VITE_API_URL` set at build time, not user-controllable at runtime |
+| A07:2021 Auth Failures | PASS | `getValidIdToken()` handles proactive refresh (5 min buffer before expiry) |
+| A08:2021 Software/Data Integrity | PASS | No deserialization of untrusted data into executable code |
+| A09:2021 Logging/Monitoring | N/A | Frontend logging not in scope for these components |
+| CWE-79 XSS | PASS | React auto-escaping; category display names, merchant names, currency values all rendered as text nodes |
+| CWE-601 Open Redirect | PASS | Navigation links use hardcoded path patterns (`/receipts/${receiptId}`) with API-sourced IDs; no user-controlled redirect targets |
+| CWE-400 Resource Exhaustion | PASS | Debounced search input; TanStack Query caching; cursor-based pagination |
+
+### Issues Found
+
+No security issues found.
+
+### Security Assessment
+
+**Overall security posture:** The Wave 2 frontend implementation (Tasks 5.3 and 5.4) follows sound security practices. All API calls require authentication via JWT, error messages are generic, data rendering uses React's built-in XSS protection, and user input (filter values) is passed as query parameters with server-side validation. The code follows the same established security patterns as prior milestones (M1-M4) with no deviations. No sensitive data is cached, logged, or exposed beyond what the authenticated user is entitled to see.
+
