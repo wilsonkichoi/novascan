@@ -232,3 +232,16 @@ Risk assessment agreement: The plan identifies the only meaningful risk -- that 
 
 No revisions needed. The plan is correct and complete for this single-issue scope.
 
+### Fix Results (Claude Opus 4.6 -- 2026-04-08)
+
+**Branch:** `fix/5.4-category-filter-slugs` (based on `feature/m5-wave2-frontend-pages`)
+**Status: 1/1 fixed, 0 deferred**
+
+**[B1] (Category filter slugs do not match category-taxonomy.md) -- Fixed**
+- What was changed: Replaced the entire `CATEGORY_OPTIONS` array in `TransactionFilters.tsx` with the exact 13 categories (plus "All categories" sentinel) from `category-taxonomy.md`. Nine incorrect entries were corrected: `dining-restaurants` -> `dining`, `transportation` -> `automotive-transit`, `shopping-retail` -> `retail-shopping`, `entertainment-leisure` -> `entertainment-travel`, `home-garden` -> `home-utilities`, `utilities-bills` removed (merged into `home-utilities`), `travel-lodging` removed (merged into `entertainment-travel`), `education-office` -> `education`, `personal-care` -> `pets`. Three missing categories added: `financial-insurance`, `office-business`, `pets`.
+- Files modified: `frontend/src/components/TransactionFilters.tsx`
+
+**Verification:**
+- `cd frontend && npm run build` -- PASS
+- `cd frontend && npm run test -- --run` -- PASS (175 tests, 9 suites)
+
