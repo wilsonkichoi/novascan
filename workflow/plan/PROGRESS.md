@@ -109,9 +109,9 @@ Last updated: 2026-04-08
 | 6.1  | Custom Domain CDK (ACM + CloudFront) | devops-engineer | done | [task-6.1](reviews/task-6.1.md) | 2026-04-09. Reviewed — no issues. |
 | 6.2  | UX Polish (Error Boundaries, Skeletons, Empty States, 404) | frontend-developer | done | [task-6.2](reviews/task-6.2.md) | 2026-04-09. Reviewed — no issues. |
 | 6.3  | Prod Stack Deploy + Cloudflare DNS Setup | devops-engineer (human) | pending | | MANUAL |
-| 6.4  | Deploy & Teardown Guide | devops-engineer | review | [task-6.4](reviews/task-6.4.md) | 2026-04-09 |
-| 6.5  | Monitoring Guide | devops-engineer | review | [task-6.5](reviews/task-6.5.md) | 2026-04-09 |
-| 6.6  | Troubleshooting Guide | devops-engineer | review | [task-6.6](reviews/task-6.6.md) | 2026-04-09 |
+| 6.4  | Deploy & Teardown Guide | devops-engineer | done | [task-6.4](reviews/task-6.4.md) | 2026-04-09. Fixes verified. |
+| 6.5  | Monitoring Guide | devops-engineer | done | [task-6.5](reviews/task-6.5.md) | 2026-04-09. No issues. |
+| 6.6  | Troubleshooting Guide | devops-engineer | done | [task-6.6](reviews/task-6.6.md) | 2026-04-09. Fixes verified. |
 | 6.7  | UX Polish Tests | qa-engineer | pending | | TEST |
 | 6.8  | Production E2E Verification | devops-engineer | pending | | |
 

@@ -227,3 +227,24 @@ Plan's approach: Same removal target. Plan additionally suggests reordering flag
 - `grep '/health' workflow/guides/deploy-teardown.md` — PASS (only `/api/health` on lines 140, 230)
 - `grep 'days.*[Rr]efresh\|[Rr]efresh.*days' workflow/guides/troubleshooting.md` — PASS (all 3 lines show "7 days")
 - DynamoDB CLI example (lines 868–882) — PASS (single `--expression-attribute-values` with both `:pk` and `:status`)
+
+### Fix Verification (Claude Opus 4.6 — 2026-04-09)
+
+**Status: 3/3 fixed, 0 not fixed, 0 regressions**
+
+**[S1] (Incorrect health check URL) — Fixed** ✓
+Verified: `deploy-teardown.md:140` now reads `/api/health` (was `/health`). Same at line 230. Cross-referenced against source of truth `backend/src/novascan/api/app.py:27` (`@app.get("/api/health")`) — matches. Grep for bare `/health` (without `/api` prefix) returns zero results in the file. No regressions.
+
+**[S2] (Incorrect refresh token lifetime) — Fixed** ✓
+Verified: All 3 occurrences updated from "30 days" to "7 days" at lines 494, 504, 524 of `troubleshooting.md`. Line 494 parenthetical updated to `(configured in infra/cdkconstructs/auth.py)`. Cross-referenced against `infra/cdkconstructs/auth.py:114` (`refresh_token_validity=cdk.Duration.days(7)`) — matches. Grep for "30 days" returns zero results in the file. Fix plan analysis caught the missed 3rd occurrence (line 504) — applied correctly.
+
+**[N1] (Duplicate `--expression-attribute-values`) — Fixed** ✓
+Verified: "Count receipts by status" example (lines 870–882) now has a single `--expression-attribute-values` containing both `:pk` and `:status`. Flags reordered: `--filter-expression` and `--expression-attribute-names` before `--expression-attribute-values`, `--select COUNT` at end. No duplicate flags remain.
+
+**Verification commands:**
+- `grep '/health' deploy-teardown.md` — PASS (only `/api/health` at lines 140, 230)
+- `grep '30 days' troubleshooting.md` — PASS (zero matches)
+- `grep 'days.*[Rr]efresh\|[Rr]efresh.*days' troubleshooting.md` — PASS (3 lines, all "7 days")
+- `git diff feature/m6-wave2-dns-runbooks..fix/wave-2-docs-corrections --stat` — PASS (3 files changed: deploy-teardown.md, troubleshooting.md, wave-m6-2.md)
+
+**Verdict:** 3/3 issues resolved. All fixes are correct, match their source-of-truth references, and introduce no regressions.
