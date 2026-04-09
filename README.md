@@ -8,7 +8,7 @@ NovaScan is a mobile-optimized web application that lets users photograph or bul
 
 Built on AWS serverless infrastructure with a scale-to-zero cost model. Personal use, ~100 users, $25/month budget.
 
-### Current Capabilities (through Milestone 4)
+### Current Capabilities (through Milestone 5)
 
 - Passwordless email OTP authentication (Cognito)
 - Receipt image upload via camera capture or file picker (up to 10 files, JPEG/PNG, max 10 MB)
@@ -19,6 +19,9 @@ Built on AWS serverless infrastructure with a scale-to-zero cost model. Personal
 - Category management: 13 predefined categories with subcategories, custom category creation/deletion
 - Staff-only pipeline comparison toggle (side-by-side OCR-AI vs AI-multimodal results)
 - Receipt deletion with confirmation dialog
+- Dashboard: weekly/monthly spending totals with % change, top categories, recent activity
+- Transactions ledger: sortable table (date/amount/merchant), date range/category/status filters, merchant search
+- Analytics page: "Coming Soon" placeholder
 - Security hardened: input validation, error sanitization, scoped IAM, rate limiting
 
 ## Getting Started
@@ -54,10 +57,10 @@ cd infra && uv run cdk deploy --context stage=dev
 ### Run Tests
 
 ```bash
-# Backend (482 tests)
+# Backend (553 tests)
 cd backend && uv run pytest
 
-# Frontend (253 tests)
+# Frontend (331 tests)
 cd frontend && npm run test -- --run
 
 # Infrastructure (100 tests)
