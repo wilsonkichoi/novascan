@@ -1009,7 +1009,7 @@
 
 ### Wave 2: Frontend Pages
 
-#### [ ] Task 5.3: Dashboard Page + Analytics Placeholder
+#### [x] Task 5.3: Dashboard Page + Analytics Placeholder
 - **Role:** frontend-developer
 - **Depends on:** 5.1
 - **Spec reference:** SPEC.md >> Milestone 5 Acceptance Criteria

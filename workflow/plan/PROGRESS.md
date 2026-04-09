@@ -97,7 +97,7 @@ Last updated: 2026-04-04
 |------|-------|------|--------|--------|-------|
 | 5.1  | Dashboard Summary Endpoint | backend-engineer | pending | | |
 | 5.2  | Transactions Endpoint | backend-engineer | pending | | |
-| 5.3  | Dashboard Page + Analytics Placeholder | frontend-developer | pending | | |
+| 5.3  | Dashboard Page + Analytics Placeholder | frontend-developer | review | [task-5.3](reviews/task-5.3.md) | 2026-04-08 |
 | 5.4  | Transactions Page | frontend-developer | pending | | |
 | 5.5  | Dashboard + Transactions API Tests | qa-engineer | pending | | TEST |
 | 5.6  | Dashboard + Transactions UI Tests | qa-engineer | pending | | TEST |
