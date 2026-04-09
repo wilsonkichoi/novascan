@@ -111,7 +111,7 @@ Last updated: 2026-04-08
 | 6.3  | Prod Stack Deploy + Cloudflare DNS Setup | devops-engineer (human) | pending | | MANUAL |
 | 6.4  | Deploy & Teardown Guide | devops-engineer | review | [task-6.4](reviews/task-6.4.md) | 2026-04-09 |
 | 6.5  | Monitoring Guide | devops-engineer | review | [task-6.5](reviews/task-6.5.md) | 2026-04-09 |
-| 6.6  | Troubleshooting Guide | devops-engineer | pending | | |
+| 6.6  | Troubleshooting Guide | devops-engineer | review | [task-6.6](reviews/task-6.6.md) | 2026-04-09 |
 | 6.7  | UX Polish Tests | qa-engineer | pending | | TEST |
 | 6.8  | Production E2E Verification | devops-engineer | pending | | |
 
