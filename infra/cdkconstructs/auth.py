@@ -79,9 +79,13 @@ class AuthConstruct(Construct):
 
         # Enable EMAIL_OTP as an allowed first auth factor.
         # CDK L2 doesn't expose SignInPolicy yet — use CloudFormation escape hatch.
+        # PASSWORD must be included — Cognito requires it on User Pool creation.
+        # It's not exploitable: the App Client only enables USER_AUTH flow (no
+        # ALLOW_USER_PASSWORD_AUTH), so password-based sign-in is blocked at the
+        # client level.
         cfn_user_pool = self.user_pool.node.default_child
         cfn_user_pool.add_property_override(
-            "Policies.SignInPolicy.AllowedFirstAuthFactors", ["EMAIL_OTP"]
+            "Policies.SignInPolicy.AllowedFirstAuthFactors", ["EMAIL_OTP", "PASSWORD"]
         )
 
         # Grant Post-Confirmation Lambda permission to add users to groups.

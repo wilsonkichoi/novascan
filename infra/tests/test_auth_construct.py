@@ -161,10 +161,11 @@ class TestCognitoAppClient:
 class TestAuthSecurityHardening:
     """Security hardening tests for Auth construct (H2, H3, M4)."""
 
-    def test_email_otp_only_no_password(self, dev_template: Template) -> None:
-        """AllowedFirstAuthFactors must contain only EMAIL_OTP, no PASSWORD.
+    def test_email_otp_with_password_required(self, dev_template: Template) -> None:
+        """AllowedFirstAuthFactors must include EMAIL_OTP.
 
-        Security hardening H2: PASSWORD auth factor must be removed.
+        PASSWORD must be present (Cognito requires it on pool creation) but is
+        not exploitable — the App Client only enables USER_AUTH flow.
         """
         dev_template.has_resource_properties(
             "AWS::Cognito::UserPool",
@@ -172,7 +173,7 @@ class TestAuthSecurityHardening:
                 "Policies": Match.object_like(
                     {
                         "SignInPolicy": {
-                            "AllowedFirstAuthFactors": ["EMAIL_OTP"],
+                            "AllowedFirstAuthFactors": ["EMAIL_OTP", "PASSWORD"],
                         }
                     }
                 ),

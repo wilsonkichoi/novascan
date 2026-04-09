@@ -870,7 +870,8 @@
         "Policies": {
           "SignInPolicy": {
             "AllowedFirstAuthFactors": [
-              "EMAIL_OTP"
+              "EMAIL_OTP",
+              "PASSWORD"
             ]
           }
         },

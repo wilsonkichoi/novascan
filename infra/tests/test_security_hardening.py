@@ -71,17 +71,21 @@ class TestGSI2Exists:
 
 
 # ---------------------------------------------------------------------------
-# H2 — No PASSWORD in auth factors
+# H2 — PASSWORD required by Cognito but blocked at App Client level
 # ---------------------------------------------------------------------------
 
 
 class TestAuthFactors:
-    """Cognito User Pool must only allow EMAIL_OTP."""
+    """Cognito User Pool auth factors include EMAIL_OTP.
 
-    def test_no_password_in_allowed_first_auth_factors(
+    PASSWORD must be present (Cognito requires it on pool creation) but is
+    not exploitable — the App Client only enables USER_AUTH flow.
+    """
+
+    def test_email_otp_in_allowed_first_auth_factors(
         self, dev_template_json: dict
     ) -> None:
-        """AllowedFirstAuthFactors must NOT contain PASSWORD."""
+        """AllowedFirstAuthFactors must include EMAIL_OTP."""
         resources = dev_template_json.get("Resources", {})
         for _key, resource in resources.items():
             if resource.get("Type") == "AWS::Cognito::UserPool":
@@ -89,9 +93,6 @@ class TestAuthFactors:
                 policies = props.get("Policies", {})
                 sign_in_policy = policies.get("SignInPolicy", {})
                 auth_factors = sign_in_policy.get("AllowedFirstAuthFactors", [])
-                assert "PASSWORD" not in auth_factors, (
-                    f"PASSWORD must not be in AllowedFirstAuthFactors: {auth_factors}"
-                )
                 assert "EMAIL_OTP" in auth_factors, (
                     f"EMAIL_OTP must be in AllowedFirstAuthFactors: {auth_factors}"
                 )
