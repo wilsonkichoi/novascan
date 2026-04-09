@@ -102,5 +102,50 @@ No issues found.
 
 **Overall verdict:** Both test tasks are well-implemented with comprehensive coverage of the API contracts and UI behavior specified for Milestone 5. The 71 backend tests and 78 frontend tests (149 total) cover all acceptance criteria including edge cases, user isolation, cursor security, and debounce behavior. All tests pass. No issues found.
 
+## Security Review
+
+Reviewed: 2026-04-08
+Reviewer: Claude Opus 4.6 (1M context) (security-reviewer)
+Methodology: STRIDE threat model, OWASP Top 10, CWE Top 25
+
+### Threat Model Summary
+
+| Component | Threats Assessed | Findings |
+|-----------|-----------------|----------|
+| Backend test data (test_dashboard.py, test_transactions.py) | S, T, R, I, D, E | No issues. Uses fake IDs, no PII, no real credentials. |
+| Cursor security tests (test_transactions.py) | T, E | No issues. Tampered cursor rejection verified. Ownership check exercised. |
+| User isolation tests (both backend test files) | S, E | No issues. Cross-user data access correctly tested as forbidden. |
+| Frontend mock auth (DashboardPage.test.tsx, TransactionsPage.test.tsx) | S, I | No issues. Auth mocked with fake token/user. No real JWT or credentials. |
+| Frontend API mocks (all UI test files) | I | No issues. Mock data uses non-sensitive synthetic values. |
+| Error response assertions (test_transactions.py) | I | No issues. Tests verify generic error messages, confirming M3.1 hardening. |
+
+### Issues Found
+
+No security issues found.
+
+**Detailed STRIDE analysis:**
+
+**Spoofing:** Backend tests construct API Gateway v2 events with `sub` claim in `requestContext.authorizer.jwt.claims`, correctly simulating the Cognito authorizer's behavior. Test user IDs are synthetic (`user-abc-123`, `user-A`, `user-B`). Frontend tests mock `useAuth` with fake user objects and `getValidIdToken` returning `"mock-token"`. No real credentials or tokens present in any test file.
+
+**Tampering:** The `test_cursor_targeting_other_user_returns_400` test in `test_transactions.py:895-912` constructs a base64-encoded cursor with `GSI1PK: "USER#attacker-user"` and verifies the endpoint returns 400 with a generic error message. This exercises the cursor ownership validation in `shared/pagination.py:decode_cursor()` which checks both `GSI1PK` and `PK` against the authenticated user. The `test_invalid_cursor_returns_400` test verifies malformed cursors are also rejected.
+
+**Repudiation:** Not applicable -- test code does not introduce logging or audit trail changes.
+
+**Information Disclosure:** All test data is synthetic: fake ULIDs (`01DASHTEST*`, `01TXTEST*`), generic merchant names, placeholder AWS account ID `123456789012`. No PII, real API keys, or credentials. Error response assertions check for generic messages (e.g., `"Invalid pagination cursor"`) rather than raw exception details, confirming the M3.1 security hardening (H1/M7) is properly exercised. The `TODO(post-MVP)` comments in `dashboard.py:67` and `transactions.py:93` reference SECURITY-REVIEW S5 (safety cap for unbounded queries) -- this is a pre-existing documented risk, not introduced by this wave.
+
+**Denial of Service:** No new DoS vectors introduced. Test code runs only in the test environment. The unbounded `_query_all_gsi1` and `_fetch_all_matching` patterns in the production code are pre-existing and documented with TODO comments referencing S5.
+
+**Elevation of Privilege:** User isolation tests verify that User A cannot see User B's dashboard data (`TestDashboardUserIsolation`) or transactions (`TestTransactionsUserIsolation`). The dashboard and transactions endpoints are available to all authenticated users per spec (no role gating required). No privilege escalation paths introduced.
+
+**OWASP/CWE cross-check:**
+- CWE-639 (Authorization Bypass Through User-Controlled Key): Mitigated -- cursor ownership validated, user isolation tested.
+- CWE-209 (Generation of Error Message Containing Sensitive Information): Mitigated -- tests verify generic error messages.
+- CWE-20 (Improper Input Validation): Mitigated -- tests cover invalid cursors, non-numeric limits, invalid sort/status enums, invalid date formats.
+- No new injection points (CWE-89, CWE-79) -- test code does not introduce any user-facing input paths.
+
+### Security Assessment
+
+**Overall security posture:** Clean. These are test-only changes that introduce no new attack surface. The test suite positively validates security properties already implemented: cursor ownership enforcement, user data isolation, input validation, and generic error responses. No credentials, PII, or secrets are present in the test data. The pre-existing unbounded query pattern (SECURITY-REVIEW S5) is documented but not introduced by this wave.
+
 ## Review Discussion
 
