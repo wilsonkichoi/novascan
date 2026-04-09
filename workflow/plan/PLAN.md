@@ -1031,7 +1031,7 @@
   - `cd frontend && npm run build` succeeds
 - **Test command:** `cd frontend && npm run build`
 
-#### [ ] Task 5.4: Transactions Page
+#### [x] Task 5.4: Transactions Page
 - **Role:** frontend-developer
 - **Depends on:** 5.2
 - **Spec reference:** SPEC.md >> Milestone 5 Acceptance Criteria
