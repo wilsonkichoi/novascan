@@ -8,6 +8,7 @@ NovaScan is a mobile-optimized web application that lets users photograph or bul
 
 Built on AWS serverless infrastructure with a scale-to-zero cost model. Personal use, ~100 users, $25/month budget.
 
+<!-- Milestone merge checklist: update capabilities list and test counts below -->
 ### Current Capabilities (through Milestone 5)
 
 - Passwordless email OTP authentication (Cognito)

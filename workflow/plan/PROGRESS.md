@@ -130,7 +130,7 @@ Last updated: 2026-04-08
 All 6 issues from the Wave 1 scaffolding review have been fixed. See [wave-1-fixes](reviews/wave-1-fixes.md) for details. Completed 2026-03-28.
 
 ## Spec Gaps Discovered
-1. **System architecture diagram stale** — `system-architecture.mmd` shows separate LRank/LFin Lambdas and omits LoadCustomCategories. Needs update to match SPEC Section 3/4. (cosmetic — doesn't affect implementation)
+1. ~~**System architecture diagram stale**~~ — Resolved. Diagram at `workflow/spec/diagrams/system-architecture.mmd` is correct: has LoadCustomCategories (line 34), combined Finalize+Rank Lambda (line 44), parallel pipeline branches.
 2. **User Profile entity not created** — SPEC defines `PK=USER#{userId}, SK=PROFILE` but no API endpoint uses it. Skipped for MVP — email/sub available from JWT. Lazy-create if needed later.
 3. **GSI1SK for processing receipts** — Resolved: use `createdAt` as fallback in GSI1SK when `receiptDate` not yet extracted. Finalize Lambda updates to `receiptDate` after OCR.
 4. **CRITICAL: Pre-Sign-Up auto-confirm allows arbitrary account creation** — Anyone can create confirmed accounts with any email without proof of ownership. Enables user pool pollution and unsolicited OTP email spam. Fix: remove `autoConfirmUser`, add `confirmSignUp` step to frontend. Must fix before M1 complete.
@@ -138,6 +138,14 @@ All 6 issues from the Wave 1 scaffolding review have been fixed. See [wave-1-fix
 
 6. **userId not in S3 event payload** -- SPEC assumes userId is available in pipeline input but doesn't specify how it gets there when triggered by S3 event notification. Resolved with DynamoDB scan for MVP. Production fix: add GSI on receiptId, or encode userId in S3 key, or set user-id as presigned URL metadata condition.
 7. **EventBridge Pipes MaximumConcurrency unsupported** -- `CfnPipe` (AWS::Pipes::Pipe) does not expose `MaximumConcurrency` in CloudFormation as of 2026-04. The `pipelineMaxConcurrency` config value cannot be enforced at the Pipe level. Using SQS `batch_size=1` as workaround.
+
+## Milestone Merge Checklist
+
+Before merging each milestone to main:
+- [ ] Update README.md "Current Capabilities" section with new features
+- [ ] Update README.md test counts (backend/frontend/infra)
+- [ ] CDK snapshot is regenerated (automated via `.githooks/pre-commit` if `git config core.hooksPath .githooks` is set)
+- [ ] PROGRESS.md task statuses all marked `done`
 
 ## Blocked Items
 (none)

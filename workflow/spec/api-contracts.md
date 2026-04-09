@@ -114,8 +114,8 @@ List all receipts for the authenticated user.
 |-------|------|---------|-------------|
 | `status` | string | — | Filter: `processing`, `confirmed`, `failed` |
 | `category` | string | — | Filter by category slug |
-| `startDate` | string | — | Receipts on or after this date (YYYY-MM-DD) |
-| `endDate` | string | — | Receipts on or before this date (YYYY-MM-DD) |
+| `startDate` | string | — | Receipts on or after this date (YYYY-MM-DD). Returns 400 if malformed. |
+| `endDate` | string | — | Receipts on or before this date (YYYY-MM-DD). Returns 400 if malformed. |
 | `limit` | integer | 50 | Max results, 1–100 |
 | `cursor` | string | — | Pagination cursor from previous response |
 
@@ -299,8 +299,8 @@ List transactions — a flattened, ledger-style view of receipt data.
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `startDate` | string | — | Filter by receipt date (YYYY-MM-DD) |
-| `endDate` | string | — | Filter by receipt date |
+| `startDate` | string | — | Filter by receipt date (YYYY-MM-DD). Returns 400 if malformed. |
+| `endDate` | string | — | Filter by receipt date (YYYY-MM-DD). Returns 400 if malformed. |
 | `category` | string | — | Filter by category slug |
 | `merchant` | string | — | Search merchant name (partial, case-insensitive) |
 | `status` | string | — | Filter: `processing`, `confirmed`, `failed` |
@@ -350,7 +350,7 @@ Dashboard summary metrics for the authenticated user.
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `month` | string | current | Target month (YYYY-MM) |
+| `month` | string | current | Target month (YYYY-MM). Returns 400 if malformed. |
 
 **Response:** `200 OK`
 

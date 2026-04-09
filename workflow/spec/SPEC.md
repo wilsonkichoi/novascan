@@ -145,7 +145,7 @@ Enable users to view, edit, and manage processed receipts.
 Provide spending overview and transaction browsing.
 
 **Capabilities delivered:**
-- `GET /api/dashboard/summary` endpoint — aggregated spending metrics (pandas in Lambda)
+- `GET /api/dashboard/summary` endpoint — aggregated spending metrics (plain Python in Lambda)
 - `GET /api/transactions` endpoint — flattened receipt list with filtering and sorting
 - Dashboard page: total spent this week and this month, % change vs prior period, receipt count, top categories (up to 5), recent activity (up to 5)
 - Transactions page: sortable table (date, merchant, category, amount, status)
@@ -678,7 +678,7 @@ A **sparse GSI** containing only receipt records, enabling efficient date-range 
 **GSI1** provides efficient receipt listing and date-range queries. Category and status filtering uses FilterExpression on GSI1 results — now only scanning receipt records (no line items or pipeline results).
 
 **Known query limitations (acceptable at MVP scale):**
-- **Dashboard aggregation** queries the user's receipts via GSI1 and aggregates with pandas in Lambda. O(all receipts for the month) per request with date-range key condition. ~2s cold start from pandas dependency is acceptable at MVP scale (Lambda SnapStart available if needed). First candidate for pre-computed aggregates if performance degrades.
+- **Dashboard aggregation** queries the user's receipts via GSI1 and aggregates with plain Python in Lambda. O(all receipts for the month) per request with date-range key condition. First candidate for pre-computed aggregates if performance degrades.
 - **Category and status filtering** uses FilterExpression after GSI1 query. Reads all receipts in the date range, then filters. Efficient enough at MVP scale since GSI1 eliminates the 6x read amplification from line items and pipeline results.
 - **Merchant search** is a full-scan with case-insensitive substring match in Lambda. Only viable option without OpenSearch. Fine for personal use.
 
@@ -941,7 +941,7 @@ See [runbook.md](runbook.md) for detailed instructions on local development, dep
 - `pydantic>=2.0` — data models and validation
 - `boto3` — AWS SDK
 - `python-ulid` — ULID generation for receipt IDs
-- `pandas` — dashboard aggregation (groupby, sum, period comparisons)
+- `pandas` — future analytics page (M7+); dashboard uses plain Python
 - Dev: `pytest`, `pytest-cov`, `moto[dynamodb,s3,sqs,stepfunctions]`, `ruff`, `mypy`
 
 **Frontend** (`frontend/package.json`):

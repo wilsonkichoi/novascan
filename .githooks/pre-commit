@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Pre-commit hook: regenerate CDK snapshot when infra/ files change.
+# Install: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+# Check if any staged files are under infra/
+INFRA_CHANGED=$(git diff --cached --name-only -- 'infra/' | head -1)
+
+if [ -z "$INFRA_CHANGED" ]; then
+    exit 0
+fi
+
+echo "[pre-commit] infra/ changes detected — regenerating CDK snapshot..."
+
+cd infra
+
+SNAPSHOT_DIR="tests/snapshots"
+SNAPSHOT_FILE="$SNAPSHOT_DIR/novascan-dev.template.json"
+
+# Synthesize and regenerate snapshot
+uv run python -c "
+from tests.conftest import dev_template
+import json, pathlib
+t = dev_template()
+pathlib.Path('$SNAPSHOT_DIR').mkdir(exist_ok=True)
+pathlib.Path('$SNAPSHOT_FILE').write_text(
+    json.dumps(t.to_json(), indent=2, sort_keys=True) + '\n')
+"
+
+cd ..
+
+# Stage the updated snapshot if it changed
+if ! git diff --quiet -- "infra/$SNAPSHOT_FILE" 2>/dev/null; then
+    git add "infra/$SNAPSHOT_FILE"
+    echo "[pre-commit] CDK snapshot regenerated and staged."
+else
+    echo "[pre-commit] CDK snapshot unchanged."
+fi
