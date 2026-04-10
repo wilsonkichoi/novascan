@@ -89,12 +89,14 @@ class AuthConstruct(Construct):
         )
 
         # Grant Post-Confirmation Lambda permission to add users to groups.
-        # Use a constructed ARN scoped to novascan-* instead of self.user_pool.user_pool_arn
+        # Use a constructed ARN scoped to * instead of self.user_pool.user_pool_arn
         # to break the circular dependency: IAM Policy -> User Pool -> Lambda -> Policy.
+        # Note: Cognito User Pool ARNs end with their physical ID (e.g., us-east-1_xxx),
+        # not their logical name, so we must use a '*' wildcard.
         user_pool_scoped_arn = cdk.Stack.of(self).format_arn(
             service="cognito-idp",
             resource="userpool",
-            resource_name="novascan-*",
+            resource_name="*",
             arn_format=cdk.ArnFormat.SLASH_RESOURCE_NAME,
         )
         post_confirmation_fn.add_to_role_policy(

@@ -208,6 +208,7 @@ class ApiConstruct(Construct):
                 "AccessLogSettings",
                 {
                     "DestinationArn": api_log_group.log_group_arn,
+                    "Format": '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol","responseLength":"$context.responseLength"}',
                 },
             )
 
