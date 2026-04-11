@@ -247,7 +247,7 @@ def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
     )
 
     response_body = json.loads(response["body"].read())
-    output_text = response_body["output"]["message"]["content"][0]["text"]
+    output_text: str = response_body["output"]["message"]["content"][0]["text"]
     return output_text
 
 

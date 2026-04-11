@@ -65,7 +65,7 @@ def rank_results(result: ExtractionResult) -> float:
     )
 
     # Clamp to [0, 1] — should already be in range but be defensive
-    return max(0.0, min(1.0, round(composite, 4)))
+    return float(max(0.0, min(1.0, round(composite, 4))))
 
 
 def _compute_field_completeness(result: ExtractionResult) -> float:
@@ -131,4 +131,4 @@ def _compute_total_consistency(result: ExtractionResult) -> float:
     if discrepancy >= max_discrepancy:
         return 0.0
 
-    return 1.0 - (discrepancy - _CONSISTENCY_TOLERANCE) / (max_discrepancy - _CONSISTENCY_TOLERANCE)
+    return float(1.0 - (discrepancy - _CONSISTENCY_TOLERANCE) / (max_discrepancy - _CONSISTENCY_TOLERANCE))

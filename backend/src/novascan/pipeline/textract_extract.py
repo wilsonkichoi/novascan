@@ -92,7 +92,7 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
 @tracer.capture_method
 def _call_textract(bucket: str, key: str) -> dict[str, Any]:
     """Call Textract AnalyzeExpense synchronously."""
-    return textract_client.analyze_expense(
+    response: dict[str, Any] = textract_client.analyze_expense(
         Document={
             "S3Object": {
                 "Bucket": bucket,
@@ -100,3 +100,4 @@ def _call_textract(bucket: str, key: str) -> dict[str, Any]:
             }
         }
     )
+    return response

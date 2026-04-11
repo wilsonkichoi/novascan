@@ -450,8 +450,8 @@ def _create_line_items(
     )
     if existing.get("Items"):
         with table.batch_writer() as batch:
-            for item in existing["Items"]:
-                batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+            for existing_item in existing["Items"]:
+                batch.delete_item(Key={"PK": existing_item["PK"], "SK": existing_item["SK"]})
 
     with table.batch_writer() as batch:
         for idx, line_item in enumerate(result.lineItems):
