@@ -11,16 +11,12 @@ Validates the spec contract from SPEC.md Section 3 (Processing Flow):
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import boto3
 import pytest
 from moto import mock_aws
-
 
 # ---------------------------------------------------------------------------
 # Lambda context stub

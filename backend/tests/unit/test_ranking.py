@@ -12,11 +12,8 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
-
 from models.extraction import ExtractionResult, LineItem, Merchant
 from pipeline.ranking import rank_results
-
 
 # ---------------------------------------------------------------------------
 # Helpers

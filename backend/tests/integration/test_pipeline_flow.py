@@ -13,17 +13,14 @@ Spec references:
 
 from __future__ import annotations
 
-import json
-import os
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import boto3
 import pytest
 from moto import mock_aws
-
 
 # --- Fixtures ---
 
@@ -1094,7 +1091,6 @@ class TestDefaultPipelineConfig:
         monkeypatch.setenv("DEFAULT_PIPELINE", "ai-multimodal")
 
         # Need to reimport to pick up the env var change
-        import importlib
         import novascan.pipeline.finalize as finalize_module
         original_default = finalize_module.DEFAULT_PIPELINE
         finalize_module.DEFAULT_PIPELINE = "ai-multimodal"

@@ -15,10 +15,9 @@ from dataclasses import dataclass
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import boto3
 import pytest
 from moto import mock_aws
-import boto3
-
 
 # ---------------------------------------------------------------------------
 # Lambda context stub
