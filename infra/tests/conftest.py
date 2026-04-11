@@ -9,6 +9,16 @@ from aws_cdk.assertions import Template
 from stacks.novascan_stack import NovascanStack
 
 
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--snapshot-update",
+        action="store_true",
+        default=False,
+        help="Update the snapshot file if the template has changed",
+    )
+
+
 DEV_CONFIG = {
     "pipelineMaxConcurrency": 2,
     "presignedUrlExpirySec": 900,

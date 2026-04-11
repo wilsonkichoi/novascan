@@ -25,26 +25,21 @@ SNAPSHOT_FILE = SNAPSHOT_DIR / "novascan-dev.template.json"
 class TestStackSnapshot:
     """Snapshot test for the full synthesized CloudFormation template."""
 
-    def test_snapshot_matches(self, dev_template_json: dict) -> None:
+    def test_snapshot_matches(self, dev_template_json: dict, pytestconfig: pytest.Config) -> None:
         """Synthesized template must match the stored snapshot.
 
-        If this test fails after an intentional change, update the snapshot:
+        Update the snapshot by running:
             cd infra && uv run pytest --snapshot-update
-        Or manually:
-            cd infra && uv run python -c "
-            from tests.conftest import *; import json, pathlib
-            t = dev_template()
-            pathlib.Path('tests/snapshots').mkdir(exist_ok=True)
-            pathlib.Path('tests/snapshots/novascan-dev.template.json').write_text(
-                json.dumps(t.to_json(), indent=2, sort_keys=True))
-            "
         """
-        if not SNAPSHOT_FILE.exists():
-            # First run: create the snapshot
+        update = pytestconfig.getoption("--snapshot-update", default=False)
+
+        if not SNAPSHOT_FILE.exists() or update:
             SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
             SNAPSHOT_FILE.write_text(
                 json.dumps(dev_template_json, indent=2, sort_keys=True) + "\n"
             )
+            if update and SNAPSHOT_FILE.exists():
+                return
             pytest.skip(
                 f"Snapshot created at {SNAPSHOT_FILE}. "
                 "Re-run tests to verify against the snapshot."
@@ -53,7 +48,7 @@ class TestStackSnapshot:
         stored = json.loads(SNAPSHOT_FILE.read_text())
         assert dev_template_json == stored, (
             "CloudFormation template has changed since last snapshot. "
-            "Review the diff and update the snapshot if the change is intentional. "
+            "Review the diff and run `uv run pytest --snapshot-update` if the change is intentional. "
             f"Snapshot file: {SNAPSHOT_FILE}"
         )
 
