@@ -28,6 +28,9 @@ cd frontend && npm run test
 cd frontend && npm run build
 
 # 5. CDK snapshot is current (no unexpected diff)
+# Asset hashes are normalized in comparison, so code-only changes won't fail.
+# If you changed infra, update the snapshot first:
+#   cd infra && uv run pytest --snapshot-update
 cd infra && uv run cdk synth --context stage=dev > /dev/null
 cd infra && uv run pytest
 

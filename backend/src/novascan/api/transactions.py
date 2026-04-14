@@ -11,10 +11,10 @@ from aws_lambda_powertools.event_handler import Response, content_types
 from aws_lambda_powertools.event_handler.api_gateway import Router
 from boto3.dynamodb.conditions import Attr, ConditionBase, Key
 
-from shared.constants import get_category_display_name, get_subcategory_display_name
-from shared.dynamo import get_table
-from shared.pagination import decode_cursor, encode_cursor
-from shared.responses import error_response
+from novascan.shared.constants import get_category_display_name, get_subcategory_display_name
+from novascan.shared.dynamo import get_table
+from novascan.shared.pagination import decode_cursor, encode_cursor
+from novascan.shared.responses import error_response
 
 logger = Logger()
 tracer = Tracer()

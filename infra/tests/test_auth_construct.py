@@ -180,11 +180,12 @@ class TestAuthSecurityHardening:
             },
         )
 
-    def test_cognito_iam_scoped_not_wildcard(self, dev_template: Template) -> None:
-        """Post-Confirmation Lambda IAM policy must scope Cognito ARN to novascan-*.
+    def test_cognito_iam_scoped_to_region(self, dev_template: Template) -> None:
+        """Post-Confirmation Lambda IAM policy must scope Cognito ARN to {region}_*.
 
-        Security hardening H3: IAM resource currently uses `userpool/*` because 
-        Cognito User Pool ARNs use region-prefixed IDs (e.g. us-east-1_xxx), not names.
+        Security hardening H3: Cognito User Pool ARNs use region-prefixed physical
+        IDs (e.g. us-east-1_xxx), so we scope to userpool/{region}_* to limit
+        cross-region blast radius while avoiding the circular dependency.
         """
         dev_template.has_resource_properties(
             "AWS::IAM::Policy",
@@ -202,8 +203,10 @@ class TestAuthSecurityHardening:
                                                 Match.array_with(
                                                     [
                                                         Match.string_like_regexp(
-                                                            ".*:cognito-idp:.*:userpool/\\*"
+                                                            ".*:cognito-idp:.*:userpool/"
                                                         ),
+                                                        {"Ref": "AWS::Region"},
+                                                        "_*",
                                                     ]
                                                 ),
                                             ],

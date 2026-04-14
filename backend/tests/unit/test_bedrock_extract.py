@@ -104,7 +104,7 @@ def _pipeline_env(monkeypatch):
 
 def _invoke_handler(event: dict[str, Any]) -> dict[str, Any]:
     """Import and invoke the bedrock_extract handler."""
-    from pipeline.bedrock_extract import handler
+    from novascan.pipeline.bedrock_extract import handler
 
     return handler(event, FakeLambdaContext())
 
@@ -117,8 +117,8 @@ def _invoke_handler(event: dict[str, Any]) -> dict[str, Any]:
 class TestBedrockExtractSuccess:
     """Valid image -> valid ExtractionResult via Bedrock Nova multimodal."""
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_returns_extraction_result(self, mock_s3, mock_bedrock):
         """Successful extraction returns extractionResult dict."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -129,8 +129,8 @@ class TestBedrockExtractSuccess:
         assert "extractionResult" in result, "Success response must contain extractionResult"
         assert isinstance(result["extractionResult"], dict)
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_extraction_matches_spec_schema(self, mock_s3, mock_bedrock):
         """ExtractionResult must match SPEC Section 7 schema."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -149,8 +149,8 @@ class TestBedrockExtractSuccess:
         assert "subcategory" in extraction
         assert "confidence" in extraction
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_returns_model_id(self, mock_s3, mock_bedrock):
         """Response must include the Bedrock model ID used."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -162,8 +162,8 @@ class TestBedrockExtractSuccess:
         assert isinstance(result["modelId"], str)
         assert len(result["modelId"]) > 0
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_returns_processing_time_ms(self, mock_s3, mock_bedrock):
         """Response must include processingTimeMs as a non-negative integer."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -175,8 +175,8 @@ class TestBedrockExtractSuccess:
         assert isinstance(result["processingTimeMs"], int)
         assert result["processingTimeMs"] >= 0
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_no_error_key_on_success(self, mock_s3, mock_bedrock):
         """Success response must NOT contain error/errorType."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -187,8 +187,8 @@ class TestBedrockExtractSuccess:
         assert "error" not in result
         assert "errorType" not in result
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_handles_markdown_wrapped_json(self, mock_s3, mock_bedrock):
         """Bedrock may wrap JSON in markdown code fences; handler must strip them."""
         wrapped = f"```json\n{_VALID_EXTRACTION_JSON}\n```"
@@ -200,8 +200,8 @@ class TestBedrockExtractSuccess:
         assert "extractionResult" in result
         assert result["extractionResult"]["merchant"]["name"] == "Target"
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_png_image_handled(self, mock_s3, mock_bedrock):
         """PNG images should be processed correctly (media type inferred)."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-png"), "ContentLength": 8}
@@ -211,8 +211,8 @@ class TestBedrockExtractSuccess:
 
         assert "extractionResult" in result
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_custom_categories_accepted(self, mock_s3, mock_bedrock):
         """Handler accepts custom categories without error."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -225,8 +225,8 @@ class TestBedrockExtractSuccess:
 
         assert "extractionResult" in result
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_extraction_confidence_in_valid_range(self, mock_s3, mock_bedrock):
         """Confidence from extraction should be within [0.0, 1.0]."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -246,8 +246,8 @@ class TestBedrockExtractSuccess:
 class TestBedrockExtractErrors:
     """Bedrock/S3 failures return error payloads, not exceptions."""
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_bedrock_error_returns_error_payload(self, mock_s3, mock_bedrock):
         """Bedrock API exception should produce an error payload."""
         from botocore.exceptions import ClientError
@@ -263,8 +263,8 @@ class TestBedrockExtractErrors:
         assert "error" in result, "Error response must contain 'error' key"
         assert "errorType" in result, "Error response must contain 'errorType' key"
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_s3_error_returns_error_payload(self, mock_s3, mock_bedrock):
         """S3 read failure returns error payload."""
         from botocore.exceptions import ClientError
@@ -279,8 +279,8 @@ class TestBedrockExtractErrors:
         assert "error" in result
         assert "errorType" in result
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_malformed_json_returns_error_payload(self, mock_s3, mock_bedrock):
         """Invalid JSON from Bedrock should return error payload."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -291,8 +291,8 @@ class TestBedrockExtractErrors:
         assert "error" in result
         assert "errorType" in result
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_error_payload_has_no_extraction_result(self, mock_s3, mock_bedrock):
         """Error payloads must NOT contain extractionResult."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -302,8 +302,8 @@ class TestBedrockExtractErrors:
 
         assert "extractionResult" not in result
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_error_does_not_raise(self, mock_s3, mock_bedrock):
         """Handler must catch all exceptions and return payload."""
         mock_s3.get_object.return_value = {"Body": io.BytesIO(b"fake-image"), "ContentLength": 10}
@@ -330,8 +330,8 @@ class TestBedrockExtractErrors:
         result = _invoke_handler({"bucket": "test-bucket", "key": "../../etc/passwd"})
         assert result["error"] == "invalid_event"
 
-    @patch("pipeline.bedrock_extract.bedrock_client")
-    @patch("pipeline.bedrock_extract.s3_client")
+    @patch("novascan.pipeline.bedrock_extract.bedrock_client")
+    @patch("novascan.pipeline.bedrock_extract.s3_client")
     def test_incomplete_extraction_still_valid(self, mock_s3, mock_bedrock):
         """Bedrock returning minimal valid JSON (just merchant name) should succeed."""
         minimal_json = json.dumps({

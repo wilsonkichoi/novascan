@@ -98,7 +98,7 @@ def _make_file(
 
 def _invoke_upload(event: dict[str, Any]) -> dict[str, Any]:
     """Import and invoke the handler."""
-    from api.app import handler
+    from novascan.api.app import handler
 
     return handler(event, FakeLambdaContext())
 
@@ -174,7 +174,7 @@ class TestPresignedUrlContentLength:
             captured_params.append(params)
             return "https://fake-bucket.s3.amazonaws.com/fake-key?Signature=abc"
 
-        import api.upload as upload_module
+        import novascan.api.upload as upload_module
         original_s3 = upload_module.s3_client
         mock_s3 = MagicMock()
         mock_s3.generate_presigned_url = spy_generate
@@ -207,7 +207,7 @@ class TestPresignedUrlContentLength:
             captured_lengths.append(params.get("ContentLength"))
             return "https://fake-bucket.s3.amazonaws.com/fake-key?Signature=abc"
 
-        import api.upload as upload_module
+        import novascan.api.upload as upload_module
         original_s3 = upload_module.s3_client
         mock_s3 = MagicMock()
         mock_s3.generate_presigned_url = spy_generate

@@ -196,7 +196,7 @@ def aws_resources():
 
 def _invoke_handler(event: dict[str, Any]) -> dict[str, Any]:
     """Import and invoke the finalize handler."""
-    from pipeline.finalize import handler
+    from novascan.pipeline.finalize import handler
 
     return handler(event, FakeLambdaContext())
 

@@ -14,9 +14,9 @@ from aws_lambda_powertools.event_handler.api_gateway import Router
 from pydantic import ValidationError
 from ulid import ULID
 
-from models.receipt import UploadReceiptResponse, UploadRequest, UploadResponse
-from shared.constants import RECEIPT
-from shared.dynamo import get_table
+from novascan.models.receipt import UploadReceiptResponse, UploadRequest, UploadResponse
+from novascan.shared.constants import RECEIPT
+from novascan.shared.dynamo import get_table
 
 logger = Logger()
 tracer = Tracer()

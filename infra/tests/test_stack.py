@@ -9,6 +9,7 @@ This test also validates cross-construct wiring and stack outputs.
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -22,11 +23,29 @@ SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
 SNAPSHOT_FILE = SNAPSHOT_DIR / "novascan-dev.template.json"
 
 
+def _normalize_asset_hashes(template: dict) -> dict:
+    """Replace volatile CDK asset hashes with a stable placeholder.
+
+    CDK recomputes S3Key hashes whenever bundled source files change,
+    causing snapshot mismatches even when infrastructure is unchanged.
+    """
+    t = copy.deepcopy(template)
+    for resource in t.get("Resources", {}).values():
+        code = resource.get("Properties", {}).get("Code", {})
+        if "S3Key" in code:
+            code["S3Key"] = "ASSET_HASH_PLACEHOLDER"
+    return t
+
+
 class TestStackSnapshot:
     """Snapshot test for the full synthesized CloudFormation template."""
 
     def test_snapshot_matches(self, dev_template_json: dict, pytestconfig: pytest.Config) -> None:
         """Synthesized template must match the stored snapshot.
+
+        Asset hashes (S3Key) are normalized before comparison so that
+        backend code changes alone do not break this test. Only real
+        infrastructure changes (resources, IAM, env vars) trigger failure.
 
         Update the snapshot by running:
             cd infra && uv run pytest --snapshot-update
@@ -46,7 +65,7 @@ class TestStackSnapshot:
             )
 
         stored = json.loads(SNAPSHOT_FILE.read_text())
-        assert dev_template_json == stored, (
+        assert _normalize_asset_hashes(dev_template_json) == _normalize_asset_hashes(stored), (
             "CloudFormation template has changed since last snapshot. "
             "Review the diff and run `uv run pytest --snapshot-update` if the change is intentional. "
             f"Snapshot file: {SNAPSHOT_FILE}"

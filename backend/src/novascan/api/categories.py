@@ -20,21 +20,21 @@ from aws_lambda_powertools.event_handler.api_gateway import Router
 from boto3.dynamodb.conditions import Key
 from pydantic import ValidationError
 
-from models.category import (
+from novascan.models.category import (
     Category,
     CustomCategoryRequest,
     CustomCategoryResponse,
     Subcategory,
 )
-from shared.constants import (
+from novascan.shared.constants import (
     CUSTOMCAT,
     PIPELINE,
     PREDEFINED_CATEGORIES,
     RECEIPT,
     get_all_category_slugs,
 )
-from shared.dynamo import get_table
-from shared.responses import error_response
+from novascan.shared.dynamo import get_table
+from novascan.shared.responses import error_response
 
 logger = Logger()
 tracer = Tracer()

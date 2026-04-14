@@ -109,7 +109,7 @@ def _build_apigw_event(
 
 def _invoke_handler(event: dict[str, Any]) -> dict[str, Any]:
     """Import and invoke the handler, returning the response dict."""
-    from api.app import handler
+    from novascan.api.app import handler
 
     return handler(event, FakeLambdaContext())
 

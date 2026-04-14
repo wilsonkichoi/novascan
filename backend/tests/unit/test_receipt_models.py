@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from models.receipt import (
+from novascan.models.receipt import (
     Receipt,
     ReceiptListItem,
     ReceiptListResponse,

@@ -15,7 +15,7 @@ from aws_lambda_powertools.event_handler.api_gateway import Router
 from boto3.dynamodb.conditions import Key
 from pydantic import BaseModel
 
-from shared.dynamo import get_table
+from novascan.shared.dynamo import get_table
 
 logger = Logger()
 tracer = Tracer()

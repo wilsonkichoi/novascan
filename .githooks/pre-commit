@@ -4,14 +4,15 @@
 
 set -euo pipefail
 
-# Check if any staged files are under infra/
-INFRA_CHANGED=$(git diff --cached --name-only -- 'infra/' | head -1)
+# Check if any staged files are under infra/ or backend/ (backend changes
+# affect CDK asset hashes even though infrastructure stays the same).
+CHANGED=$(git diff --cached --name-only -- 'infra/' 'backend/' | head -1)
 
-if [ -z "$INFRA_CHANGED" ]; then
+if [ -z "$CHANGED" ]; then
     exit 0
 fi
 
-echo "[pre-commit] infra/ changes detected — regenerating CDK snapshot..."
+echo "[pre-commit] infra/ or backend/ changes detected — regenerating CDK snapshot..."
 
 cd infra
 

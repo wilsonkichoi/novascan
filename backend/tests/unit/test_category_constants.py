@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 
-from shared.constants import (
+from novascan.shared.constants import (
     PREDEFINED_CATEGORIES,
     get_all_category_slugs,
     get_all_subcategory_slugs,

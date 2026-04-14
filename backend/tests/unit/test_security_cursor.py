@@ -90,7 +90,7 @@ def _encode_cursor(data: dict[str, Any]) -> str:
 
 def _invoke_list(event: dict[str, Any]) -> dict[str, Any]:
     """Import and invoke the handler."""
-    from api.app import handler
+    from novascan.api.app import handler
 
     return handler(event, FakeLambdaContext())
 

@@ -134,7 +134,7 @@ def _seed_receipt(
 
 def _invoke_dashboard(event: dict[str, Any]) -> dict[str, Any]:
     """Import and invoke the handler, returning the response dict."""
-    from api.app import handler
+    from novascan.api.app import handler
 
     return handler(event, FakeLambdaContext())
 

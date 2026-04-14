@@ -29,6 +29,10 @@ cd frontend && npm run test                         # vitest
 cd infra && uv run cdk deploy --context stage=dev   # deploy to dev
 cd infra && uv run cdk destroy --context stage=dev  # teardown dev
 cd infra && uv run cdk synth --context stage=dev    # synthesize CloudFormation
+cd infra && uv run pytest --snapshot-update          # update CDK snapshot after infra changes
+
+# Git hooks (auto-regenerates CDK snapshot on commit)
+git config core.hooksPath .githooks
 ```
 
 ## Quick Reference

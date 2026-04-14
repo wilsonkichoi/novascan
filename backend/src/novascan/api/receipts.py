@@ -16,7 +16,7 @@ from aws_lambda_powertools.event_handler.api_gateway import Router
 from boto3.dynamodb.conditions import Attr, ConditionBase, Key
 from pydantic import ValidationError
 
-from models.receipt import (
+from novascan.models.receipt import (
     LineItemsUpdateRequest,
     ReceiptDetail,
     ReceiptDetailLineItem,
@@ -24,16 +24,16 @@ from models.receipt import (
     ReceiptListResponse,
     ReceiptUpdateRequest,
 )
-from shared.constants import (
+from novascan.shared.constants import (
     ITEM,
     get_all_category_slugs,
     get_category_display_name,
     get_subcategory_display_name,
     get_subcategory_slugs_for_category,
 )
-from shared.dynamo import get_table
-from shared.pagination import decode_cursor, encode_cursor
-from shared.responses import error_response
+from novascan.shared.dynamo import get_table
+from novascan.shared.pagination import decode_cursor, encode_cursor
+from novascan.shared.responses import error_response
 
 logger = Logger()
 tracer = Tracer()

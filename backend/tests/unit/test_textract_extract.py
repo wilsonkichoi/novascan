@@ -88,7 +88,7 @@ def _make_textract_response(expense_documents: list[dict[str, Any]] | None = Non
 
 def _invoke_handler(event: dict[str, Any]) -> dict[str, Any]:
     """Import and invoke the textract_extract handler."""
-    from pipeline.textract_extract import handler
+    from novascan.pipeline.textract_extract import handler
 
     return handler(event, FakeLambdaContext())
 
@@ -101,7 +101,7 @@ def _invoke_handler(event: dict[str, Any]) -> dict[str, Any]:
 class TestTextractExtractSuccess:
     """Textract AnalyzeExpense succeeds and returns raw ExpenseDocuments."""
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_returns_expense_documents(self, mock_client):
         """Successful extraction returns expenseDocuments from Textract."""
         mock_client.analyze_expense.return_value = _make_textract_response()
@@ -112,7 +112,7 @@ class TestTextractExtractSuccess:
         assert isinstance(result["expenseDocuments"], list)
         assert len(result["expenseDocuments"]) > 0
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_passes_through_bucket_and_key(self, mock_client):
         """Success response echoes back the bucket and key for downstream use."""
         mock_client.analyze_expense.return_value = _make_textract_response()
@@ -122,7 +122,7 @@ class TestTextractExtractSuccess:
         assert result.get("bucket") == "my-bucket"
         assert result.get("key") == "receipts/01ABC123DEF456GHI789JKLM90.jpg"
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_no_error_key_on_success(self, mock_client):
         """A successful response must NOT contain 'error' or 'errorType'."""
         mock_client.analyze_expense.return_value = _make_textract_response()
@@ -132,7 +132,7 @@ class TestTextractExtractSuccess:
         assert "error" not in result, "Success response must not have 'error' key"
         assert "errorType" not in result
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_calls_textract_with_correct_s3_ref(self, mock_client):
         """Handler should pass the S3 reference to Textract AnalyzeExpense."""
         mock_client.analyze_expense.return_value = _make_textract_response()
@@ -146,7 +146,7 @@ class TestTextractExtractSuccess:
         assert s3_obj["Bucket"] == "my-bucket"
         assert s3_obj["Name"] == "receipts/01ABC123DEF456GHI789JKLM90.jpg"
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_empty_expense_documents_returned(self, mock_client):
         """Textract returning empty ExpenseDocuments is still a success."""
         mock_client.analyze_expense.return_value = {"ExpenseDocuments": []}
@@ -166,7 +166,7 @@ class TestTextractExtractSuccess:
 class TestTextractExtractErrors:
     """Textract API failures return error payloads, not exceptions."""
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_api_error_returns_error_payload(self, mock_client):
         """Textract API exception should produce an error payload."""
         from botocore.exceptions import ClientError
@@ -185,7 +185,7 @@ class TestTextractExtractErrors:
         # H4 — Error sanitization: no raw exception text in error
         assert result["error"] == "textract_extract_failed"
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_throttling_error_returns_error_payload(self, mock_client):
         """Textract throttling should return an error payload."""
         from botocore.exceptions import ClientError
@@ -200,7 +200,7 @@ class TestTextractExtractErrors:
         assert "error" in result
         assert "errorType" in result
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_generic_exception_returns_error_payload(self, mock_client):
         """Any unhandled exception should still return an error payload."""
         mock_client.analyze_expense.side_effect = RuntimeError("Unexpected failure")
@@ -212,7 +212,7 @@ class TestTextractExtractErrors:
         # H4 — Error sanitization: error message should NOT contain raw exception text
         assert result["error"] == "textract_extract_failed"
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_error_payload_has_no_expense_documents(self, mock_client):
         """Error payloads should NOT contain expenseDocuments."""
         mock_client.analyze_expense.side_effect = RuntimeError("fail")
@@ -221,7 +221,7 @@ class TestTextractExtractErrors:
 
         assert "expenseDocuments" not in result
 
-    @patch("pipeline.textract_extract.textract_client")
+    @patch("novascan.pipeline.textract_extract.textract_client")
     def test_error_does_not_raise(self, mock_client):
         """Handler must catch exceptions and return payload — never raise."""
         from botocore.exceptions import ClientError

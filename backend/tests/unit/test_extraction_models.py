@@ -13,7 +13,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from models.extraction import ExtractionResult, LineItem, Merchant
+from novascan.models.extraction import ExtractionResult, LineItem, Merchant
 
 # ---------------------------------------------------------------------------
 # Merchant
