@@ -43,5 +43,5 @@ node_modules/
 .next/
 out/
 cdk.out/
-cdk-outputs.json
+cdk-outputs-*.json
 .agents

@@ -26,7 +26,7 @@ cd frontend && npm run build                        # production build
 cd frontend && npm run test                         # vitest
 
 # Infrastructure
-cd infra && uv run cdk deploy --context stage=dev   # deploy to dev
+cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json  # deploy to dev
 cd infra && uv run cdk destroy --context stage=dev  # teardown dev
 cd infra && uv run cdk synth --context stage=dev    # synthesize CloudFormation
 cd infra && uv run pytest --snapshot-update          # update CDK snapshot after infra changes
@@ -71,6 +71,13 @@ git config core.hooksPath .githooks
 - **Linting:** ruff (Python), ESLint + Prettier (TypeScript)
 - **Testing:** pytest + moto (backend), Vitest + React Testing Library (frontend)
 - **Docker:** DynamoDB Local for unit tests
+
+## Deployment
+
+- Always use `--outputs-file cdk-outputs-{stage}.json` when running `cdk deploy` (e.g., `cdk-outputs-dev.json`, `cdk-outputs-prod.json`)
+- Per-stage output files prevent dev/prod from overwriting each other
+- See `workflow/guides/deploy-teardown.md` for full deploy/teardown procedures
+- See `workflow/guides/service-pause.md` for pausing/resuming services
 
 ## Preferences
 

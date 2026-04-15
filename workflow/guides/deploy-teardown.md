@@ -85,15 +85,15 @@ These are Vite build-time variables sourced from CDK stack outputs. They are bak
 
 ```bash
 # 1. Deploy infrastructure (includes Lambda code bundling)
-cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs.json
+cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json
 
 # 2. Capture stack outputs
-#    The outputs file is saved to infra/cdk-outputs.json (gitignored).
+#    The outputs file is saved to infra/cdk-outputs-dev.json (gitignored).
 #    Extract the values you need:
-cat infra/cdk-outputs.json
+cat infra/cdk-outputs-dev.json
 ```
 
-Example `cdk-outputs.json`:
+Example `cdk-outputs-dev.json`:
 ```json
 {
   "novascan-dev": {
@@ -149,7 +149,7 @@ Same commands as the initial deploy. CDK performs an update-in-place (CloudForma
 
 ```bash
 # Infrastructure update
-cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs.json
+cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json
 
 # Frontend rebuild + upload (only needed if frontend code or env vars changed)
 cd frontend && npm run build
@@ -184,7 +184,7 @@ Prod deployment requires additional DNS steps for the custom domain `subdomain.e
 
 ```bash
 # 1. Deploy infrastructure
-cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs.json
+cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs-prod.json
 ```
 
 **IMPORTANT:** The deploy will block waiting for ACM certificate validation. While it is running, you must add the ACM DNS validation CNAME record in Cloudflare. See [cloudflare-custom-domain.md](cloudflare-custom-domain.md) Step 1 for the exact procedure.
@@ -239,7 +239,7 @@ curl -s https://<ApiUrl from outputs>/api/health
 # 1. Run pre-deploy checklist (see top of this guide)
 
 # 2. Deploy infrastructure update
-cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs.json
+cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs-prod.json
 
 # 3. Rebuild + upload frontend (if frontend code changed)
 cd frontend && npm run build
@@ -282,7 +282,7 @@ git log --oneline -10
 git checkout <commit-hash>
 
 # 3. Redeploy infrastructure
-cd infra && uv run cdk deploy --context stage=<stage> --outputs-file cdk-outputs.json
+cd infra && uv run cdk deploy --context stage=<stage> --outputs-file cdk-outputs-<stage>.json
 
 # 4. Rebuild and redeploy frontend (if frontend was part of the issue)
 cd frontend && npm run build
@@ -320,32 +320,32 @@ aws cloudformation describe-stacks \
 ### One-Liner: Full Dev Deploy
 
 ```bash
-cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs.json && \
+cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json && \
 cd ../frontend && \
-  VITE_API_URL="$(jq -r '.["novascan-dev"].ApiUrl' ../infra/cdk-outputs.json)" \
-  VITE_COGNITO_USER_POOL_ID="$(jq -r '.["novascan-dev"].UserPoolId' ../infra/cdk-outputs.json)" \
-  VITE_COGNITO_CLIENT_ID="$(jq -r '.["novascan-dev"].AppClientId' ../infra/cdk-outputs.json)" \
+  VITE_API_URL="$(jq -r '.["novascan-dev"].ApiUrl' ../infra/cdk-outputs-dev.json)" \
+  VITE_COGNITO_USER_POOL_ID="$(jq -r '.["novascan-dev"].UserPoolId' ../infra/cdk-outputs-dev.json)" \
+  VITE_COGNITO_CLIENT_ID="$(jq -r '.["novascan-dev"].AppClientId' ../infra/cdk-outputs-dev.json)" \
   VITE_AWS_REGION="us-east-1" \
   npm run build && \
-aws s3 sync dist/ "s3://$(jq -r '.["novascan-dev"].FrontendBucketName' ../infra/cdk-outputs.json)/" --delete && \
+aws s3 sync dist/ "s3://$(jq -r '.["novascan-dev"].FrontendBucketName' ../infra/cdk-outputs-dev.json)/" --delete && \
 aws cloudfront create-invalidation \
-  --distribution-id "$(jq -r '.["novascan-dev"].DistributionId' ../infra/cdk-outputs.json)" \
+  --distribution-id "$(jq -r '.["novascan-dev"].DistributionId' ../infra/cdk-outputs-dev.json)" \
   --paths "/*"
 ```
 
 ### One-Liner: Full Prod Deploy (after first-time DNS setup)
 
 ```bash
-cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs.json && \
+cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs-prod.json && \
 cd ../frontend && \
-  VITE_API_URL="$(jq -r '.["novascan-prod"].ApiUrl' ../infra/cdk-outputs.json)" \
-  VITE_COGNITO_USER_POOL_ID="$(jq -r '.["novascan-prod"].UserPoolId' ../infra/cdk-outputs.json)" \
-  VITE_COGNITO_CLIENT_ID="$(jq -r '.["novascan-prod"].AppClientId' ../infra/cdk-outputs.json)" \
+  VITE_API_URL="$(jq -r '.["novascan-prod"].ApiUrl' ../infra/cdk-outputs-prod.json)" \
+  VITE_COGNITO_USER_POOL_ID="$(jq -r '.["novascan-prod"].UserPoolId' ../infra/cdk-outputs-prod.json)" \
+  VITE_COGNITO_CLIENT_ID="$(jq -r '.["novascan-prod"].AppClientId' ../infra/cdk-outputs-prod.json)" \
   VITE_AWS_REGION="us-east-1" \
   npm run build && \
-aws s3 sync dist/ "s3://$(jq -r '.["novascan-prod"].FrontendBucketName' ../infra/cdk-outputs.json)/" --delete && \
+aws s3 sync dist/ "s3://$(jq -r '.["novascan-prod"].FrontendBucketName' ../infra/cdk-outputs-prod.json)/" --delete && \
 aws cloudfront create-invalidation \
-  --distribution-id "$(jq -r '.["novascan-prod"].DistributionId' ../infra/cdk-outputs.json)" \
+  --distribution-id "$(jq -r '.["novascan-prod"].DistributionId' ../infra/cdk-outputs-prod.json)" \
   --paths "/*"
 ```
 

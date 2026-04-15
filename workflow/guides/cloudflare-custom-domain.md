@@ -137,16 +137,16 @@ aws cloudfront create-invalidation \
 cd frontend
 
 # 1. Build with explicitly updated environment variables from CDK outputs
-VITE_API_URL=$(jq -r '.["novascan-prod"].ApiUrl' ../infra/cdk-outputs.json) \
-VITE_COGNITO_USER_POOL_ID=$(jq -r '.["novascan-prod"].UserPoolId' ../infra/cdk-outputs.json) \
-VITE_COGNITO_CLIENT_ID=$(jq -r '.["novascan-prod"].AppClientId' ../infra/cdk-outputs.json) \
+VITE_API_URL=$(jq -r '.["novascan-prod"].ApiUrl' ../infra/cdk-outputs-prod.json) \
+VITE_COGNITO_USER_POOL_ID=$(jq -r '.["novascan-prod"].UserPoolId' ../infra/cdk-outputs-prod.json) \
+VITE_COGNITO_CLIENT_ID=$(jq -r '.["novascan-prod"].AppClientId' ../infra/cdk-outputs-prod.json) \
 npm run build
 
 # 2. Upload to S3
-aws s3 sync dist/ "s3://$(jq -r '.["novascan-prod"].FrontendBucketName' ../infra/cdk-outputs.json)/" --delete
+aws s3 sync dist/ "s3://$(jq -r '.["novascan-prod"].FrontendBucketName' ../infra/cdk-outputs-prod.json)/" --delete
 
 # 3. Invalidate CloudFront cache
-aws cloudfront create-invalidation --distribution-id "$(jq -r '.["novascan-prod"].DistributionId' ../infra/cdk-outputs.json)" --paths "/*"
+aws cloudfront create-invalidation --distribution-id "$(jq -r '.["novascan-prod"].DistributionId' ../infra/cdk-outputs-prod.json)" --paths "/*"
 ```
 
 ## DNS Records Summary
