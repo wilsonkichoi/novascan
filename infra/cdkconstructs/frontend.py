@@ -70,7 +70,7 @@ class FrontendConstruct(Construct):
                 content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
                     content_security_policy=(
                         "default-src 'self'; "
-                        "connect-src 'self' https://*.amazonaws.com https://*.execute-api.*.amazonaws.com; "
+                        "connect-src 'self' https://*.amazonaws.com; "
                         "img-src 'self' data: blob:; "
                         "style-src 'self' 'unsafe-inline'; "
                         "script-src 'self'"

@@ -62,6 +62,15 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             "customCategories": [...]
         }
     """
+    # EventBridge Pipes with SQS source sends a batch (array) even with
+    # batch_size=1. Unwrap single-item arrays.
+    if isinstance(event, list):
+        if len(event) == 1:
+            event = event[0]
+        else:
+            logger.error("Unexpected batch size", extra={"batch_size": len(event)})
+            return {"error": "invalid_event", "errorType": "ValidationError"}
+
     # If the event came from EventBridge Pipes with an S3 event body, parse it
     if "s3EventBody" in event and "bucket" not in event:
         logger.info("Received S3 event body, parsing")

@@ -44,7 +44,6 @@ aws sts get-caller-identity
 
 | Key | dev | prod |
 |-----|-----|------|
-| `pipelineMaxConcurrency` | 2 | 2 |
 | `presignedUrlExpirySec` | 900 | 900 |
 | `maxUploadFiles` | 10 | 10 |
 | `maxUploadSizeMb` | 10 | 10 |

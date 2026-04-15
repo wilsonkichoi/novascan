@@ -72,6 +72,14 @@ class StorageConstruct(Construct):
             versioned=True,
             removal_policy=cdk.RemovalPolicy.RETAIN if is_prod else cdk.RemovalPolicy.DESTROY,
             auto_delete_objects=not is_prod,
+            cors=[
+                s3.CorsRule(
+                    allowed_methods=[s3.HttpMethods.PUT],
+                    allowed_origins=["*"],
+                    allowed_headers=["Content-Type"],
+                    max_age=3600,
+                ),
+            ],
             # M3 — S3 lifecycle rules for cost optimization
             lifecycle_rules=[
                 s3.LifecycleRule(

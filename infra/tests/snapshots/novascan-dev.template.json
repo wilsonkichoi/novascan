@@ -74,7 +74,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "569554769af56cbcd320c03cd0d78b2716d8500eed7ef0533c9df03b8030381a.zip"
+          "S3Key": "1c598a76a6ac473ac3f5670a65aa97dd68ef6229e42d3283034bbc96ed510f44.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -1176,7 +1176,7 @@
           "Name": "novascan-dev-security-headers",
           "SecurityHeadersConfig": {
             "ContentSecurityPolicy": {
-              "ContentSecurityPolicy": "default-src 'self'; connect-src 'self' https://*.amazonaws.com https://*.execute-api.*.amazonaws.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+              "ContentSecurityPolicy": "default-src 'self'; connect-src 'self' https://*.amazonaws.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'",
               "Override": true
             },
             "ContentTypeOptions": {
@@ -1208,7 +1208,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "9185af2a597adedb1a07b1793e6345ab59d60c717c61c6734c6b708d9ec074fe.zip"
+          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
         },
         "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
         "Environment": {
@@ -1365,7 +1365,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "9185af2a597adedb1a07b1793e6345ab59d60c717c61c6734c6b708d9ec074fe.zip"
+          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
         },
         "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
         "Environment": {
@@ -1576,7 +1576,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "9185af2a597adedb1a07b1793e6345ab59d60c717c61c6734c6b708d9ec074fe.zip"
+          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1702,7 +1702,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "9185af2a597adedb1a07b1793e6345ab59d60c717c61c6734c6b708d9ec074fe.zip"
+          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -1851,6 +1851,15 @@
       },
       "Type": "AWS::IAM::Policy"
     },
+    "PipelinePipeLogGroupB42E07B3": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "LogGroupName": "/aws/vendedlogs/pipes/novascan-dev-receipt-pipe",
+        "RetentionInDays": 30
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete"
+    },
     "PipelinePipeRoleD7B87602": {
       "Properties": {
         "AssumeRolePolicyDocument": {
@@ -1895,6 +1904,19 @@
               "Resource": {
                 "Ref": "PipelinePipelineStateMachine05F1F149"
               }
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "PipelinePipeLogGroupB42E07B3",
+                  "Arn"
+                ]
+              }
             }
           ],
           "Version": "2012-10-17"
@@ -1926,7 +1948,7 @@
                   "Arn"
                 ]
               },
-              "\"},\"ParallelPipelines\":{\"Type\":\"Parallel\",\"ResultPath\":\"$.pipelineResults\",\"Next\":\"Finalize\",\"Branches\":[{\"StartAt\":\"TextractExtract\",\"States\":{\"TextractExtract\":{\"Next\":\"NovaStructure\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.textractResult\",\"Next\":\"TextractExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$.textractResult\",\"Resource\":\"",
+              "\"},\"ParallelPipelines\":{\"Type\":\"Parallel\",\"ResultPath\":\"$.pipelineResults\",\"Next\":\"Finalize\",\"Branches\":[{\"StartAt\":\"TextractExtract\",\"States\":{\"TextractExtract\":{\"Next\":\"NovaStructure\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2},{\"ErrorEquals\":[\"Textract.ThrottlingException\",\"Textract.ProvisionedThroughputExceededException\"],\"IntervalSeconds\":5,\"MaxAttempts\":3,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.textractResult\",\"Next\":\"TextractExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$.textractResult\",\"Resource\":\"",
               {
                 "Fn::GetAtt": [
                   "PipelineTextractExtractFnFD3C175F",
@@ -1957,6 +1979,21 @@
               "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"userId.$\":\"$.userId\",\"receiptId.$\":\"$.receiptId\",\"customCategories.$\":\"$.customCategories\",\"pipelineResults.$\":\"$.pipelineResults\"}}},\"TimeoutSeconds\":900}"
             ]
           ]
+        },
+        "LoggingConfiguration": {
+          "Destinations": [
+            {
+              "CloudWatchLogsLogGroup": {
+                "LogGroupArn": {
+                  "Fn::GetAtt": [
+                    "PipelineSfnLogGroupBDB50EFA",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ],
+          "Level": "ERROR"
         },
         "RoleArn": {
           "Fn::GetAtt": [
@@ -2125,6 +2162,20 @@
             },
             {
               "Action": [
+                "logs:CreateLogDelivery",
+                "logs:GetLogDelivery",
+                "logs:UpdateLogDelivery",
+                "logs:DeleteLogDelivery",
+                "logs:ListLogDeliveries",
+                "logs:PutResourcePolicy",
+                "logs:DescribeResourcePolicies",
+                "logs:DescribeLogGroups"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
                 "xray:PutTraceSegments",
                 "xray:PutTelemetryRecords",
                 "xray:GetSamplingRules",
@@ -2190,6 +2241,17 @@
     "PipelineReceiptPipe79D47CB3": {
       "Properties": {
         "Description": "NovaScan receipt pipeline pipe (dev)",
+        "LogConfiguration": {
+          "CloudwatchLogsLogDestination": {
+            "LogGroupArn": {
+              "Fn::GetAtt": [
+                "PipelinePipeLogGroupB42E07B3",
+                "Arn"
+              ]
+            }
+          },
+          "Level": "ERROR"
+        },
         "Name": "novascan-dev-receipt-pipe",
         "RoleArn": {
           "Fn::GetAtt": [
@@ -2212,7 +2274,7 @@
           "Ref": "PipelinePipelineStateMachine05F1F149"
         },
         "TargetParameters": {
-          "InputTemplate": "{\"s3EventBody\": \"<$.body>\"}",
+          "InputTemplate": "{\"bucket\": \"<$.body.Records[0].s3.bucket.name>\", \"key\": \"<$.body.Records[0].s3.object.key>\"}",
           "StepFunctionStateMachineParameters": {
             "InvocationType": "FIRE_AND_FORGET"
           }
@@ -2322,6 +2384,15 @@
       },
       "Type": "AWS::SQS::QueuePolicy"
     },
+    "PipelineSfnLogGroupBDB50EFA": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "LogGroupName": "/aws/vendedlogs/states/novascan-dev-receipt-pipeline",
+        "RetentionInDays": 30
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete"
+    },
     "PipelineTextractExtractFnFD3C175F": {
       "DependsOn": [
         "PipelineTextractExtractFnServiceRoleDefaultPolicyA1373C32",
@@ -2330,7 +2401,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "9185af2a597adedb1a07b1793e6345ab59d60c717c61c6734c6b708d9ec074fe.zip"
+          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {
@@ -2640,6 +2711,22 @@
               "ServerSideEncryptionByDefault": {
                 "SSEAlgorithm": "AES256"
               }
+            }
+          ]
+        },
+        "CorsConfiguration": {
+          "CorsRules": [
+            {
+              "AllowedHeaders": [
+                "Content-Type"
+              ],
+              "AllowedMethods": [
+                "PUT"
+              ],
+              "AllowedOrigins": [
+                "*"
+              ],
+              "MaxAge": 3600
             }
           ]
         },

@@ -11,11 +11,10 @@ Creates:
 
 See: SPEC.md Section 3 (Processing Flow), Section 4 (Pipeline State Machine).
 
-Note on MaximumConcurrency: CfnPipe (AWS::Pipes::Pipe) does not expose a
-MaximumConcurrency property in CloudFormation as of 2026-04. Concurrency is
-controlled indirectly via SQS batch_size=1 and the SQS visibility timeout.
-The pipelineMaxConcurrency config value is documented but cannot be enforced
-at the Pipe level. A future CDK/CloudFormation update may add this property.
+Note on concurrency: Neither EventBridge Pipes (SQS source) nor Step Functions
+expose a max-concurrent-executions setting as of 2026-04. Pipeline concurrency
+is unbounded — acceptable at MVP scale. Textract throttling (5 TPS limit) is
+handled via Step Functions retry config on the TextractExtract step.
 """
 
 import json
@@ -29,6 +28,7 @@ import aws_cdk as cdk
 import aws_cdk.aws_dynamodb as dynamodb
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_lambda as lambda_
+import aws_cdk.aws_logs as logs
 import aws_cdk.aws_pipes as pipes
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_s3_notifications as s3n
@@ -359,6 +359,12 @@ class PipelineConstruct(Construct):
             payload_response_only=True,
             result_path="$.textractResult",
         )
+        textract_extract.add_retry(
+            errors=["Textract.ThrottlingException", "Textract.ProvisionedThroughputExceededException"],
+            interval=cdk.Duration.seconds(5),
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
         textract_extract.add_catch(
             handler=sfn.Pass(
                 self,
@@ -459,6 +465,14 @@ class PipelineConstruct(Construct):
         # Chain: LoadCustomCategories -> Parallel -> Finalize
         definition = load_categories.next(parallel).next(finalize)
 
+        sfn_log_group = logs.LogGroup(
+            self,
+            "SfnLogGroup",
+            log_group_name=f"/aws/vendedlogs/states/novascan-{stage}-receipt-pipeline",
+            retention=logs.RetentionDays.ONE_MONTH,
+            removal_policy=cdk.RemovalPolicy.DESTROY,
+        )
+
         return sfn.StateMachine(
             self,
             "PipelineStateMachine",
@@ -466,6 +480,10 @@ class PipelineConstruct(Construct):
             definition_body=sfn.DefinitionBody.from_chainable(definition),
             timeout=cdk.Duration.minutes(15),
             tracing_enabled=True,
+            logs=sfn.LogOptions(
+                destination=sfn_log_group,
+                level=sfn.LogLevel.ERROR,
+            ),
         )
 
     def _build_pipe(self, stage: str, config: dict[str, Any]) -> None:
@@ -474,10 +492,6 @@ class PipelineConstruct(Construct):
         Uses L1 CfnPipe since there's no L2 construct for EventBridge Pipes.
         The SQS message contains the S3 event notification. The input
         transformer extracts bucket and key from the S3 event record.
-
-        Note: CfnPipe does not support MaximumConcurrency as a CloudFormation
-        property. The pipelineMaxConcurrency config value is documented as a
-        gap. Concurrency is controlled via SQS batch_size=1.
         """
         # IAM role for the pipe
         pipe_role = iam.Role(
@@ -498,16 +512,29 @@ class PipelineConstruct(Construct):
             )
         )
 
-        # The S3 event notification via SQS has this structure:
-        # { "Records": [{ "s3": { "bucket": { "name": "..." }, "object": { "key": "..." } } }] }
-        # The SQS message body wraps the S3 event as a JSON string.
-        # EventBridge Pipes input_template processes each SQS message's body.
+        # --- Pipe logging ---
+        pipe_log_group = logs.LogGroup(
+            self,
+            "PipeLogGroup",
+            log_group_name=f"/aws/vendedlogs/pipes/novascan-{stage}-receipt-pipe",
+            retention=logs.RetentionDays.ONE_MONTH,
+            removal_policy=cdk.RemovalPolicy.DESTROY,
+        )
+        pipe_log_group.grant_write(pipe_role)
+
+        # The SQS message body contains the S3 event notification as a JSON
+        # string. EventBridge Pipes can parse the body and extract fields using
+        # JSONPath when the source is SQS.
         #
-        # For SQS sources, the pipe receives the SQS message envelope.
-        # We use input_template to extract the S3 event details.
-        # <$.body> is the SQS message body (JSON string of S3 event).
+        # For SQS sources, Pipes automatically parses the message body as JSON.
+        # We extract bucket and key directly rather than passing the raw body,
+        # which avoids JSON escaping issues with <$.body> string interpolation.
+        #
+        # S3 event structure:
+        # { "Records": [{ "s3": { "bucket": { "name": "..." }, "object": { "key": "..." } } }] }
         input_template = json.dumps({
-            "s3EventBody": "<$.body>",
+            "bucket": "<$.body.Records[0].s3.bucket.name>",
+            "key": "<$.body.Records[0].s3.object.key>",
         })
 
         pipes.CfnPipe(
@@ -531,4 +558,10 @@ class PipelineConstruct(Construct):
                 input_template=input_template,
             ),
             description=f"NovaScan receipt pipeline pipe ({stage})",
+            log_configuration=pipes.CfnPipe.PipeLogConfigurationProperty(
+                cloudwatch_logs_log_destination=pipes.CfnPipe.CloudwatchLogsLogDestinationProperty(
+                    log_group_arn=pipe_log_group.log_group_arn,
+                ),
+                level="ERROR",
+            ),
         )
