@@ -63,7 +63,12 @@ class _UvLocalBundling:
                     capture_output=True,
                 )
                 subprocess.run(
-                    ["uv", "pip", "install", "--no-cache", "-r", req_file, "--target", output_dir],
+                    [
+                        "uv", "pip", "install", "--no-cache",
+                        "--python-platform", "manylinux2014_x86_64",
+                        "--python-version", "3.13",
+                        "-r", req_file, "--target", output_dir,
+                    ],
                     cwd=self._backend_dir,
                     check=True,
                     capture_output=True,
