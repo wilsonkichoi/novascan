@@ -1137,7 +1137,7 @@
 
 ### Wave 2: Manual DNS + Runbooks
 
-#### [ ] Task 6.3: Prod Stack Deploy + Cloudflare DNS Setup [MANUAL]
+#### [x] Task 6.3: Prod Stack Deploy + Cloudflare DNS Setup [MANUAL]
 - **Role:** devops-engineer (human)
 - **Depends on:** 6.1
 - **Manual:** yes — auto pipeline stops at this task. Human completes steps and marks done.
@@ -1212,7 +1212,7 @@
 
 ### Wave 3: Tests + E2E Verification
 
-#### [ ] Task 6.7: UX Polish Tests [TEST]
+#### [x] Task 6.7: UX Polish Tests [TEST]
 - **Role:** qa-engineer
 - **Depends on:** 6.2
 - **Spec reference:** SPEC.md >> Milestone 6 Acceptance Criteria
