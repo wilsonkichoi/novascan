@@ -276,12 +276,13 @@ class TestStepFunctionsStateMachine:
                         "Spec Section 3 requires LoadCustomCategories -> Parallel -> Finalize."
                     )
 
-    def test_load_custom_categories_transitions_to_parallel(
+    def test_load_custom_categories_transitions_to_check_skip_then_parallel(
         self, dev_template: Template
     ) -> None:
-        """LoadCustomCategories must transition to the Parallel state.
+        """LoadCustomCategories must transition to a Choice state (idempotency guard)
+        that routes to Parallel for new receipts or Succeed for already-processed ones.
 
-        Spec Section 3: 'LoadCustomCategories -> Parallel -> Finalize'
+        Flow: LoadCustomCategories -> CheckSkip (Choice) -> Parallel -> Finalize
         """
         sm_resources = dev_template.find_resources(
             "AWS::StepFunctions::StateMachine"
@@ -301,13 +302,23 @@ class TestStepFunctionsStateMachine:
                 "LoadCustomCategories has no 'Next' state."
             )
 
+            # LoadCustomCategories -> Choice (idempotency check)
             next_state = states.get(next_state_name)
-            assert next_state is not None and next_state.get("Type") == "Parallel", (
+            assert next_state is not None and next_state.get("Type") == "Choice", (
                 f"LoadCustomCategories transitions to '{next_state_name}' "
                 f"which is type '{next_state.get('Type') if next_state else 'missing'}'. "
-                "Expected a Parallel state. "
-                "Spec Section 3: LoadCustomCategories -> Parallel -> Finalize."
+                "Expected a Choice state (idempotency guard)."
             )
+
+            # Choice default branch should lead to Parallel
+            default_name = next_state.get("Default")
+            if default_name:
+                default_state = states.get(default_name)
+                assert default_state is not None and default_state.get("Type") == "Parallel", (
+                    f"Choice default transitions to '{default_name}' "
+                    f"which is type '{default_state.get('Type') if default_state else 'missing'}'. "
+                    "Expected a Parallel state."
+                )
 
 
 class TestPipelineLambdaFunctions:

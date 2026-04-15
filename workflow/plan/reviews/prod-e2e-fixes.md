@@ -187,6 +187,26 @@ After 3 retries, the Catch handler fires and the shadow pipeline (Bedrock) takes
 
 ---
 
+### 8. Infinite pipeline loop — Finalize `copy_object` re-triggers S3 event
+
+**Symptom:** 1 receipt upload produced 20+ Step Functions executions, ~20 seconds apart, with 1 still RUNNING. Bedrock Lambda logged errors on every execution. The pipeline kept re-running the same receipt indefinitely.
+
+**Root cause:** The Finalize Lambda calls `copy_object` to update S3 object metadata (`x-amz-meta-status`, `x-amz-meta-receipt-id`, `x-amz-meta-processed-at`). S3 `copy_object` to the same key triggers a new `ObjectCreated` event on the `receipts/` prefix. This event enters SQS → Pipe → Step Functions, re-running the pipeline for an already-processed receipt. Each execution's Finalize triggers another `copy_object`, creating an infinite loop.
+
+The loop appeared to "succeed" because each execution completed (Bedrock failed but was caught by the Catch handler, Finalize used the main pipeline result). But the same receipt was being re-processed every ~20 seconds.
+
+**Fix:** Added an idempotency guard in `LoadCustomCategories` — the first step queries the receipt's status from DynamoDB. If status is `confirmed` or `failed`, it returns `{"skip": true}` immediately. A new Choice state (`CheckSkip`) in the state machine routes to `Succeed` when `skip=true`, short-circuiting the pipeline.
+
+Flow: `LoadCustomCategories → CheckSkip (Choice) → Succeed` (if already processed)
+Flow: `LoadCustomCategories → CheckSkip (Choice) → Parallel → Finalize` (normal)
+
+**Files changed:**
+- `backend/src/novascan/pipeline/load_custom_categories.py` — status check + `_get_receipt_status()`
+- `infra/cdkconstructs/pipeline.py` — added `CheckSkip` Choice state and `AlreadyProcessed` Succeed state
+- `infra/tests/test_pipeline_construct.py` — updated state machine flow assertion
+
+---
+
 ## Lessons Learned
 
 1. **Always test Lambda packaging with cross-platform binaries.** Any Python dependency with native code (pydantic, cryptography, numpy) will silently break if packaged on a different architecture. The `--python-platform` flag on `uv pip install` is the clean fix for local bundling.
@@ -203,4 +223,6 @@ After 3 retries, the Catch handler fires and the shadow pipeline (Bedrock) takes
 
 7. **Don't ship config that isn't wired.** `pipelineMaxConcurrency` sat in `cdk.json` for weeks looking legitimate but doing nothing. If a config value isn't consumed by code, delete it. Dead config is worse than no config — it gives false confidence.
 
-8. **Remove unused dependencies early.** `pandas` was flagged in the security review (task 3.17/L3) but wasn't actually removed. It caused a cascading failure when cross-platform compilation couldn't build `numpy` for the target platform.
+8. **S3 `copy_object` to the same key triggers `ObjectCreated`.** Any pipeline that writes back to the same S3 prefix it reads from will loop infinitely. Always add an idempotency guard (check processing status) as the first pipeline step, or use a separate S3 prefix for processed objects.
+
+9. **Remove unused dependencies early.** `pandas` was flagged in the security review (task 3.17/L3) but wasn't actually removed. It caused a cascading failure when cross-platform compilation couldn't build `numpy` for the target platform.

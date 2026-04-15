@@ -462,8 +462,19 @@ class PipelineConstruct(Construct):
             payload_response_only=True,
         )
 
-        # Chain: LoadCustomCategories -> Parallel -> Finalize
-        definition = load_categories.next(parallel).next(finalize)
+        # Short-circuit if receipt is already processed (idempotency guard).
+        # LoadCustomCategories returns {"skip": true} when Finalize's copy_object
+        # triggers a re-entry via S3 -> SQS -> Pipe -> Step Functions.
+        skip_done = sfn.Succeed(self, "AlreadyProcessed")
+        check_skip = sfn.Choice(self, "CheckSkip")
+        check_skip.when(
+            sfn.Condition.boolean_equals("$.skip", True),
+            skip_done,
+        )
+        check_skip.otherwise(parallel.next(finalize))
+
+        # Chain: LoadCustomCategories -> CheckSkip -> (Parallel -> Finalize | Succeed)
+        definition = load_categories.next(check_skip)
 
         sfn_log_group = logs.LogGroup(
             self,

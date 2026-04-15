@@ -96,6 +96,18 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             return {"error": "load_custom_categories_failed", "errorType": "LookupError"}
         event["userId"] = user_id
 
+    # Idempotency guard: skip if receipt is already processed.
+    # Finalize Lambda's copy_object triggers another S3 ObjectCreated event,
+    # which re-enters this pipeline. Check receipt status to break the loop.
+    if receipt_id and user_id:
+        receipt_status = _get_receipt_status(user_id, receipt_id)
+        if receipt_status in ("confirmed", "failed"):
+            logger.info(
+                "Receipt already processed, skipping pipeline",
+                extra={"receipt_id": receipt_id, "status": receipt_status},
+            )
+            return {"skip": True, "reason": f"already_{receipt_status}"}
+
     logger.info("Loading custom categories", extra={"user_id": user_id})
 
     try:
@@ -240,4 +252,24 @@ def _lookup_user_id(receipt_id: str) -> str:
         return user_id
 
     logger.error("Receipt not found in GSI2", extra={"receipt_id": receipt_id})
+    return ""
+
+
+@tracer.capture_method
+def _get_receipt_status(user_id: str, receipt_id: str) -> str:
+    """Check the current status of a receipt in DynamoDB.
+
+    Returns the status string ('processing', 'confirmed', 'failed') or empty
+    string if not found. Used as an idempotency guard to prevent re-processing
+    receipts that were already finalized (copy_object triggers re-entry).
+    """
+    table = get_table()
+    response = table.get_item(
+        Key={"PK": f"USER#{user_id}", "SK": f"RECEIPT#{receipt_id}"},
+        ProjectionExpression="#s",
+        ExpressionAttributeNames={"#s": "status"},
+    )
+    item = response.get("Item")
+    if item:
+        return item.get("status", "")
     return ""

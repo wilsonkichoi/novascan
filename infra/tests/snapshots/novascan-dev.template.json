@@ -74,7 +74,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "1c598a76a6ac473ac3f5670a65aa97dd68ef6229e42d3283034bbc96ed510f44.zip"
+          "S3Key": "5b6659d75c2ef71e1d7838aabe28598f5c97546915bd721c805937be921e6746.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -1208,7 +1208,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
+          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
         },
         "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
         "Environment": {
@@ -1365,7 +1365,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
+          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
         },
         "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
         "Environment": {
@@ -1576,7 +1576,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
+          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1702,7 +1702,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
+          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -1941,14 +1941,14 @@
           "Fn::Join": [
             "",
             [
-              "{\"StartAt\":\"LoadCustomCategories\",\"States\":{\"LoadCustomCategories\":{\"Next\":\"ParallelPipelines\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
+              "{\"StartAt\":\"LoadCustomCategories\",\"States\":{\"LoadCustomCategories\":{\"Next\":\"CheckSkip\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
               {
                 "Fn::GetAtt": [
                   "PipelineLoadCustomCategoriesFnCCD0B2A2",
                   "Arn"
                 ]
               },
-              "\"},\"ParallelPipelines\":{\"Type\":\"Parallel\",\"ResultPath\":\"$.pipelineResults\",\"Next\":\"Finalize\",\"Branches\":[{\"StartAt\":\"TextractExtract\",\"States\":{\"TextractExtract\":{\"Next\":\"NovaStructure\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2},{\"ErrorEquals\":[\"Textract.ThrottlingException\",\"Textract.ProvisionedThroughputExceededException\"],\"IntervalSeconds\":5,\"MaxAttempts\":3,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.textractResult\",\"Next\":\"TextractExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$.textractResult\",\"Resource\":\"",
+              "\"},\"CheckSkip\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.skip\",\"BooleanEquals\":true,\"Next\":\"AlreadyProcessed\"}],\"Default\":\"ParallelPipelines\"},\"ParallelPipelines\":{\"Type\":\"Parallel\",\"ResultPath\":\"$.pipelineResults\",\"Next\":\"Finalize\",\"Branches\":[{\"StartAt\":\"TextractExtract\",\"States\":{\"TextractExtract\":{\"Next\":\"NovaStructure\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2},{\"ErrorEquals\":[\"Textract.ThrottlingException\",\"Textract.ProvisionedThroughputExceededException\"],\"IntervalSeconds\":5,\"MaxAttempts\":3,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.textractResult\",\"Next\":\"TextractExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$.textractResult\",\"Resource\":\"",
               {
                 "Fn::GetAtt": [
                   "PipelineTextractExtractFnFD3C175F",
@@ -1976,7 +1976,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"userId.$\":\"$.userId\",\"receiptId.$\":\"$.receiptId\",\"customCategories.$\":\"$.customCategories\",\"pipelineResults.$\":\"$.pipelineResults\"}}},\"TimeoutSeconds\":900}"
+              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"userId.$\":\"$.userId\",\"receiptId.$\":\"$.receiptId\",\"customCategories.$\":\"$.customCategories\",\"pipelineResults.$\":\"$.pipelineResults\"}},\"AlreadyProcessed\":{\"Type\":\"Succeed\"}},\"TimeoutSeconds\":900}"
             ]
           ]
         },
@@ -2401,7 +2401,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "c1a1f73073b50c336c4c3f0d3e9ce0623909c37e9104815b4b7cf1ac24e5dfa2.zip"
+          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {
