@@ -160,6 +160,33 @@ Also added CloudWatch logging for both the EventBridge Pipe (`level="ERROR"`) an
 
 ---
 
+### 7. Dead `pipelineMaxConcurrency` config — never enforceable
+
+**Symptom:** During investigation of issue #5/#6, discovered that the `pipelineMaxConcurrency: 2` setting in `cdk.json` was read by nothing. Pipeline concurrency was unbounded.
+
+**Root cause:** The SPEC designed concurrency control via EventBridge Pipes `MaximumConcurrency`. However, neither EventBridge Pipes (for SQS sources) nor Step Functions expose a max-concurrent-executions setting in CloudFormation or the AWS API as of 2026-04. The config was aspirational — it was added to `cdk.json` during task 1.1 but never wired to anything.
+
+**Fix:** Removed `pipelineMaxConcurrency` from both dev and prod in `cdk.json`. Updated docstrings in `pipeline.py` to state the actual situation. Removed from the deploy-teardown guide config table.
+
+For Textract throttling protection (the real concern), added a Step Functions retry on the TextractExtract step:
+```python
+textract_extract.add_retry(
+    errors=["Textract.ThrottlingException", "Textract.ProvisionedThroughputExceededException"],
+    interval=cdk.Duration.seconds(5),
+    max_attempts=3,
+    backoff_rate=2.0,
+)
+```
+
+After 3 retries, the Catch handler fires and the shadow pipeline (Bedrock) takes over as fallback — no data loss.
+
+**Files changed:**
+- `infra/cdk.json` — removed `pipelineMaxConcurrency` from dev and prod
+- `infra/cdkconstructs/pipeline.py` — updated docstrings, added Textract retry
+- `workflow/guides/deploy-teardown.md` — removed from config table
+
+---
+
 ## Lessons Learned
 
 1. **Always test Lambda packaging with cross-platform binaries.** Any Python dependency with native code (pydantic, cryptography, numpy) will silently break if packaged on a different architecture. The `--python-platform` flag on `uv pip install` is the clean fix for local bundling.
@@ -174,4 +201,6 @@ Also added CloudWatch logging for both the EventBridge Pipe (`level="ERROR"`) an
 
 6. **Enable logging on Pipes and Step Functions from day one.** Without CloudWatch logs on the pipe and state machine, failures are invisible. You have to hunt through CloudTrail or call `get-execution-history`. Adding `level="ERROR"` log configuration costs nothing when there are no errors, and saves significant debugging time when there are.
 
-7. **Remove unused dependencies early.** `pandas` was flagged in the security review (task 3.17/L3) but wasn't actually removed. It caused a cascading failure when cross-platform compilation couldn't build `numpy` for the target platform.
+7. **Don't ship config that isn't wired.** `pipelineMaxConcurrency` sat in `cdk.json` for weeks looking legitimate but doing nothing. If a config value isn't consumed by code, delete it. Dead config is worse than no config — it gives false confidence.
+
+8. **Remove unused dependencies early.** `pandas` was flagged in the security review (task 3.17/L3) but wasn't actually removed. It caused a cascading failure when cross-platform compilation couldn't build `numpy` for the target platform.
