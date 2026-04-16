@@ -22,13 +22,13 @@ def run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None =
         sys.exit(result.returncode)
 
 
-def get_stack_outputs(stage: str) -> dict[str, str]:
-    """Query CloudFormation for live stack outputs."""
+def get_stack_outputs(stage: str) -> tuple[dict[str, str], str]:
+    """Query CloudFormation for live stack outputs and region."""
     stack_name = f"novascan-{stage}"
     print(f"==> Fetching stack outputs from CloudFormation ({stack_name})...")
     result = subprocess.run(
         ["aws", "cloudformation", "describe-stacks", "--stack-name", stack_name,
-         "--query", "Stacks[0].Outputs", "--output", "json"],
+         "--query", "Stacks[0]", "--output", "json"],
         capture_output=True, text=True,
     )
     if result.returncode != 0:
@@ -38,8 +38,11 @@ def get_stack_outputs(stage: str) -> dict[str, str]:
             file=sys.stderr,
         )
         sys.exit(1)
-    raw = json.loads(result.stdout)
-    return {item["OutputKey"]: item["OutputValue"] for item in raw}
+    stack = json.loads(result.stdout)
+    outputs = {item["OutputKey"]: item["OutputValue"] for item in stack["Outputs"]}
+    # StackId ARN: arn:aws:cloudformation:REGION:ACCOUNT:stack/NAME/UUID
+    region = stack["StackId"].split(":")[3]
+    return outputs, region
 
 
 def deploy_backend(stage: str) -> None:
@@ -53,7 +56,7 @@ def deploy_backend(stage: str) -> None:
 
 
 def deploy_frontend(stage: str) -> None:
-    outputs = get_stack_outputs(stage)
+    outputs, region = get_stack_outputs(stage)
 
     print(f"==> Building frontend ({stage})...")
     run(
@@ -61,9 +64,8 @@ def deploy_frontend(stage: str) -> None:
         cwd=REPO_ROOT / "frontend",
         env={
             "VITE_API_URL": outputs["ApiUrl"],
-            "VITE_COGNITO_USER_POOL_ID": outputs["UserPoolId"],
             "VITE_COGNITO_CLIENT_ID": outputs["AppClientId"],
-            "VITE_AWS_REGION": "us-east-1",
+            "VITE_AWS_REGION": region,
         },
     )
 

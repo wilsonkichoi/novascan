@@ -81,6 +81,33 @@ docker run -d -p 8000:8000 amazon/dynamodb-local
 cd frontend && npm run dev
 ```
 
+## Deploy to Your Own AWS Account
+
+1. Fork and clone this repo
+2. Install prerequisites (see above)
+3. Configure AWS credentials (`aws configure` or set `AWS_PROFILE`)
+4. Bootstrap CDK in your account:
+   ```bash
+   cd infra && uv run cdk bootstrap
+   ```
+5. Deploy the dev stack:
+   ```bash
+   python scripts/deploy.py all dev
+   ```
+6. Create a user:
+   ```bash
+   uv run scripts/add_user.py --stage dev --email you@example.com
+   ```
+7. Open the CloudFront URL printed in the deploy output
+
+No custom domain is required. The dev stage uses CloudFront's default URL.
+
+### Optional: Custom Domain (prod)
+
+Add `"domainName": "your-domain.example.com"` to the `config.prod` section of
+`infra/cdk.json`, then deploy with `python scripts/deploy.py all prod`.
+See `workflow/guides/cloudflare-custom-domain.md` for DNS setup.
+
 ## Architecture
 
 ```

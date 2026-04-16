@@ -163,8 +163,8 @@ After setup, your Cloudflare DNS should have these records for the `example.com`
 The `example.com` zone can host subdomains pointing to different cloud providers simultaneously:
 
 - `subdomain.example.com` → AWS CloudFront (this setup)
-- `other.example.com` → GCP (future)
-- `another.example.com` → any provider (future)
+- `asdf.example.com` → GCP (future)
+- `other.example.com` → any provider (future)
 
 Each subdomain gets its own independent CNAME/A record. There are no cross-provider conflicts because:
 

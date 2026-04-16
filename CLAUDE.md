@@ -10,7 +10,7 @@ AI-powered receipt scanner and spending tracker — personal MVP on AWS serverle
 - **Storage:** DynamoDB single-table (on-demand), S3 for receipt images (presigned URL upload)
 - **Auth:** Cognito email OTP (passwordless), JWT validation via API Gateway authorizer
 - **IaC:** AWS CDK (Python), single stack per stage (dev/prod)
-- **Domain:** subdomain.example.com (prod), CloudFront default URL (dev)
+- **Domain:** CloudFront default URL (dev), optional custom domain (prod — see cdk.json)
 
 ## Build & Test Commands
 

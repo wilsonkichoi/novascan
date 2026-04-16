@@ -45,3 +45,4 @@ out/
 cdk.out/
 cdk-outputs-*.json
 .agents
+.claude/settings.local.json

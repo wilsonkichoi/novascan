@@ -32,7 +32,7 @@ class FrontendConstruct(Construct):
         super().__init__(scope, id, **kwargs)
 
         # --- ACM Certificate (prod only) ---
-        # SPEC Section 13: CDK creates ACM certificate for subdomain.example.com in us-east-1
+        # SPEC Section 13: CDK creates ACM certificate for your custom domain in us-east-1
         # DNS validation — Cloudflare DNS records added manually from stack outputs
         domain_name: str | None = config.get("domainName")
         certificate: acm.Certificate | None = None
