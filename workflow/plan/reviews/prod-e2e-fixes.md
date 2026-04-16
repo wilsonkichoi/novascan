@@ -226,3 +226,70 @@ Flow: `LoadCustomCategories → CheckSkip (Choice) → Parallel → Finalize` (n
 8. **S3 `copy_object` to the same key triggers `ObjectCreated`.** Any pipeline that writes back to the same S3 prefix it reads from will loop infinitely. Always add an idempotency guard (check processing status) as the first pipeline step, or use a separate S3 prefix for processed objects.
 
 9. **Remove unused dependencies early.** `pandas` was flagged in the security review (task 3.17/L3) but wasn't actually removed. It caused a cascading failure when cross-platform compilation couldn't build `numpy` for the target platform.
+
+---
+
+### 9. Receipt images blocked by CSP — S3 domain missing from `img-src`
+
+**Symptom:** Receipt detail page showed broken image. Browser console:
+```
+Refused to load the image 'https://novascan-prod-storagereceipts*.s3.amazonaws.com/...'
+because it violates the following Content Security Policy directive: "img-src 'self' data: blob:".
+```
+
+**Root cause:** The CloudFront `ResponseHeadersPolicy` CSP `img-src` directive only allowed `'self' data: blob:`. Receipt images are loaded directly from S3 presigned URLs (different origin), which requires the S3 domain in `img-src`. This was missed in the original security headers implementation (task 3.12) — `connect-src` included `https://*.amazonaws.com` for API calls, but `img-src` did not.
+
+**Fix:** Added `https://*.s3.amazonaws.com` to the `img-src` directive:
+```python
+"img-src 'self' data: blob: https://*.s3.amazonaws.com; "
+```
+
+**Files changed:**
+- `infra/cdkconstructs/frontend.py` — added S3 to `img-src` CSP directive
+- `infra/tests/snapshots/novascan-dev.template.json` — updated snapshot
+
+**Verification:** All 100 infra tests pass. Pending prod deploy + CloudFront cache invalidation.
+
+---
+
+### 10. Category selection returns 400 — empty subcategory fails validation
+
+**Symptom:** Selecting a category from the dropdown on Receipt Details returned a 400 error. The PUT request body was `{"category": "food-dining", "subcategory": ""}`.
+
+**Root cause:** The frontend sends `subcategory: ""` to clear the subcategory when the category changes. The backend validation at `receipts.py:316-324` checked whether `""` was in the set of valid subcategories for the new category. Since `""` is never a valid subcategory slug, the validation rejected the request with `VALIDATION_ERROR`.
+
+The issue is that `model_dump(exclude_none=True)` keeps empty strings (only `None` is excluded), so the subcategory field was present in `update_data` and triggered validation.
+
+**Fix:** Skip subcategory validation when `subcat_slug` is falsy (empty string). Empty string means "clear subcategory", not "set to an invalid subcategory".
+
+**Files changed:**
+- `backend/src/novascan/api/receipts.py` — guard subcategory validation with `if subcat_slug:`
+
+**Verification:** All 553 backend tests pass.
+
+---
+
+### 11. Totals not updated when line items are manually edited
+
+**Symptom:** After manually adding line items with prices, the Totals section still showed "--" for Total.
+
+**Root cause:** The `update_items` endpoint (`PUT /api/receipts/{id}/items`) replaced all line items in DynamoDB but only updated the receipt's `updatedAt` timestamp. It never recalculated `subtotal` or `total` from the new line items. The Totals section reads `receipt.total` from the backend response, which was still `null`.
+
+**Fix:** After writing line items, sum `totalPrice` across all items to get `subtotal`, add existing `tax`/`tip` to compute `total`, and write both back to the receipt record in the same `update_item` call.
+
+**Files changed:**
+- `backend/src/novascan/api/receipts.py` — recalculate subtotal/total in `update_items`
+
+**Verification:** All 553 backend tests pass.
+
+---
+
+## Lessons Learned
+
+(continued)
+
+10. **CSP directives must cover all origins the page actually loads from.** `connect-src` covered AWS for API/upload, but `img-src` was missed for S3 image display. When adding presigned URL flows, audit CSP for every HTTP method the browser will use (XHR for `connect-src`, `<img>` for `img-src`).
+
+11. **Empty string is not None.** `model_dump(exclude_none=True)` keeps `""` in the dict. Any validation that runs on "present" fields must handle the empty string case — either treat it as "clear this field" or reject it explicitly. Don't assume presence means non-empty.
+
+12. **Derived fields must be recalculated when their inputs change.** If `total` is derived from line item prices + tax + tip, any endpoint that modifies line items must recompute `total`. Storing derived values without maintaining the invariant creates stale data that's invisible until the user sees it in the UI.

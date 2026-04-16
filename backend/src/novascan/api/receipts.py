@@ -316,13 +316,15 @@ def update_receipt(receipt_id: str) -> Response[Any]:
     if "subcategory" in update_data and "category" in update_data:
         cat_slug = update_data["category"]
         subcat_slug = update_data["subcategory"]
-        valid_subcats = get_subcategory_slugs_for_category(cat_slug)
-        if valid_subcats and subcat_slug not in valid_subcats:
-            return error_response(
-                400,
-                "VALIDATION_ERROR",
-                f"Subcategory '{subcat_slug}' is not valid for category '{cat_slug}'",
-            )
+        # Empty string means "clear subcategory" — skip validation
+        if subcat_slug:
+            valid_subcats = get_subcategory_slugs_for_category(cat_slug)
+            if valid_subcats and subcat_slug not in valid_subcats:
+                return error_response(
+                    400,
+                    "VALIDATION_ERROR",
+                    f"Subcategory '{subcat_slug}' is not valid for category '{cat_slug}'",
+                )
 
     if not update_data:
         # No fields to update -- still return the current receipt
@@ -515,12 +517,27 @@ def update_items(receipt_id: str) -> Response[Any]:
                 }
             )
 
-    # Update receipt updatedAt
+    # Recalculate subtotal and total from line items
+    subtotal = sum(Decimal(str(item.totalPrice)) for item in request.items)
+    # Preserve existing tax/tip — only update subtotal and total
+    existing_tax = receipt_item.get("tax") or Decimal("0")
+    existing_tip = receipt_item.get("tip") or Decimal("0")
+    total = subtotal + existing_tax + existing_tip
+
+    # Update receipt updatedAt + recalculated totals
     table.update_item(
         Key={"PK": pk, "SK": sk},
-        UpdateExpression="SET #updatedAt = :updatedAt",
-        ExpressionAttributeNames={"#updatedAt": "updatedAt"},
-        ExpressionAttributeValues={":updatedAt": now_iso},
+        UpdateExpression="SET #updatedAt = :updatedAt, #subtotal = :subtotal, #total = :total",
+        ExpressionAttributeNames={
+            "#updatedAt": "updatedAt",
+            "#subtotal": "subtotal",
+            "#total": "total",
+        },
+        ExpressionAttributeValues={
+            ":updatedAt": now_iso,
+            ":subtotal": subtotal,
+            ":total": total,
+        },
     )
 
     # Return the full receipt with new line items

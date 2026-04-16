@@ -71,7 +71,7 @@ class FrontendConstruct(Construct):
                     content_security_policy=(
                         "default-src 'self'; "
                         "connect-src 'self' https://*.amazonaws.com; "
-                        "img-src 'self' data: blob:; "
+                        "img-src 'self' data: blob: https://*.s3.amazonaws.com; "
                         "style-src 'self' 'unsafe-inline'; "
                         "script-src 'self'"
                     ),
