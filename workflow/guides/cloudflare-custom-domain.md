@@ -132,21 +132,9 @@ aws cloudfront create-invalidation \
 
 **Cause:** Frontend was built with the old CloudFront URL, not the custom domain.
 
-**Fix:** Rebuild and redeploy the frontend with the correct API URL pointing to the prod API Gateway:
+**Fix:** Rebuild and redeploy the frontend. The deploy script queries CloudFormation for live stack outputs automatically:
 ```bash
-cd frontend
-
-# 1. Build with explicitly updated environment variables from CDK outputs
-VITE_API_URL=$(jq -r '.["novascan-prod"].ApiUrl' ../infra/cdk-outputs-prod.json) \
-VITE_COGNITO_USER_POOL_ID=$(jq -r '.["novascan-prod"].UserPoolId' ../infra/cdk-outputs-prod.json) \
-VITE_COGNITO_CLIENT_ID=$(jq -r '.["novascan-prod"].AppClientId' ../infra/cdk-outputs-prod.json) \
-npm run build
-
-# 2. Upload to S3
-aws s3 sync dist/ "s3://$(jq -r '.["novascan-prod"].FrontendBucketName' ../infra/cdk-outputs-prod.json)/" --delete
-
-# 3. Invalidate CloudFront cache
-aws cloudfront create-invalidation --distribution-id "$(jq -r '.["novascan-prod"].DistributionId' ../infra/cdk-outputs-prod.json)" --paths "/*"
+python scripts/deploy.py frontend prod
 ```
 
 ## DNS Records Summary

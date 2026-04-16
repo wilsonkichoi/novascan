@@ -33,6 +33,8 @@ Every Lambda function and API Gateway stage writes structured JSON logs. Lambda 
 | Pre-Sign-Up Lambda | `/aws/lambda/novascan-{stage}-pre-signup` | Powertools Logger (JSON) |
 | Post-Confirmation Lambda | `/aws/lambda/novascan-{stage}-post-confirmation` | Powertools Logger (JSON) |
 | API Gateway Access Logs | `/aws/apigateway/novascan-{stage}-access` | API Gateway structured access log |
+| EventBridge Pipe | `/aws/vendedlogs/pipes/novascan-{stage}-receipt-pipe` | Pipe errors (ERROR level only) |
+| Step Functions State Machine | `/aws/vendedlogs/states/novascan-{stage}-receipt-pipeline` | Execution errors (ERROR level only) |
 
 ### Log Format
 
@@ -224,6 +226,21 @@ fields @timestamp, function_name, @duration
 | stats count(*) as cold_starts, avg(@duration) as avg_cold_start_ms by function_name
 | sort cold_starts desc
 ```
+
+### Query 8: Pipeline Skipped (Idempotency Guard)
+
+**Log groups:** `/aws/lambda/novascan-{stage}-load-custom-categories`
+
+Lists receipts where the pipeline was skipped because the receipt was already processed. This happens when S3 `copy_object` (from Finalize) re-triggers the pipeline for an already-completed receipt.
+
+```
+fields @timestamp, receipt_id, message
+| filter message = "Receipt already processed, skipping pipeline"
+| sort @timestamp desc
+| limit 50
+```
+
+If this fires frequently, it's normal — the idempotency guard is working. If it never fires, that's also fine (no re-triggers occurred).
 
 ### Running Queries via AWS CLI
 
@@ -569,6 +586,8 @@ This sends an email when actual spend reaches 80% of the $25 monthly budget.
 | SQS DLQ | `novascan-{stage}-receipt-pipeline-dlq` |
 | API Gateway | `novascan-{stage}` |
 | CloudWatch Metric Namespace | `NovaScan` |
+| EventBridge Pipe Log | `/aws/vendedlogs/pipes/novascan-{stage}-receipt-pipe` |
+| Step Functions Log | `/aws/vendedlogs/states/novascan-{stage}-receipt-pipeline` |
 | SNS Alert Topic (manual) | `novascan-{stage}-alerts` |
 
 ### Lambda Function Names

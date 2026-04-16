@@ -14,6 +14,9 @@ Practical guide for diagnosing and fixing failures across the NovaScan stack. Ea
    - [2.2 Bedrock Throttling](#22-bedrock-throttling)
    - [2.3 Both Pipelines Fail](#23-both-pipelines-fail)
    - [2.4 S3 Event Not Triggering SQS](#24-s3-event-not-triggering-sqs)
+   - [2.5 EventBridge Pipe Failures](#25-eventbridge-pipe-failures-sqs--step-functions)
+   - [2.6 Infinite Pipeline Loop](#26-infinite-pipeline-loop)
+   - [2.7 Orphaned Processing Receipts](#27-orphaned-processing-receipts)
 3. [API Failures](#3-api-failures)
    - [3.1 401 Unauthorized (Expired Token)](#31-401-unauthorized-expired-token)
    - [3.2 403 Forbidden (Wrong User / Insufficient Role)](#32-403-forbidden-wrong-user--insufficient-role)
@@ -26,9 +29,11 @@ Practical guide for diagnosing and fixing failures across the NovaScan stack. Ea
 5. [Frontend Failures](#5-frontend-failures)
    - [5.1 Blank Page After Deploy (S3 Issue)](#51-blank-page-after-deploy-s3-issue)
    - [5.2 Stale Content (CloudFront Cache)](#52-stale-content-cloudfront-cache)
+   - [5.3 CSP Blocking Receipt Images](#53-csp-blocking-receipt-images)
 6. [CDK / Infrastructure Failures](#6-cdk--infrastructure-failures)
    - [6.1 Deploy Fails (Resource Limit / IAM Permission)](#61-deploy-fails-resource-limit--iam-permission)
    - [6.2 Drift Detection](#62-drift-detection)
+   - [6.3 Lambda Import Failure (Cross-Platform Bundling)](#63-lambda-import-failure-cross-platform-bundling)
 7. [Replaying a Failed Pipeline Execution](#7-replaying-a-failed-pipeline-execution)
 8. [DynamoDB Inspection Examples](#8-dynamodb-inspection-examples)
 
@@ -280,7 +285,11 @@ aws pipes describe-pipe --name "novascan-{stage}-receipt-pipe"
 
 **Fix:**
 
-- **S3 notification missing:** This means CDK deploy did not complete or the notification was manually removed. Re-deploy: `cd infra && uv run cdk deploy --context stage={stage}`.
+- **Pipe errors in logs:** Check the EventBridge Pipe log group for errors:
+  ```bash
+  aws logs tail "/aws/vendedlogs/pipes/novascan-${STAGE}-receipt-pipe" --follow --format short
+  ```
+- **S3 notification missing:** This means CDK deploy did not complete or the notification was manually removed. Re-deploy: `python scripts/deploy.py backend {stage}`.
 - **EventBridge Pipe is STOPPED:** Restart it:
   ```bash
   aws pipes start-pipe --name "novascan-{stage}-receipt-pipe"
@@ -293,6 +302,96 @@ aws pipes describe-pipe --name "novascan-{stage}-receipt-pipe"
     --queue-url "https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/novascan-{stage}-receipt-pipeline-dlq" \
     --max-number-of-messages 1
   ```
+
+---
+
+### 2.5 EventBridge Pipe Failures (SQS → Step Functions)
+
+**Symptoms:**
+- SQS message consumed (not visible in queue) but no Step Functions execution starts
+- CloudTrail shows `InvalidExecutionInput` on `StartExecution`
+- Pipe log group shows errors
+
+**Diagnosis:**
+
+```bash
+# Check Pipe log group for errors
+aws logs tail "/aws/vendedlogs/pipes/novascan-${STAGE}-receipt-pipe" --follow --format short
+
+# Check CloudTrail for StartExecution failures
+aws cloudtrail lookup-events \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=StartExecution \
+  --max-results 10
+```
+
+Common causes:
+- **Pipe input template produces invalid JSON.** The `<$.field>` syntax does raw string interpolation — if the value contains JSON (quotes, braces), the result is broken. Always extract leaf values via JSONPath (e.g., `<$.body.Records[0].s3.bucket.name>`) instead of passing nested blobs.
+- **Batch wrapping.** EventBridge Pipes with SQS source always sends a batch (JSON array) to the target, even with `batch_size=1`. The Lambda receives `[item]` not `item`. The `LoadCustomCategories` handler unwraps this.
+
+**Fix:**
+
+If the input template is broken, fix it in `infra/cdkconstructs/pipeline.py` and redeploy. The current template extracts `bucket` and `key` directly from the S3 event.
+
+---
+
+### 2.6 Infinite Pipeline Loop
+
+**Symptoms:**
+- One receipt upload produces many Step Functions executions (~20 seconds apart)
+- CloudWatch metrics show repeated `PipelineCompleted` events for the same receipt
+- `LoadCustomCategories` logs show `"Receipt already processed, skipping pipeline"`
+
+**Diagnosis:**
+
+This is caused by the Finalize Lambda's `copy_object` call (which updates S3 object metadata) re-triggering the S3 `ObjectCreated` event notification. The pipeline re-runs for the same receipt indefinitely.
+
+The idempotency guard in `LoadCustomCategories` prevents data corruption — it checks the receipt's DynamoDB status and short-circuits with `{"skip": true}` if the receipt is already `confirmed` or `failed`. The `CheckSkip` Choice state in Step Functions routes to `Succeed` immediately.
+
+```
+# Check how many times the guard fired
+fields @timestamp, receipt_id, message
+| filter message = "Receipt already processed, skipping pipeline"
+| sort @timestamp desc
+| limit 50
+```
+
+**Fix:**
+
+The idempotency guard is the current fix. Each re-triggered execution completes instantly (LoadCustomCategories → CheckSkip → Succeed) with no data mutation. The loop is harmless but wastes Step Functions executions. If the volume is a concern, consider using a separate S3 prefix for processed objects or filtering S3 events by metadata.
+
+---
+
+### 2.7 Orphaned Processing Receipts
+
+**Symptoms:**
+- Receipts list shows entries permanently stuck in `processing` status
+- No Step Functions execution exists for these receipts
+- The receipt has no pipeline result records in DynamoDB
+
+**Diagnosis:**
+
+```bash
+# Query the receipt record
+aws dynamodb get-item \
+  --table-name "novascan-{stage}" \
+  --key '{"PK": {"S": "USER#USER_ID"}, "SK": {"S": "RECEIPT#RECEIPT_ID"}}' \
+  --projection-expression "#s, imageKey, createdAt" \
+  --expression-attribute-names '{"#s": "status"}'
+```
+
+If `status` is `processing` and no pipeline records exist, the S3 upload likely failed after the DynamoDB record was created. This happens when:
+- The S3 presigned URL PUT failed (CORS misconfiguration, network error, browser closed mid-upload)
+- The S3 event notification didn't fire (see [2.4](#24-s3-event-not-triggering-sqs))
+
+**Fix:**
+
+Delete the orphaned receipt via the UI (receipt detail → delete button) or directly:
+
+```bash
+aws dynamodb delete-item \
+  --table-name "novascan-{stage}" \
+  --key '{"PK": {"S": "USER#USER_ID"}, "SK": {"S": "RECEIPT#RECEIPT_ID"}}'
+```
 
 ---
 
@@ -437,6 +536,16 @@ aws apigatewayv2 get-api \
 - Allowed methods must include the method being called: `GET, POST, PUT, DELETE, OPTIONS`.
 - Allowed headers must include `Authorization` and `Content-Type`.
 
+**Note: S3 presigned upload CORS is separate from API Gateway CORS.** If receipt image uploads fail with a CORS error, the issue is the S3 receipts bucket CORS configuration, not API Gateway. The bucket must allow PUT from the frontend origin. CDK configures this automatically (`storage.py`), but verify:
+
+```bash
+aws s3api get-bucket-cors \
+  --bucket "$(aws cloudformation describe-stacks \
+    --stack-name novascan-{stage} \
+    --query 'Stacks[0].Outputs[?OutputKey==`ReceiptsBucketName`].OutputValue' \
+    --output text)"
+```
+
 ---
 
 ## 4. Auth Failures
@@ -574,25 +683,11 @@ Common causes:
 
 **Fix:**
 
-1. Rebuild and re-deploy the frontend:
-   ```bash
-   cd frontend && npm run build
-   aws s3 sync dist/ "s3://novascan-{stage}-frontend/" --delete
-   ```
+Rebuild and redeploy the frontend. The deploy script handles build, S3 sync, and CloudFront invalidation, and auto-injects the correct env vars from CloudFormation:
 
-2. Invalidate CloudFront cache after the S3 sync:
-   ```bash
-   aws cloudfront create-invalidation \
-     --distribution-id "DISTRIBUTION_ID" \
-     --paths "/*"
-   ```
-
-3. Verify the `VITE_API_URL`, `VITE_COGNITO_USER_POOL_ID`, and `VITE_COGNITO_CLIENT_ID` environment variables were set correctly during build. If they were wrong, rebuild with the correct values from CDK stack outputs:
-   ```bash
-   aws cloudformation describe-stacks \
-     --stack-name "novascan-{stage}" \
-     --query "Stacks[0].Outputs"
-   ```
+```bash
+python scripts/deploy.py frontend {stage}
+```
 
 ---
 
@@ -634,6 +729,35 @@ aws cloudfront get-invalidation \
 ```
 
 To prevent this in the future, always run the invalidation after `aws s3 sync`. Vite's hashed asset filenames (e.g., `assets/index-abc123.js`) help with cache busting for JS/CSS, but `index.html` itself is not hashed and must be invalidated.
+
+---
+
+### 5.3 CSP Blocking Receipt Images
+
+**Symptoms:**
+- Receipt detail page shows broken image placeholder
+- Browser console shows: `Refused to load the image '...' because it violates the following Content Security Policy directive: "img-src 'self' data: blob:"`
+
+**Diagnosis:**
+
+The CloudFront `ResponseHeadersPolicy` sets a Content Security Policy. Receipt images are loaded from S3 presigned URLs (a different origin from CloudFront), which requires the S3 domain in the `img-src` directive.
+
+**Fix:**
+
+The current CSP includes `https://*.s3.amazonaws.com` in `img-src`. If this is missing after a CDK change, verify the CSP in `infra/cdkconstructs/frontend.py` includes:
+
+```python
+"img-src 'self' data: blob: https://*.s3.amazonaws.com; "
+```
+
+Redeploy and invalidate CloudFront cache:
+
+```bash
+python scripts/deploy.py backend {stage}
+python scripts/deploy.py frontend {stage}
+```
+
+**Tip:** Always check the browser console for CSP violations after modifying security headers. CSP wildcards only work in the leftmost label (`*.example.com` is valid, `*.sub.*.example.com` is not). Invalid entries are silently ignored.
 
 ---
 
@@ -717,6 +841,41 @@ aws cloudformation describe-stack-resource-drifts \
   ```
 - **Avoid drift:** Do not make manual changes to CDK-managed resources. All infrastructure changes should go through CDK.
 - If a resource was manually deleted, CDK deploy may fail trying to update it. Check the CloudFormation events and either re-create the resource manually or delete the stack and redeploy.
+
+---
+
+### 6.3 Lambda Import Failure (Cross-Platform Bundling)
+
+**Symptoms:**
+- Every Lambda invocation returns 500 immediately after deploy
+- CloudWatch logs show:
+  ```
+  [ERROR] Runtime.ImportModuleError: Unable to import module 'api.app':
+  No module named 'pydantic_core._pydantic_core'
+  ```
+- Other common variants: missing `_cffi_backend`, `cryptography._rust`, or any `_<native_module>`
+
+**Diagnosis:**
+
+This happens when Lambda dependencies are packaged on macOS (ARM64 or x86) instead of Linux x86_64. Python packages with native C extensions (pydantic, cryptography, etc.) include platform-specific `.so` files that are incompatible across architectures.
+
+The CDK bundling in `infra/cdkconstructs/api.py` and `pipeline.py` uses `uv pip install` with `--python-platform manylinux2014_x86_64` to cross-compile. If these flags are missing or the Docker fallback is used without the correct platform target, the wrong binaries get packaged.
+
+**Fix:**
+
+Verify the `_UvLocalBundling.try_bundle()` methods include the cross-platform flags:
+
+```python
+"uv", "pip", "install",
+"--python-platform", "manylinux2014_x86_64",
+"--python-version", "3.13",
+```
+
+Redeploy after fixing:
+
+```bash
+python scripts/deploy.py backend {stage}
+```
 
 ---
 

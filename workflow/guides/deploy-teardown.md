@@ -49,7 +49,7 @@ aws sts get-caller-identity
 | `maxUploadSizeMb` | 10 | 10 |
 | `logLevel` | DEBUG | INFO |
 | `defaultPipeline` | ocr-ai | ocr-ai |
-| `domainName` | (none) | subdomain.example.com |
+| `domainName` | (none) | (none — add your domain here if needed) |
 
 ### Frontend Build Environment Variables
 
@@ -58,9 +58,8 @@ These are Vite build-time variables sourced from CDK stack outputs. They are bak
 | Variable | Description | Source (stack output key) |
 |----------|-------------|--------------------------|
 | `VITE_API_URL` | API Gateway URL | `ApiUrl` |
-| `VITE_COGNITO_USER_POOL_ID` | Cognito User Pool ID | `UserPoolId` |
 | `VITE_COGNITO_CLIENT_ID` | Cognito App Client ID | `AppClientId` |
-| `VITE_AWS_REGION` | AWS region | Always `us-east-1` |
+| `VITE_AWS_REGION` | AWS region | Derived from stack |
 
 ### CDK Stack Outputs Reference
 
@@ -82,54 +81,43 @@ These are Vite build-time variables sourced from CDK stack outputs. They are bak
 
 ### Deploy (First Time or Update)
 
+The deploy script handles everything: CDK deploy, frontend build with auto-injected stack outputs, S3 upload, and CloudFront invalidation.
+
 ```bash
-# 1. Deploy infrastructure (includes Lambda code bundling)
+python scripts/deploy.py all dev
+```
+
+To deploy only backend (infra) or only frontend:
+
+```bash
+python scripts/deploy.py backend dev    # cdk deploy only
+python scripts/deploy.py frontend dev   # build + S3 sync + CloudFront invalidate
+```
+
+The script queries CloudFormation for live stack outputs — no manual copy-pasting of IDs or URLs.
+
+<details>
+<summary>Manual deploy (without script)</summary>
+
+```bash
+# 1. Deploy infrastructure
 cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json
 
-# 2. Capture stack outputs
-#    The outputs file is saved to infra/cdk-outputs-dev.json (gitignored).
-#    Extract the values you need:
-cat infra/cdk-outputs-dev.json
-```
-
-Example `cdk-outputs-dev.json`:
-```json
-{
-  "novascan-dev": {
-    "ApiUrl": "https://abc123.execute-api.us-east-1.amazonaws.com",
-    "CloudFrontDomain": "d1234abcdef.cloudfront.net",
-    "UserPoolId": "us-east-1_AbCdEf",
-    "AppClientId": "1a2b3c4d5e6f7g8h9i0j",
-    "FrontendBucketName": "novascan-dev-frontend-bucket-xyz",
-    "ReceiptsBucketName": "novascan-dev-receipts-bucket-xyz",
-    "DistributionId": "E1234567890ABC"
-  }
-}
-```
-
-### Deploy Frontend
-
-After infrastructure is deployed, build and upload the frontend:
-
-```bash
-# 3. Build frontend with stack outputs
+# 2. Build frontend with stack outputs (substitute real values from step 1)
 cd frontend && \
-  VITE_API_URL="https://abc123.execute-api.us-east-1.amazonaws.com" \
-  VITE_COGNITO_USER_POOL_ID="us-east-1_AbCdEf" \
-  VITE_COGNITO_CLIENT_ID="1a2b3c4d5e6f7g8h9i0j" \
+  VITE_API_URL="<ApiUrl>" \
+  VITE_COGNITO_CLIENT_ID="<AppClientId>" \
   VITE_AWS_REGION="us-east-1" \
   npm run build
 
-# 4. Upload to S3
-aws s3 sync frontend/dist/ s3://novascan-dev-frontend-bucket-xyz/ --delete
+# 3. Upload to S3
+aws s3 sync frontend/dist/ s3://<FrontendBucketName>/ --delete
 
-# 5. Invalidate CloudFront cache
-aws cloudfront create-invalidation \
-  --distribution-id E1234567890ABC \
-  --paths "/*"
+# 4. Invalidate CloudFront cache
+aws cloudfront create-invalidation --distribution-id <DistributionId> --paths "/*"
 ```
 
-Alternatively, set the variables in `frontend/.env` (gitignored) and just run `cd frontend && npm run build`. See `frontend/.env.example` for the template.
+</details>
 
 ### Create Initial User
 
@@ -158,18 +146,12 @@ curl -s https://abc123.execute-api.us-east-1.amazonaws.com/api/health
 Same commands as the initial deploy. CDK performs an update-in-place (CloudFormation changeset).
 
 ```bash
-# Infrastructure update
-cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json
-
-# Frontend rebuild + upload (only needed if frontend code or env vars changed)
-cd frontend && npm run build
-aws s3 sync frontend/dist/ s3://novascan-dev-frontend-bucket-xyz/ --delete
-aws cloudfront create-invalidation --distribution-id E1234567890ABC --paths "/*"
+python scripts/deploy.py all dev         # full redeploy
+python scripts/deploy.py backend dev     # infra only (Lambda, DynamoDB, etc.)
+python scripts/deploy.py frontend dev    # frontend only (build + upload + invalidate)
 ```
 
-If only backend/infra code changed (Lambda, Step Functions, DynamoDB, etc.), `cdk deploy` is sufficient. The Lambda code is bundled and deployed as part of the CDK stack. No separate frontend deploy is needed.
-
-If only frontend code changed, skip `cdk deploy` and just rebuild + upload + invalidate.
+If only backend/infra code changed, `backend` is sufficient — Lambda code is bundled in the CDK stack. If only frontend code changed, `frontend` skips the CDK deploy.
 
 ### Teardown Dev Stack
 
@@ -187,36 +169,23 @@ This runs `cdk destroy` and cleans up all resources. Dev resources use `RemovalP
 
 ### First-Time Deploy (with Custom Domain)
 
-Prod deployment requires additional DNS steps for the custom domain `subdomain.example.com`. The full DNS setup is documented in [cloudflare-custom-domain.md](cloudflare-custom-domain.md).
+Prod deployment requires additional DNS steps if you configured a custom domain in `cdk.json`. The full DNS setup is documented in [cloudflare-custom-domain.md](cloudflare-custom-domain.md).
 
 ```bash
-# 1. Deploy infrastructure
-cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs-prod.json
+# 1. Deploy infrastructure (blocks waiting for ACM validation if custom domain is set)
+python scripts/deploy.py backend prod
 ```
 
-**IMPORTANT:** The deploy will block waiting for ACM certificate validation. While it is running, you must add the ACM DNS validation CNAME record in Cloudflare. See [cloudflare-custom-domain.md](cloudflare-custom-domain.md) Step 1 for the exact procedure.
-
-After the deploy completes and DNS is configured:
+**IMPORTANT:** If you have a custom domain, the deploy will block waiting for ACM certificate validation. While it is running, you must add the ACM DNS validation CNAME record in Cloudflare. See [cloudflare-custom-domain.md](cloudflare-custom-domain.md) Step 1 for the exact procedure.
 
 ```bash
-# 2. Build frontend with prod stack outputs
-cd frontend && \
-  VITE_API_URL="<ApiUrl from outputs>" \
-  VITE_COGNITO_USER_POOL_ID="<UserPoolId from outputs>" \
-  VITE_COGNITO_CLIENT_ID="<AppClientId from outputs>" \
-  VITE_AWS_REGION="us-east-1" \
-  npm run build
-
-# 3. Upload to S3
-aws s3 sync frontend/dist/ s3://<FrontendBucketName from outputs>/ --delete
-
-# 4. Invalidate CloudFront cache
-aws cloudfront create-invalidation \
-  --distribution-id <DistributionId from outputs> \
-  --paths "/*"
+# 2. Build + upload frontend (queries CloudFormation for outputs automatically)
+python scripts/deploy.py frontend prod
 ```
 
-After frontend upload, add the CloudFront CNAME in Cloudflare (Step 2 in [cloudflare-custom-domain.md](cloudflare-custom-domain.md)).
+After frontend upload, add the CloudFront CNAME in Cloudflare if using a custom domain (Step 2 in [cloudflare-custom-domain.md](cloudflare-custom-domain.md)).
+
+If you are NOT using a custom domain, no DNS steps are needed — the CloudFront default URL works immediately.
 
 ### Verify Prod Deployment
 
@@ -245,13 +214,10 @@ curl -s https://<ApiUrl from outputs>/api/health
 ```bash
 # 1. Run pre-deploy checklist (see top of this guide)
 
-# 2. Deploy infrastructure update
-cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs-prod.json
-
-# 3. Rebuild + upload frontend (if frontend code changed)
-cd frontend && npm run build
-aws s3 sync frontend/dist/ s3://<FrontendBucketName>/ --delete
-aws cloudfront create-invalidation --distribution-id <DistributionId> --paths "/*"
+# 2. Deploy
+python scripts/deploy.py all prod        # full redeploy
+python scripts/deploy.py backend prod    # infra only
+python scripts/deploy.py frontend prod   # frontend only
 ```
 
 On subsequent deploys (after the first), the ACM certificate already exists and is validated. CDK will not re-create it. No DNS changes are needed for updates.
@@ -283,25 +249,14 @@ git log --oneline -10
 # 2. Check out that commit
 git checkout <commit-hash>
 
-# 3. Redeploy infrastructure
-cd infra && uv run cdk deploy --context stage=<stage> --outputs-file cdk-outputs-<stage>.json
+# 3. Redeploy
+python scripts/deploy.py all <stage>       # full redeploy
+python scripts/deploy.py backend <stage>   # infra only (skip if frontend-only issue)
+python scripts/deploy.py frontend <stage>  # frontend only (skip if infra-only issue)
 
-# 4. Rebuild and redeploy frontend (if frontend was part of the issue)
-cd frontend && npm run build
-aws s3 sync frontend/dist/ s3://<FrontendBucketName>/ --delete
-aws cloudfront create-invalidation --distribution-id <DistributionId> --paths "/*"
-
-# 5. Return to main branch
+# 4. Return to main branch
 git checkout main
 ```
-
-### Infrastructure-Only Rollback
-
-If the issue is only in Lambda/Step Functions/DynamoDB schema (backend infra), step 4 can be skipped.
-
-### Frontend-Only Rollback
-
-If the issue is only in the frontend (UI bug, wrong env var), skip step 3 and just rebuild + upload.
 
 ### CloudFormation Automatic Rollback
 
