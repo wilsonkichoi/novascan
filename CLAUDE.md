@@ -89,6 +89,7 @@ uv run scripts/service.py status prod                                   # check 
 uv run scripts/service.py pause prod                                    # pause all services
 uv run scripts/service.py resume prod                                   # resume all services
 uv run scripts/add_user.py --stage prod --email user@example.com        # create user
+uv run scripts/dangerous_full_teardown.py dev                           # full teardown (including retained resources)
 ```
 
 ## Preferences

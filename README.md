@@ -102,6 +102,14 @@ cd frontend && npm run dev
 
 No custom domain is required. The dev stage uses CloudFront's default URL.
 
+### Teardown
+
+```bash
+uv run scripts/dangerous_full_teardown.py dev
+```
+
+This destroys the CloudFormation stack and cleans up any retained resources (prod DynamoDB table, S3 buckets, Cognito User Pool). All data is permanently deleted.
+
 ### Optional: Custom Domain (prod)
 
 Add `"domainName": "your-domain.example.com"` to the `config.prod` section of

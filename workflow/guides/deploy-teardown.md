@@ -174,13 +174,10 @@ If only frontend code changed, skip `cdk deploy` and just rebuild + upload + inv
 ### Teardown Dev Stack
 
 ```bash
-# Destroy all dev resources
-cd infra && uv run cdk destroy --context stage=dev
-
-# Confirm when prompted: y
+uv run scripts/dangerous_full_teardown.py dev
 ```
 
-This deletes all resources in the `novascan-dev` CloudFormation stack. S3 buckets with `RemovalPolicy.DESTROY` and `autoDeleteObjects=True` are emptied and deleted automatically. DynamoDB tables follow the same pattern.
+This runs `cdk destroy` and cleans up all resources. Dev resources use `RemovalPolicy.DESTROY` so `cdk destroy` handles everything, but the script provides a unified interface for both stages.
 
 **WARNING:** Teardown deletes all data (receipts, images, user accounts). There is no recovery.
 
@@ -261,18 +258,13 @@ On subsequent deploys (after the first), the ACM certificate already exists and 
 
 ### Teardown Prod Stack
 
+If you have a custom domain, remove Cloudflare DNS records first (CNAME for the domain and ACM validation CNAME). Then:
+
 ```bash
-# 1. Remove Cloudflare DNS records FIRST
-#    In Cloudflare DNS, delete:
-#    - CNAME: novascan -> d1234abcdef.cloudfront.net
-#    - CNAME: _abc123.subdomain.example.com -> _def456.acm-validations.aws.
-#    (Leaving stale CNAMEs pointing to deleted resources is harmless but messy.)
-
-# 2. Destroy the stack
-cd infra && uv run cdk destroy --context stage=prod
-
-# Confirm when prompted: y
+uv run scripts/dangerous_full_teardown.py prod
 ```
+
+This runs `cdk destroy` and then cleans up the four retained prod resources: DynamoDB table (disables deletion protection first), both S3 buckets (empties all objects and versions), and Cognito User Pool.
 
 **WARNING:** Teardown deletes all prod data (receipts, images, user accounts, Cognito pool). There is no recovery. The ACM certificate is also deleted.
 
