@@ -346,6 +346,15 @@ Dashboard (`dashboard.py`) is unaffected — it computes its own date ranges int
 
 **Verification:** All 553 backend tests pass.
 
+**Follow-up (frontend safeguard):** Added UI-side prevention so the 400 is never reached in normal usage:
+- `TransactionFilters.tsx` — `max`/`min` attributes on date pickers constrain calendar selection
+- `TransactionsPage.tsx` — `hasInvalidDateRange` flag disables the query and shows inline validation message
+- `useTransactions.ts` — added `enabled` option to suppress the React Query fetch
+
+Defense in depth: calendar constraints prevent the common case, `enabled: false` prevents manual keyboard entry, backend 400 is the final safety net.
+
+**Commit:** `d74361f fix: prevent startDate > endDate request from transactions UI`
+
 ---
 
 ## Lessons Learned
@@ -353,3 +362,5 @@ Dashboard (`dashboard.py`) is unaffected — it computes its own date ranges int
 (continued)
 
 14. **Validate DynamoDB BETWEEN operand ordering at the API boundary.** DynamoDB requires `lower <= upper` for BETWEEN and throws a ValidationException (500 to the user) if violated. Any endpoint that accepts user-supplied date ranges must validate ordering before building the query.
+
+15. **Validate at every layer.** Backend validation catches invalid state, but the UI should prevent the user from reaching it in the first place. HTML5 `min`/`max` on date inputs constrains the calendar picker, but users can still type manually — so also disable the fetch and show an inline error. Each layer catches a different failure mode.
