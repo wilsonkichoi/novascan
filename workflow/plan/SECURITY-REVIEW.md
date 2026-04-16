@@ -122,26 +122,11 @@ if event["userPoolId"] != EXPECTED_POOL_ID:
 
 **Location**: `infra/cdkconstructs/api.py` — lines 127-128
 **CWE**: CWE-269 (Improper Privilege Management)
+**Status**: FIXED (API Lambda scoped in M3.1; Finalize Lambda scoped 2026-04-15)
 
 **Description**: The API Lambda is granted `grant_read_write` on the entire receipts S3 bucket with no prefix restriction. The synthesized IAM policy includes `s3:GetObject*`, `s3:DeleteObject*`, `s3:PutObject*`, `s3:List*`, `s3:GetBucket*`, and `s3:Abort*` on the entire bucket. The Lambda only needs to generate presigned URLs for the `receipts/` prefix.
 
-**Fix**: Replace the broad grant with scoped policy statements:
-```python
-# Remove
-receipts_bucket.grant_read_write(self.api_function)
-
-# Replace with
-receipts_bucket.grant_put(self.api_function, "receipts/*")
-receipts_bucket.grant_read(self.api_function, "receipts/*")
-```
-
-Or use explicit IAM policy statements:
-```python
-self.api_function.add_to_role_policy(iam.PolicyStatement(
-    actions=["s3:PutObject", "s3:GetObject"],
-    resources=[receipts_bucket.arn_for_objects("receipts/*")],
-))
-```
+**Fix applied**: Both the API Lambda (`api.py`) and Finalize Lambda (`pipeline.py`) now use `grant_read_write(fn, "receipts/*")` to scope S3 access to the receipts prefix. CDK test verifies at least 2 scoped PutObject grants exist.
 
 ---
 

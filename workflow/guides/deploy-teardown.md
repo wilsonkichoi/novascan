@@ -131,6 +131,17 @@ aws cloudfront create-invalidation \
 
 Alternatively, set the variables in `frontend/.env` (gitignored) and just run `cd frontend && npm run build`. See `frontend/.env.example` for the template.
 
+### Create Initial User
+
+Self-service sign-up is disabled. Create users via the admin script:
+
+```bash
+# Create a user (receives email invitation from Cognito)
+cd infra && uv run scripts/add_user.py --stage dev --email you@example.com --group admin
+```
+
+Available groups: `user` (default), `staff`, `admin`.
+
 ### Verify Dev Deployment
 
 ```bash

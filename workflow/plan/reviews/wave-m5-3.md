@@ -131,9 +131,9 @@ No security issues found.
 
 **Repudiation:** Not applicable -- test code does not introduce logging or audit trail changes.
 
-**Information Disclosure:** All test data is synthetic: fake ULIDs (`01DASHTEST*`, `01TXTEST*`), generic merchant names, placeholder AWS account ID `123456789012`. No PII, real API keys, or credentials. Error response assertions check for generic messages (e.g., `"Invalid pagination cursor"`) rather than raw exception details, confirming the M3.1 security hardening (H1/M7) is properly exercised. The `TODO(post-MVP)` comments in `dashboard.py:67` and `transactions.py:93` reference SECURITY-REVIEW S5 (safety cap for unbounded queries) -- this is a pre-existing documented risk, not introduced by this wave.
+**Information Disclosure:** All test data is synthetic: fake ULIDs (`01DASHTEST*`, `01TXTEST*`), generic merchant names, placeholder AWS account ID `123456789012`. No PII, real API keys, or credentials. Error response assertions check for generic messages (e.g., `"Invalid pagination cursor"`) rather than raw exception details, confirming the M3.1 security hardening (H1/M7) is properly exercised. The unbounded query risk (SECURITY-REVIEW S5) was subsequently fixed (2026-04-15) with a 10,000-item safety cap in both `_query_all_gsi1` and `_fetch_all_matching`.
 
-**Denial of Service:** No new DoS vectors introduced. Test code runs only in the test environment. The unbounded `_query_all_gsi1` and `_fetch_all_matching` patterns in the production code are pre-existing and documented with TODO comments referencing S5.
+**Denial of Service:** No new DoS vectors introduced. Test code runs only in the test environment. The unbounded `_query_all_gsi1` and `_fetch_all_matching` patterns were subsequently fixed (2026-04-15) with a 10,000-item safety cap.
 
 **Elevation of Privilege:** User isolation tests verify that User A cannot see User B's dashboard data (`TestDashboardUserIsolation`) or transactions (`TestTransactionsUserIsolation`). The dashboard and transactions endpoints are available to all authenticated users per spec (no role gating required). No privilege escalation paths introduced.
 

@@ -364,3 +364,31 @@ Defense in depth: calendar constraints prevent the common case, `enabled: false`
 14. **Validate DynamoDB BETWEEN operand ordering at the API boundary.** DynamoDB requires `lower <= upper` for BETWEEN and throws a ValidationException (500 to the user) if violated. Any endpoint that accepts user-supplied date ranges must validate ordering before building the query.
 
 15. **Validate at every layer.** Backend validation catches invalid state, but the UI should prevent the user from reaching it in the first place. HTML5 `min`/`max` on date inputs constrains the calendar picker, but users can still type manually — so also disable the fetch and show an inline error. Each layer catches a different failure mode.
+
+---
+
+### 14. Security hardening (post-production review)
+
+**Date:** 2026-04-15
+
+Three security findings addressed from the post-production security review:
+
+1. **DynamoDB pagination safety cap (SECURITY-REVIEW S5):** `_fetch_all_matching` (transactions) and `_query_all_gsi1` (dashboard) now break at 10,000 items with a `logger.warning`. Prevents Lambda OOM on large result sets.
+
+2. **Self-signup disabled (SECURITY-REVIEW S3):** `self_sign_up_enabled=False` in Cognito User Pool. Prevents unauthorized signups and billing abuse (Textract/Bedrock costs). Users are now created via admin script: `cd infra && uv run scripts/add_user.py --stage <stage> --email <email> [--group admin|staff|user]`. Pause/resume flow updated from 4 steps to 3 (Cognito toggle removed).
+
+3. **Finalize Lambda S3 scoped (SECURITY-REVIEW S8/M1):** `grant_read_write(self.finalize_fn, "receipts/*")` replaces unscoped bucket access. Matches the API Lambda's existing prefix scoping.
+
+**Files changed:**
+- `backend/src/novascan/api/transactions.py` — safety cap
+- `backend/src/novascan/api/dashboard.py` — safety cap
+- `infra/cdkconstructs/auth.py` — disable self-signup
+- `infra/cdkconstructs/pipeline.py` — scope Finalize S3
+- `infra/scripts/service.py` — remove signup toggle from pause/resume
+- `infra/scripts/add_user.py` — new admin user creation script
+- `infra/tests/test_security_hardening.py` — CDK tests for self-signup + S3 scoping
+
+**Commits:**
+- `aaf6a45 fix: add safety cap to unbounded DynamoDB pagination loops`
+- `a598013 fix: disable self-signup and add admin user creation script`
+- `1692e90 fix: scope Finalize Lambda S3 permissions to receipts prefix`

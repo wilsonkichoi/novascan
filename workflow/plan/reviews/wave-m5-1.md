@@ -294,8 +294,8 @@ cd backend && uv run ruff check src/ && uv run mypy src/novascan/api/transaction
 - What was changed: Added `_DATE_RE` regex pattern and validation checks for `startDate` and `endDate` query params, returning 400 VALIDATION_ERROR for malformed dates. Matches the established pattern from dashboard's `_MONTH_RE`.
 - Files modified: `backend/src/novascan/api/transactions.py`
 
-**[S5] (Unbounded full-partition data fetch) -- Deferred**
-- Reason: Acknowledged MVP trade-off per SPEC. Added TODO comments at `dashboard.py:_query_all_gsi1` and `transactions.py:_fetch_all_matching` to track for post-MVP.
+**[S5] (Unbounded full-partition data fetch) -- Deferred → FIXED (2026-04-15)**
+- Originally deferred as MVP trade-off. Safety cap of 10,000 items added to both `_query_all_gsi1` and `_fetch_all_matching` with `logger.warning` when hit.
 
 **[S6] (Silent cursor exception at transactions.py:295) -- Fixed**
 - What was changed: The silent `except Exception: pass` was eliminated as part of the [S1] restructure. The `sortBy=date` + merchant path now uses the `else` branch which has proper `logger.warning` + error_response on cursor decode failure.
@@ -322,8 +322,8 @@ Verified: `transactions.py:242` now reads `no_merchant = "\uffff" if not reverse
 **[S4] (startDate/endDate lack format validation) -- Fixed** ✓
 Verified: `transactions.py:26` adds `_DATE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")`. Lines 147-150 validate `startDate` and `endDate` against this regex, returning 400 VALIDATION_ERROR for malformed dates. Matches the established pattern from dashboard's `_MONTH_RE`.
 
-**[S5] (Unbounded full-partition data fetch) -- Deferred (as planned)** ✓
-Verified: TODO comments added at `dashboard.py:69` (`# TODO(post-MVP): Add safety cap per SECURITY-REVIEW S5 to prevent Lambda OOM`) and `transactions.py:93` (identical comment). Accepted MVP trade-off per SPEC. No code change required.
+**[S5] (Unbounded full-partition data fetch) -- Deferred (as planned) → FIXED (2026-04-15)** ✓
+Originally deferred with TODO comments. Safety cap (`_MAX_FETCH_ITEMS = 10_000`) later added to both `_query_all_gsi1` and `_fetch_all_matching` with `logger.warning` on cap hit.
 
 **[S6] (Silent cursor exception at transactions.py:295) -- Fixed** ✓
 Verified: The silent `except Exception: pass` was entirely eliminated by the [S1] restructure. The `sortBy=date` + merchant path now uses the `else` branch (line 226+), which has proper `logger.warning` + `error_response` on cursor decode failure (lines 266-271). No silent exception swallowing remains anywhere in `transactions.py`.

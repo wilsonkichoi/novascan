@@ -15,7 +15,6 @@ How to pause and resume NovaScan services without destroying infrastructure.
 | CloudFront | Distribution disabled | Frontend inaccessible, returns error |
 | API Gateway | Throttled to 0 requests/sec | All API calls rejected (429) |
 | EventBridge Pipe | Stopped | No new pipeline executions start |
-| Cognito | Self-service sign-up disabled | No new account creation |
 
 ## What Pausing Does NOT Do
 
@@ -48,19 +47,19 @@ The script handles ordering automatically:
 1. CloudFront — blocks frontend traffic immediately
 2. API Gateway — blocks direct API access
 3. EventBridge Pipe — stops pipeline processing
-4. Cognito — blocks new account creation
 
 **Resume** (backends first, frontend last):
-1. Cognito — re-enable sign-up
-2. EventBridge Pipe — restart pipeline processing
-3. API Gateway — restore API throttle limits
-4. CloudFront — expose frontend (only after backends are ready)
+1. EventBridge Pipe — restart pipeline processing
+2. API Gateway — restore API throttle limits
+3. CloudFront — expose frontend (only after backends are ready)
+
+> **Note:** Self-service sign-up is permanently disabled. Users are created via
+> `cd infra && uv run scripts/add_user.py --stage <stage> --email <email> [--group admin|staff|user]`.
 
 ## Timing
 
 - **API Gateway throttle**: immediate
 - **EventBridge Pipe stop/start**: ~10-30 seconds
-- **Cognito sign-up toggle**: immediate
 - **CloudFront disable/enable**: 5-15 minutes to propagate globally
 
 ## Manual Console Fallback
@@ -72,11 +71,6 @@ If the script is unavailable, you can pause manually:
 2. Select the distribution (ID from stack outputs)
 3. Click **Disable**
 
-### Cognito
-1. Go to **Cognito** > **User Pools** > `novascan-{stage}-users`
-2. Go to **Sign-up** tab
-3. Toggle **Self-service sign-up** to OFF
-
 ### API Gateway
 1. Go to **API Gateway** > **APIs** > `novascan-{stage}`
 2. Go to **Stages** > `$default`
@@ -86,4 +80,4 @@ If the script is unavailable, you can pause manually:
 1. Go to **EventBridge** > **Pipes** > `novascan-{stage}-receipt-pipe`
 2. Click **Stop**
 
-Reverse all steps to resume (re-enable CloudFront, toggle sign-up ON, restore throttle to burst=10/rate=5, start pipe).
+Reverse all steps to resume (start pipe, restore throttle to burst=10/rate=5, re-enable CloudFront).

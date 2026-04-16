@@ -56,7 +56,7 @@ Built the dashboard summary endpoint (weekly/monthly spending totals, % change, 
 ## 8. Areas of Low Confidence
 
 - **Test coverage gap for category data accuracy.** Tests verify that the category filter renders and propagates values, but no test verifies that the hardcoded category values match the canonical taxonomy. The B1 bug proves this is a real risk. The recommendation in Section 7 mitigates this for future milestones, but existing category-related tests may have similar blind spots.
-- **Unbounded full-partition fetch (S5) deferred.** The dashboard and transactions endpoints both paginate through ALL matching records with no safety cap. At MVP scale this is fine, but the TODO comments added during M5 are the only guard. If a user accumulates thousands of receipts, Lambda memory and timeout could become an issue. Approximate threshold: ~10,000 receipts per user before this matters.
+- **Unbounded full-partition fetch (S5) — FIXED (2026-04-15).** Safety cap of 10,000 items added to both `_query_all_gsi1` (dashboard) and `_fetch_all_matching` (transactions). Logs a warning when the cap is hit.
 - **Merchant sort with None values is tested only at the code review level.** No dedicated test verifies that None-merchant receipts sort to the end. The fix was validated during review, but a regression could reintroduce the inconsistency silently.
 
 ## Review Discussion
