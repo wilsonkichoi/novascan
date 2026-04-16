@@ -468,7 +468,7 @@ class PipelineConstruct(Construct):
         skip_done = sfn.Succeed(self, "AlreadyProcessed")
         check_skip = sfn.Choice(self, "CheckSkip")
         check_skip.when(
-            sfn.Condition.boolean_equals("$.skip", True),
+            sfn.Condition.is_present("$.skip"),
             skip_done,
         )
         check_skip.otherwise(parallel.next(finalize))
