@@ -76,10 +76,20 @@ git config core.hooksPath .githooks
 
 ## Deployment
 
-- Always use `--outputs-file cdk-outputs-{stage}.json` when running `cdk deploy` (e.g., `cdk-outputs-dev.json`, `cdk-outputs-prod.json`)
-- Per-stage output files prevent dev/prod from overwriting each other
 - See `workflow/guides/deploy-teardown.md` for full deploy/teardown procedures
 - See `workflow/guides/service-pause.md` for pausing/resuming services
+
+## Scripts
+
+All ops scripts live in `scripts/` at the repo root. They use PEP 723 inline metadata and query CloudFormation directly — no dependency on any subproject venv.
+
+```bash
+python scripts/deploy.py all dev                                        # deploy backend + frontend
+uv run scripts/service.py status prod                                   # check service state
+uv run scripts/service.py pause prod                                    # pause all services
+uv run scripts/service.py resume prod                                   # resume all services
+uv run scripts/add_user.py --stage prod --email user@example.com        # create user
+```
 
 ## Preferences
 
