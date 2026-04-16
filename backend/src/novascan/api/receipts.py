@@ -494,44 +494,29 @@ def update_items(receipt_id: str) -> Response[Any]:
     )
     existing_items: list[dict[str, Any]] = existing_items_response.get("Items", [])
 
-    # Build the set of new item SKs to check for overlaps with existing items
-    new_item_sks = {
-        f"RECEIPT#{receipt_id}#ITEM#{line_item.sortOrder:03d}"
-        for line_item in request.items
-    }
-
-    # Delete existing items that DON'T overlap with new items first.
-    # Overlapping keys can't appear in the same BatchWriteItem request
-    # (DynamoDB rejects duplicate keys), so we skip them — the put_item
-    # below will overwrite them.
-    non_overlapping = [
-        item for item in existing_items if item["SK"] not in new_item_sks
-    ]
-    if non_overlapping:
-        with table.batch_writer() as batch:
-            for item in non_overlapping:
-                batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
-
-    # Insert new items (overwrites any remaining overlapping items)
-    if request.items:
-        with table.batch_writer() as batch:
-            for line_item in request.items:
-                item_sk = f"RECEIPT#{receipt_id}#ITEM#{line_item.sortOrder:03d}"
-                batch.put_item(
-                    Item={
-                        "PK": pk,
-                        "SK": item_sk,
-                        "entityType": ITEM,
-                        "receiptId": receipt_id,
-                        "sortOrder": line_item.sortOrder,
-                        "name": line_item.name,
-                        "quantity": Decimal(str(line_item.quantity)),
-                        "unitPrice": Decimal(str(line_item.unitPrice)),
-                        "totalPrice": Decimal(str(line_item.totalPrice)),
-                        **({"subcategory": line_item.subcategory} if line_item.subcategory else {}),
-                        "createdAt": now_iso,
-                    }
-                )
+    # Use overwrite_by_pkeys so that when a delete and a put target the same
+    # key, the put wins and the delete is dropped. This keeps everything in a
+    # single batch_writer to minimize the window where items are missing (S7).
+    with table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as batch:
+        for item in existing_items:
+            batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+        for line_item in request.items:
+            item_sk = f"RECEIPT#{receipt_id}#ITEM#{line_item.sortOrder:03d}"
+            batch.put_item(
+                Item={
+                    "PK": pk,
+                    "SK": item_sk,
+                    "entityType": ITEM,
+                    "receiptId": receipt_id,
+                    "sortOrder": line_item.sortOrder,
+                    "name": line_item.name,
+                    "quantity": Decimal(str(line_item.quantity)),
+                    "unitPrice": Decimal(str(line_item.unitPrice)),
+                    "totalPrice": Decimal(str(line_item.totalPrice)),
+                    **({"subcategory": line_item.subcategory} if line_item.subcategory else {}),
+                    "createdAt": now_iso,
+                }
+            )
 
     # Recalculate subtotal and total from line items
     subtotal = sum(Decimal(str(item.totalPrice)) for item in request.items)

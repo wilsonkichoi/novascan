@@ -308,10 +308,10 @@ Provided list of item keys contains duplicates
 
 This happens on every "edit and save" flow because the new items typically reuse the same `sortOrder` values (1, 2, 3...) as the originals.
 
-**Fix:** Split into two operations: (1) delete only non-overlapping existing items, (2) insert new items in a separate batch. New `put_item` calls overwrite any remaining items with the same key, which is the desired behavior.
+**Fix:** Use `batch_writer(overwrite_by_pkeys=["PK", "SK"])`. This deduplicates within the batch buffer — when a `put_item` targets the same key as a pending `delete_item`, the delete is dropped and the put wins. This keeps everything in a single `batch_writer` context, preserving the original S7 atomicity intent (minimizing the window where items are missing).
 
 **Files changed:**
-- `backend/src/novascan/api/receipts.py` — split batch_writer into delete + insert phases
+- `backend/src/novascan/api/receipts.py` — add `overwrite_by_pkeys` to batch_writer
 
 **Verification:** All 553 backend tests pass.
 
@@ -321,4 +321,4 @@ This happens on every "edit and save" flow because the new items typically reuse
 
 (continued again)
 
-13. **DynamoDB `BatchWriteItem` rejects duplicate keys.** A single batch request cannot contain two operations (even delete + put) targeting the same primary key. When replacing items in-place, either split delete and insert into separate batches, or skip deleting items that will be overwritten by the insert.
+13. **DynamoDB `BatchWriteItem` rejects duplicate keys.** A single batch request cannot contain two operations (even delete + put) targeting the same primary key. Use `batch_writer(overwrite_by_pkeys=["PK", "SK"])` to let puts win over deletes for the same key, keeping everything in one batch. Splitting into separate batches re-introduces the crash-between-batches data loss risk that the single-batch design was meant to prevent.
