@@ -22,6 +22,7 @@ tracer = Tracer()
 router = Router()  # type: ignore[no-untyped-call]
 
 _MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+_MAX_FETCH_ITEMS = 10_000  # Safety cap to prevent Lambda OOM (SECURITY-REVIEW S5)
 
 
 class TopCategory(BaseModel):
@@ -66,7 +67,7 @@ class DashboardSummaryResponse(BaseModel):
 def _query_all_gsi1(table: Any, user_id: str, start_date: str, end_date: str) -> list[dict[str, Any]]:
     """Query all receipts from GSI1 within a date range, paginating through all pages.
 
-    # TODO(post-MVP): Add safety cap per SECURITY-REVIEW S5 to prevent Lambda OOM
+    Capped at _MAX_FETCH_ITEMS to prevent Lambda OOM (SECURITY-REVIEW S5).
     """
     items: list[dict[str, Any]] = []
     key_cond = Key("GSI1PK").eq(f"USER#{user_id}") & Key("GSI1SK").between(start_date, f"{end_date}~")
@@ -80,6 +81,9 @@ def _query_all_gsi1(table: Any, user_id: str, start_date: str, end_date: str) ->
     while True:
         response = table.query(**query_kwargs)
         items.extend(response.get("Items", []))
+        if len(items) >= _MAX_FETCH_ITEMS:
+            logger.warning("Safety cap reached in _query_all_gsi1", extra={"cap": _MAX_FETCH_ITEMS})
+            break
         last_key = response.get("LastEvaluatedKey")
         if not last_key:
             break

@@ -22,6 +22,7 @@ router = Router()  # type: ignore[no-untyped-call]
 
 _VALID_SORT_BY = {"date", "amount", "merchant"}
 _VALID_SORT_ORDER = {"asc", "desc"}
+_MAX_FETCH_ITEMS = 10_000  # Safety cap to prevent Lambda OOM (SECURITY-REVIEW S5)
 _VALID_STATUS = {"processing", "confirmed", "failed"}
 _DATE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
@@ -89,8 +90,7 @@ def _fetch_all_matching(
 
     Used when sortBy=amount|merchant requires in-memory sorting of all results.
     Also applies merchant search filter.
-
-    # TODO(post-MVP): Add safety cap per SECURITY-REVIEW S5 to prevent Lambda OOM
+    Capped at _MAX_FETCH_ITEMS to prevent Lambda OOM (SECURITY-REVIEW S5).
     """
     all_items: list[dict[str, Any]] = []
     # Remove Limit from kwargs for full fetch — we'll apply limit after sorting
@@ -100,6 +100,9 @@ def _fetch_all_matching(
         response = table.query(**fetch_kwargs)
         items = response.get("Items", [])
         all_items.extend(items)
+        if len(all_items) >= _MAX_FETCH_ITEMS:
+            logger.warning("Safety cap reached in _fetch_all_matching", extra={"cap": _MAX_FETCH_ITEMS})
+            break
         last_key = response.get("LastEvaluatedKey")
         if not last_key:
             break
