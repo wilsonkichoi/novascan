@@ -6,10 +6,7 @@ AI-powered receipt scanner and spending tracker.
 
 NovaScan is a mobile-optimized web application that lets users photograph or bulk-upload receipt images. The system extracts merchant, date, line items, and totals using a dual OCR pipeline (Amazon Textract + Bedrock Nova for OCR-AI, and Bedrock Nova multimodal for AI-multimodal) and presents spending data through a receipt management interface.
 
-Built on AWS serverless infrastructure with a scale-to-zero cost model. Personal use, ~100 users, $25/month budget.
-
-<!-- Milestone merge checklist: update capabilities list and test counts below -->
-### Current Capabilities (through Milestone 5)
+### Current Capabilities
 
 - Passwordless email OTP authentication (Cognito)
 - Receipt image upload via camera capture or file picker (up to 10 files, JPEG/PNG, max 10 MB)
@@ -39,6 +36,9 @@ Built on AWS serverless infrastructure with a scale-to-zero cost model. Personal
 ### Installation
 
 ```bash
+git clone https://github.com/wilsonkichoi/novascan.git
+cd novascan
+
 # Backend
 cd backend && uv venv --python 3.13 && uv sync && cd ..
 
@@ -47,6 +47,9 @@ cd frontend && npm install && cd ..
 
 # Infrastructure
 cd infra && uv venv --python 3.13 && uv sync && cd ..
+
+# Git hooks (auto-regenerates CDK snapshot on commit)
+git config core.hooksPath .githooks
 ```
 
 ### Deploy to Dev
@@ -61,10 +64,10 @@ cd infra && uv run cdk deploy --context stage=dev
 # Backend (553 tests)
 cd backend && uv run pytest
 
-# Frontend (331 tests)
+# Frontend (355 tests)
 cd frontend && npm run test -- --run
 
-# Infrastructure (100 tests)
+# Infrastructure (101 tests)
 cd infra && uv run pytest
 
 # Lint
