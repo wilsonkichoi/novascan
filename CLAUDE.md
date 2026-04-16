@@ -26,7 +26,9 @@ cd frontend && npm run build                        # production build
 cd frontend && npm run test                         # vitest
 
 # Infrastructure
-cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json  # deploy to dev
+python scripts/deploy.py all dev                     # deploy backend + frontend to dev
+python scripts/deploy.py frontend prod               # deploy frontend only to prod
+python scripts/deploy.py backend dev                  # deploy backend only to dev
 cd infra && uv run cdk destroy --context stage=dev  # teardown dev
 cd infra && uv run cdk synth --context stage=dev    # synthesize CloudFormation
 cd infra && uv run pytest --snapshot-update          # update CDK snapshot after infra changes

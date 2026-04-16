@@ -316,36 +316,14 @@ aws cloudformation describe-stacks \
 
 ## Quick Reference
 
-### One-Liner: Full Dev Deploy
+### Deploy Script
+
+`scripts/deploy.py` automates the full deploy workflow. It queries CloudFormation directly for live stack outputs (no stale local JSON files).
 
 ```bash
-cd infra && uv run cdk deploy --context stage=dev --outputs-file cdk-outputs-dev.json && \
-cd ../frontend && \
-  VITE_API_URL="$(jq -r '.["novascan-dev"].ApiUrl' ../infra/cdk-outputs-dev.json)" \
-  VITE_COGNITO_USER_POOL_ID="$(jq -r '.["novascan-dev"].UserPoolId' ../infra/cdk-outputs-dev.json)" \
-  VITE_COGNITO_CLIENT_ID="$(jq -r '.["novascan-dev"].AppClientId' ../infra/cdk-outputs-dev.json)" \
-  VITE_AWS_REGION="us-east-1" \
-  npm run build && \
-aws s3 sync dist/ "s3://$(jq -r '.["novascan-dev"].FrontendBucketName' ../infra/cdk-outputs-dev.json)/" --delete && \
-aws cloudfront create-invalidation \
-  --distribution-id "$(jq -r '.["novascan-dev"].DistributionId' ../infra/cdk-outputs-dev.json)" \
-  --paths "/*"
-```
-
-### One-Liner: Full Prod Deploy (after first-time DNS setup)
-
-```bash
-cd infra && uv run cdk deploy --context stage=prod --outputs-file cdk-outputs-prod.json && \
-cd ../frontend && \
-  VITE_API_URL="$(jq -r '.["novascan-prod"].ApiUrl' ../infra/cdk-outputs-prod.json)" \
-  VITE_COGNITO_USER_POOL_ID="$(jq -r '.["novascan-prod"].UserPoolId' ../infra/cdk-outputs-prod.json)" \
-  VITE_COGNITO_CLIENT_ID="$(jq -r '.["novascan-prod"].AppClientId' ../infra/cdk-outputs-prod.json)" \
-  VITE_AWS_REGION="us-east-1" \
-  npm run build && \
-aws s3 sync dist/ "s3://$(jq -r '.["novascan-prod"].FrontendBucketName' ../infra/cdk-outputs-prod.json)/" --delete && \
-aws cloudfront create-invalidation \
-  --distribution-id "$(jq -r '.["novascan-prod"].DistributionId' ../infra/cdk-outputs-prod.json)" \
-  --paths "/*"
+python scripts/deploy.py frontend dev    # build + S3 sync + CloudFront invalidate
+python scripts/deploy.py backend prod    # cdk deploy only
+python scripts/deploy.py all dev         # backend then frontend
 ```
 
 ### Resource Naming
