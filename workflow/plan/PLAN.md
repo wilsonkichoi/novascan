@@ -1230,7 +1230,7 @@
   - `cd frontend && npm run test -- --run` passes
 - **Test command:** `cd frontend && npm run test -- --run`
 
-#### [ ] Task 6.8: Production E2E Verification
+#### [x] Task 6.8: Production E2E Verification
 - **Role:** devops-engineer
 - **Depends on:** 6.3, 6.2
 - **Spec reference:** SPEC.md >> Milestone 6 Acceptance Criteria
