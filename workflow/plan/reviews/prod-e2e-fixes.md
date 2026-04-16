@@ -322,3 +322,34 @@ This happens on every "edit and save" flow because the new items typically reuse
 (continued again)
 
 13. **DynamoDB `BatchWriteItem` rejects duplicate keys.** A single batch request cannot contain two operations (even delete + put) targeting the same primary key. Use `batch_writer(overwrite_by_pkeys=["PK", "SK"])` to let puts win over deletes for the same key, keeping everything in one batch. Splitting into separate batches re-introduces the crash-between-batches data loss risk that the single-batch design was meant to prevent.
+
+---
+
+### 13. Transactions/receipts 500 when startDate > endDate
+
+**Symptom:** Transactions page showed "Failed to load transactions. Please try again." Lambda logs:
+```
+ValidationException: Invalid KeyConditionExpression: The BETWEEN operator requires upper bound
+to be greater than or equal to lower bound; lower bound operand: {S:2026-04-15},
+upper bound operand: {S:2026-04-14~}
+```
+
+**Root cause:** When both `startDate` and `endDate` query params are provided, the backend builds `Key("GSI1SK").between(start_date, f"{end_date}~")`. DynamoDB requires `lower <= upper` in BETWEEN. No server-side validation prevented `startDate > endDate`. The same missing check existed in both `transactions.py` and `receipts.py`.
+
+Dashboard (`dashboard.py`) is unaffected — it computes its own date ranges internally from the month parameter, always producing valid ascending ranges.
+
+**Fix:** Added `startDate > endDate` validation before the DynamoDB query in both `transactions.py` and `receipts.py`, returning a 400 with a clear error message.
+
+**Files changed:**
+- `backend/src/novascan/api/transactions.py` — added date ordering validation
+- `backend/src/novascan/api/receipts.py` — same
+
+**Verification:** All 553 backend tests pass.
+
+---
+
+## Lessons Learned
+
+(continued)
+
+14. **Validate DynamoDB BETWEEN operand ordering at the API boundary.** DynamoDB requires `lower <= upper` for BETWEEN and throws a ValidationException (500 to the user) if violated. Any endpoint that accepts user-supplied date ranges must validate ordering before building the query.

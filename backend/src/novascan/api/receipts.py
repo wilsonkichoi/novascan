@@ -150,6 +150,9 @@ def list_receipts() -> Response[Any]:
     except (ValueError, TypeError):
         limit = 50
 
+    if start_date and end_date and start_date > end_date:
+        return error_response(400, "VALIDATION_ERROR", "startDate must not be after endDate")
+
     table = get_table()
     bucket = os.environ["RECEIPTS_BUCKET"]
     # Key condition on GSI1

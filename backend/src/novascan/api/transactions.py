@@ -148,6 +148,8 @@ def list_transactions() -> Response[Any]:
         return error_response(400, "VALIDATION_ERROR", "startDate must be in YYYY-MM-DD format")
     if end_date and not _DATE_RE.match(end_date):
         return error_response(400, "VALIDATION_ERROR", "endDate must be in YYYY-MM-DD format")
+    if start_date and end_date and start_date > end_date:
+        return error_response(400, "VALIDATION_ERROR", "startDate must not be after endDate")
 
     try:
         limit = min(max(int(params.get("limit", "50")), 1), 100)
