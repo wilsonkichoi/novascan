@@ -310,9 +310,9 @@ class PipelineConstruct(Construct):
                 if k not in ("environment", "timeout")
             },
         )
-        # Finalize needs DynamoDB read/write, S3 read/write (copy_object), CloudWatch Metrics
+        # Finalize needs DynamoDB read/write, S3 read/write scoped to receipts/* (copy_object), CloudWatch Metrics
         table.grant_read_write_data(self.finalize_fn)
-        receipts_bucket.grant_read_write(self.finalize_fn)
+        receipts_bucket.grant_read_write(self.finalize_fn, "receipts/*")
         self.finalize_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["cloudwatch:PutMetricData"],

@@ -481,14 +481,14 @@ class TestTextractIAM:
 
 
 class TestS3IAMScoped:
-    """API Lambda S3 permissions must be scoped to receipts/* prefix."""
+    """S3 PutObject permissions must be scoped to receipts/* prefix (API + Finalize)."""
 
     def test_s3_put_scoped_to_receipts_prefix(
         self, dev_template_json: dict
     ) -> None:
-        """S3 PutObject grants must reference receipts/* prefix."""
+        """At least 2 S3 PutObject grants must reference receipts/* prefix (API + Finalize)."""
         resources = dev_template_json.get("Resources", {})
-        found_scoped_put = False
+        scoped_put_count = 0
         for _key, resource in resources.items():
             if resource.get("Type") == "AWS::IAM::Policy":
                 props = resource.get("Properties", {})
@@ -506,7 +506,28 @@ class TestS3IAMScoped:
                         for arn in resource_val:
                             arn_str = json.dumps(arn)
                             if "/receipts/*" in arn_str:
-                                found_scoped_put = True
-        assert found_scoped_put, (
-            "No S3 PutObject grant found scoped to receipts/* prefix"
+                                scoped_put_count += 1
+        assert scoped_put_count >= 2, (
+            f"Expected at least 2 scoped S3 PutObject grants (API + Finalize), "
+            f"found {scoped_put_count}"
         )
+
+
+# ---------------------------------------------------------------------------
+# S3 — Self-signup disabled (SECURITY-REVIEW S3)
+# ---------------------------------------------------------------------------
+
+
+class TestSelfSignupDisabled:
+    """Cognito User Pool must have self-service sign-up disabled."""
+
+    def test_admin_create_user_only(self, dev_template_json: dict) -> None:
+        """AllowAdminCreateUserOnly must be true."""
+        resources = dev_template_json.get("Resources", {})
+        for _key, resource in resources.items():
+            if resource.get("Type") == "AWS::Cognito::UserPool":
+                props = resource.get("Properties", {})
+                admin_config = props.get("AdminCreateUserConfig", {})
+                assert admin_config.get("AllowAdminCreateUserOnly") is True, (
+                    "Self-signup must be disabled (AllowAdminCreateUserOnly=True)"
+                )
