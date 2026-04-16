@@ -4,9 +4,13 @@ import {
   type TransactionFilters,
 } from "@/api/transactions";
 
-export function useTransactions(filters: Omit<TransactionFilters, "cursor">) {
+export function useTransactions(
+  filters: Omit<TransactionFilters, "cursor">,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   return useInfiniteQuery({
     queryKey: ["transactions", filters],
+    enabled,
     queryFn: ({ pageParam }) =>
       fetchTransactions({ ...filters, cursor: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,

@@ -25,6 +25,11 @@ export default function TransactionsPage() {
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
+  const hasInvalidDateRange =
+    filters.startDate !== "" &&
+    filters.endDate !== "" &&
+    filters.startDate > filters.endDate;
+
   const queryFilters = {
     ...(filters.startDate ? { startDate: filters.startDate } : {}),
     ...(filters.endDate ? { endDate: filters.endDate } : {}),
@@ -42,7 +47,7 @@ export default function TransactionsPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useTransactions(queryFilters);
+  } = useTransactions(queryFilters, { enabled: !hasInvalidDateRange });
 
   const handleSort = useCallback(
     (field: SortBy) => {
@@ -72,7 +77,13 @@ export default function TransactionsPage() {
 
       <TransactionFilters values={filters} onChange={setFilters} />
 
-      {isLoading ? (
+      {hasInvalidDateRange ? (
+        <div className="py-20 text-center">
+          <p className="text-destructive text-sm">
+            Start date must be on or before end date.
+          </p>
+        </div>
+      ) : isLoading ? (
         <TransactionTableSkeleton />
       ) : error ? (
         <div className="py-20 text-center">

@@ -96,6 +96,7 @@ export default function TransactionFilters({
             id="filter-start-date"
             type="date"
             value={values.startDate}
+            max={values.endDate || undefined}
             onChange={(e) => handleChange("startDate", e.target.value)}
           />
         </div>
@@ -111,6 +112,7 @@ export default function TransactionFilters({
             id="filter-end-date"
             type="date"
             value={values.endDate}
+            min={values.startDate || undefined}
             onChange={(e) => handleChange("endDate", e.target.value)}
           />
         </div>
