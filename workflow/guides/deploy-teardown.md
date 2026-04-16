@@ -137,7 +137,7 @@ Self-service sign-up is disabled. Create users via the admin script:
 
 ```bash
 # Create a user (receives email invitation from Cognito)
-cd infra && uv run scripts/add_user.py --stage dev --email you@example.com --group admin
+uv run scripts/add_user.py --stage dev --email you@example.com --group admin
 ```
 
 Available groups: `user` (default), `staff`, `admin`.

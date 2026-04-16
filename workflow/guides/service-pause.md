@@ -27,16 +27,16 @@ How to pause and resume NovaScan services without destroying infrastructure.
 
 ```bash
 # Check current state
-cd infra && uv run scripts/service.py status prod
+uv run scripts/service.py status prod
 
 # Pause (with confirmation prompt)
-cd infra && uv run scripts/service.py pause prod
+uv run scripts/service.py pause prod
 
 # Pause (skip confirmation)
-cd infra && uv run scripts/service.py pause prod --yes
+uv run scripts/service.py pause prod --yes
 
 # Resume
-cd infra && uv run scripts/service.py resume prod
+uv run scripts/service.py resume prod
 ```
 
 ## Pause/Resume Order
@@ -54,7 +54,7 @@ The script handles ordering automatically:
 3. CloudFront — expose frontend (only after backends are ready)
 
 > **Note:** Self-service sign-up is permanently disabled. Users are created via
-> `cd infra && uv run scripts/add_user.py --stage <stage> --email <email> [--group admin|staff|user]`.
+> `uv run scripts/add_user.py --stage <stage> --email <email> [--group admin|staff|user]`.
 
 ## Timing
 

@@ -8,17 +8,15 @@ Creates a new user in the Cognito User Pool and assigns them to a group.
 The user receives an email invitation from Cognito.
 
 Usage:
-  cd infra && uv run scripts/add_user.py --stage prod --email user@example.com
-  cd infra && uv run scripts/add_user.py --stage dev --email admin@example.com --group admin
+  uv run scripts/add_user.py --stage prod --email user@example.com
+  uv run scripts/add_user.py --stage dev --email admin@example.com --group admin
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
-from pathlib import Path
 
 import boto3
 
@@ -28,17 +26,7 @@ VALID_GROUPS = ("user", "staff", "admin")
 
 
 def get_user_pool_id(stage: str) -> str:
-    """Read UserPoolId from CDK outputs file, falling back to CloudFormation."""
-    outputs_file = Path(__file__).parent.parent / f"cdk-outputs-{stage}.json"
-    if outputs_file.exists():
-        with open(outputs_file) as f:
-            data = json.load(f)
-        stack_key = f"{STACK_PREFIX}-{stage}"
-        pool_id = data.get(stack_key, {}).get("UserPoolId")
-        if pool_id:
-            return pool_id
-
-    # Fallback: query CloudFormation directly
+    """Query CloudFormation for the UserPoolId stack output."""
     cfn = boto3.client("cloudformation", region_name=REGION)
     stack_name = f"{STACK_PREFIX}-{stage}"
     try:

@@ -11,10 +11,10 @@ Manages all service components for a given stage:
   - Cognito self-service sign-up (disable/enable)
 
 Usage:
-  cd infra && uv run scripts/service.py pause prod
-  cd infra && uv run scripts/service.py resume dev
-  cd infra && uv run scripts/service.py status prod
-  cd infra && uv run scripts/service.py pause prod --yes  # skip confirmation
+  uv run scripts/service.py pause prod
+  uv run scripts/service.py resume dev
+  uv run scripts/service.py status prod
+  uv run scripts/service.py pause prod --yes  # skip confirmation
 """
 
 from __future__ import annotations
