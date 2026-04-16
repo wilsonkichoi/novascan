@@ -167,7 +167,7 @@ class PipelineConstruct(Construct):
 
         # --- S3 event notification: ObjectCreated on receipts/ prefix -> SQS ---
         receipts_bucket.add_event_notification(
-            s3.EventType.OBJECT_CREATED,
+            s3.EventType.OBJECT_CREATED_PUT,  # Put only — excludes copy_object re-triggers
             s3n.SqsDestination(self.queue),
             s3.NotificationKeyFilter(prefix="receipts/"),
         )

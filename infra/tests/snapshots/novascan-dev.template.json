@@ -74,7 +74,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "5b6659d75c2ef71e1d7838aabe28598f5c97546915bd721c805937be921e6746.zip"
+          "S3Key": "a00876167112aa573d068cb576abc190f05e431251730ca42d7b83288b6869cd.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -1208,7 +1208,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
+          "S3Key": "b459c78276d3e0e3ed7ebf56bba0b5af5eb37cdc50eb8a818382f87f0a9224b2.zip"
         },
         "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
         "Environment": {
@@ -1365,7 +1365,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
+          "S3Key": "b459c78276d3e0e3ed7ebf56bba0b5af5eb37cdc50eb8a818382f87f0a9224b2.zip"
         },
         "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
         "Environment": {
@@ -1576,7 +1576,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
+          "S3Key": "b459c78276d3e0e3ed7ebf56bba0b5af5eb37cdc50eb8a818382f87f0a9224b2.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1702,7 +1702,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
+          "S3Key": "b459c78276d3e0e3ed7ebf56bba0b5af5eb37cdc50eb8a818382f87f0a9224b2.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -2401,7 +2401,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "4a0d353bda9e63e119a0a4c4b9593c269590caa2a596f9331c2237580527bd84.zip"
+          "S3Key": "b459c78276d3e0e3ed7ebf56bba0b5af5eb37cdc50eb8a818382f87f0a9224b2.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {
@@ -2802,7 +2802,7 @@
           "QueueConfigurations": [
             {
               "Events": [
-                "s3:ObjectCreated:*"
+                "s3:ObjectCreated:Put"
               ],
               "Filter": {
                 "Key": {
