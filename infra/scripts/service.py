@@ -211,14 +211,12 @@ def cmd_pause(stage: str, yes: bool) -> None:
     print(f"\n=== Pausing NovaScan {stage} ===\n")
     outputs = get_stack_outputs(stage)
     distribution_id = outputs.get("DistributionId", "")
-    user_pool_id = outputs.get("UserPoolId", "")
     api_id = get_api_id(stage)
 
     print("This will:")
     print(f"  1. Disable CloudFront distribution ({distribution_id})")
     print(f"  2. Throttle API Gateway to 0 ({api_id})")
     print(f"  3. Stop EventBridge Pipe ({STACK_PREFIX}-{stage}-receipt-pipe)")
-    print(f"  4. Disable Cognito self-service sign-up ({user_pool_id})")
     print()
 
     if not yes:
@@ -227,17 +225,14 @@ def cmd_pause(stage: str, yes: bool) -> None:
             print("Aborted.")
             return
 
-    print("\nStep 1/4: CloudFront")
+    print("\nStep 1/3: CloudFront")
     cloudfront_set_enabled(distribution_id, False)
 
-    print("Step 2/4: API Gateway")
+    print("Step 2/3: API Gateway")
     apigw_set_throttle(api_id, 0, 0)
 
-    print("Step 3/4: EventBridge Pipe")
+    print("Step 3/3: EventBridge Pipe")
     pipe_set_state(stage, "STOPPED")
-
-    print("Step 4/4: Cognito")
-    cognito_set_signup(user_pool_id, False)
 
     print(f"\nDone. NovaScan {stage} is paused.")
     print("Note: CloudFront disable takes a few minutes to propagate.")
@@ -247,14 +242,12 @@ def cmd_resume(stage: str, yes: bool) -> None:
     print(f"\n=== Resuming NovaScan {stage} ===\n")
     outputs = get_stack_outputs(stage)
     distribution_id = outputs.get("DistributionId", "")
-    user_pool_id = outputs.get("UserPoolId", "")
     api_id = get_api_id(stage)
 
     print("This will:")
-    print(f"  1. Enable Cognito self-service sign-up ({user_pool_id})")
-    print(f"  2. Start EventBridge Pipe ({STACK_PREFIX}-{stage}-receipt-pipe)")
-    print(f"  3. Restore API Gateway throttle ({api_id})")
-    print(f"  4. Enable CloudFront distribution ({distribution_id})")
+    print(f"  1. Start EventBridge Pipe ({STACK_PREFIX}-{stage}-receipt-pipe)")
+    print(f"  2. Restore API Gateway throttle ({api_id})")
+    print(f"  3. Enable CloudFront distribution ({distribution_id})")
     print()
 
     if not yes:
@@ -263,16 +256,13 @@ def cmd_resume(stage: str, yes: bool) -> None:
             print("Aborted.")
             return
 
-    print("\nStep 1/4: Cognito")
-    cognito_set_signup(user_pool_id, True)
-
-    print("Step 2/4: EventBridge Pipe")
+    print("\nStep 1/3: EventBridge Pipe")
     pipe_set_state(stage, "RUNNING")
 
-    print("Step 3/4: API Gateway")
+    print("Step 2/3: API Gateway")
     apigw_set_throttle(api_id, API_DEFAULT_BURST, API_DEFAULT_RATE)
 
-    print("Step 4/4: CloudFront")
+    print("Step 3/3: CloudFront")
     cloudfront_set_enabled(distribution_id, True)
 
     print(f"\nDone. NovaScan {stage} is resuming.")

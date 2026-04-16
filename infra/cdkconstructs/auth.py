@@ -69,7 +69,7 @@ class AuthConstruct(Construct):
             "UserPool",
             user_pool_name=f"novascan-{stage}",
             sign_in_aliases=cognito.SignInAliases(email=True),
-            self_sign_up_enabled=True,
+            self_sign_up_enabled=False,  # Admin-only user creation (SECURITY-REVIEW S3)
             removal_policy=cdk.RemovalPolicy.DESTROY if stage == "dev" else cdk.RemovalPolicy.RETAIN,
             lambda_triggers=cognito.UserPoolTriggers(
                 pre_sign_up=pre_signup_fn,
