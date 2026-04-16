@@ -293,3 +293,32 @@ The issue is that `model_dump(exclude_none=True)` keeps empty strings (only `Non
 11. **Empty string is not None.** `model_dump(exclude_none=True)` keeps `""` in the dict. Any validation that runs on "present" fields must handle the empty string case — either treat it as "clear this field" or reject it explicitly. Don't assume presence means non-empty.
 
 12. **Derived fields must be recalculated when their inputs change.** If `total` is derived from line item prices + tax + tip, any endpoint that modifies line items must recompute `total`. Storing derived values without maintaining the invariant creates stale data that's invisible until the user sees it in the UI.
+
+---
+
+### 12. Line items save fails 500 — BatchWriteItem duplicate keys
+
+**Symptom:** Saving line items on Receipt Details returned 500. Lambda logs:
+```
+ClientError: An error occurred (ValidationException) when calling the BatchWriteItem operation:
+Provided list of item keys contains duplicates
+```
+
+**Root cause:** `update_items` used a single `batch_writer()` to delete existing items and insert new ones. When an existing item has the same sort key as a new item (e.g., both `RECEIPT#abc#ITEM#001`), the batch contains a `DeleteItem` and a `PutItem` for the same key. DynamoDB's `BatchWriteItem` API rejects requests with duplicate keys — even if the operations are different (delete vs put).
+
+This happens on every "edit and save" flow because the new items typically reuse the same `sortOrder` values (1, 2, 3...) as the originals.
+
+**Fix:** Split into two operations: (1) delete only non-overlapping existing items, (2) insert new items in a separate batch. New `put_item` calls overwrite any remaining items with the same key, which is the desired behavior.
+
+**Files changed:**
+- `backend/src/novascan/api/receipts.py` — split batch_writer into delete + insert phases
+
+**Verification:** All 553 backend tests pass.
+
+---
+
+## Lessons Learned
+
+(continued again)
+
+13. **DynamoDB `BatchWriteItem` rejects duplicate keys.** A single batch request cannot contain two operations (even delete + put) targeting the same primary key. When replacing items in-place, either split delete and insert into separate batches, or skip deleting items that will be overwritten by the insert.
