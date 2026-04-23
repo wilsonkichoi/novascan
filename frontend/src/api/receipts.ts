@@ -132,7 +132,7 @@ export interface ReceiptDetail {
   subcategoryDisplay: string | null;
   status: "processing" | "confirmed" | "failed";
   usedFallback: boolean | null;
-  rankingWinner: "ocr-ai" | "ai-multimodal" | null;
+  rankingWinner: "ocr-ai" | "ai-multimodal" | "ai-vision-v2" | null;
   imageUrl: string | null;
   paymentMethod: string | null;
   lineItems: ReceiptDetailLineItem[];

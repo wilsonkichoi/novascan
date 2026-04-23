@@ -26,11 +26,21 @@ const PIPELINE_META: Record<
   "ai-multimodal": {
     label: "AI Vision",
     description:
-      "Single-stage pipeline: Amazon Nova directly analyzes the receipt image end-to-end without any OCR preprocessing, performing both text extraction and categorization in one pass.",
+      "Single-stage pipeline: Amazon Nova Lite v1 directly analyzes the receipt image end-to-end without any OCR preprocessing, performing both text extraction and categorization in one pass.",
     steps: [
-      "Amazon Nova receives only the raw receipt image (no OCR input)",
+      "Amazon Nova Lite v1 receives only the raw receipt image (no OCR input)",
       "Nova performs text extraction, field identification, and categorization in a single inference",
-      "Nova outputs the same structured JSON schema as the other pipeline",
+      "Nova outputs the same structured JSON schema as the other pipelines",
+    ],
+  },
+  "ai-vision-v2": {
+    label: "AI Vision v2",
+    description:
+      "Single-stage pipeline: Amazon Nova 2 Lite directly analyzes the receipt image end-to-end without any OCR preprocessing. Uses the next-generation Nova 2 Lite model.",
+    steps: [
+      "Amazon Nova 2 Lite receives only the raw receipt image (no OCR input)",
+      "Nova 2 Lite performs text extraction, field identification, and categorization in a single inference",
+      "Nova outputs the same structured JSON schema as the other pipelines",
     ],
   },
 };
@@ -115,11 +125,9 @@ export default function PipelineComparison({
             <div className="space-y-4 pt-3">
               {/* How it works summary */}
               <p className="text-xs text-muted-foreground">
-                Both pipelines run in parallel on every receipt.
-                Textract + AI Categorization is the primary pipeline whose
-                result is used. AI Vision serves as a fallback if the primary
-                fails, and for quality comparison. Ranking scores are for
-                observability only and do not affect which result is displayed.
+                All three pipelines run in parallel on every receipt.
+                The result with the highest ranking score is selected as
+                the final output.
               </p>
 
               {/* Winner badge */}
@@ -140,8 +148,8 @@ export default function PipelineComparison({
               )}
 
               {/* Side-by-side results */}
-              <div className="grid gap-4 lg:grid-cols-2">
-                {(["ocr-ai", "ai-multimodal"] as const).map((pipelineType) => {
+              <div className="grid gap-4 lg:grid-cols-3">
+                {(["ocr-ai", "ai-multimodal", "ai-vision-v2"] as const).map((pipelineType) => {
                   const result = data.results[pipelineType];
                   const isWinner = data.rankingWinner === pipelineType;
                   return (
@@ -232,7 +240,7 @@ function PipelineCard({ pipelineType, result, isWinner }: PipelineCardProps) {
               text={
                 pipelineType === "ocr-ai"
                   ? "Model-reported confidence (0-100%). Nova's self-assessed certainty based on Textract's OCR quality, data completeness, and field consistency."
-                  : "Model-reported confidence (0-100%). Nova's self-assessed certainty based on image clarity, data completeness, and field consistency."
+                  : "Model-reported confidence (0-100%). Self-assessed certainty based on image clarity, data completeness, and field consistency."
               }
             />
           </dt>
@@ -256,7 +264,9 @@ function PipelineCard({ pipelineType, result, isWinner }: PipelineCardProps) {
               text={
                 pipelineType === "ocr-ai"
                   ? "Textract AnalyzeExpense ($0.01/page) + Nova Lite input ($0.06/1M tokens) and output ($0.24/1M tokens)."
-                  : "Nova Lite input ($0.06/1M tokens) and output ($0.24/1M tokens). No OCR preprocessing cost."
+                  : pipelineType === "ai-vision-v2"
+                    ? "Nova 2 Lite input ($0.30/1M tokens) and output ($2.50/1M tokens). No OCR preprocessing cost."
+                    : "Nova Lite input ($0.06/1M tokens) and output ($0.24/1M tokens). No OCR preprocessing cost."
               }
             />
           </dt>
@@ -271,7 +281,9 @@ function PipelineCard({ pipelineType, result, isWinner }: PipelineCardProps) {
               text={
                 pipelineType === "ocr-ai"
                   ? "Nova receives only Textract's structured OCR text (no image) and performs categorization and normalization."
-                  : "Nova receives only the raw image and performs both text extraction and categorization in a single pass."
+                  : pipelineType === "ai-vision-v2"
+                    ? "Nova 2 Lite receives only the raw image and performs both text extraction and categorization in a single pass."
+                    : "Nova Lite v1 receives only the raw image and performs both text extraction and categorization in a single pass."
               }
             />
           </dt>

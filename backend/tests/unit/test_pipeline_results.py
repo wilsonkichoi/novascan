@@ -273,8 +273,8 @@ class TestPipelineResultsStaffAccess:
 
         assert body["receiptId"] == receipt_id
 
-    def test_response_contains_both_pipeline_results(self, _aws_setup):
-        """Response includes results for both ocr-ai and ai-multimodal."""
+    def test_response_contains_all_pipeline_results(self, _aws_setup):
+        """Response includes results for all three pipelines."""
         table, _ = _aws_setup
         receipt_id = "01JQTEST000000000000000001"
         _seed_receipt(table, receipt_id=receipt_id)
@@ -285,6 +285,10 @@ class TestPipelineResultsStaffAccess:
         _seed_pipeline_result(
             table, receipt_id=receipt_id, pipeline_type="ai-multimodal",
             confidence=0.89, ranking_score=0.82,
+        )
+        _seed_pipeline_result(
+            table, receipt_id=receipt_id, pipeline_type="ai-vision-v2",
+            confidence=0.91, ranking_score=0.87,
         )
 
         event = _build_apigw_event(
@@ -299,6 +303,7 @@ class TestPipelineResultsStaffAccess:
         assert "results" in body, "Response must contain 'results'"
         assert "ocr-ai" in body["results"], "Results must include ocr-ai"
         assert "ai-multimodal" in body["results"], "Results must include ai-multimodal"
+        assert "ai-vision-v2" in body["results"], "Results must include ai-vision-v2"
 
     def test_response_contains_used_fallback(self, _aws_setup):
         """Response includes usedFallback field."""

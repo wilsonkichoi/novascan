@@ -35,7 +35,6 @@ IMAGE_KEY = f"receipts/{RECEIPT_ID}.jpg"
 def _pipeline_env(monkeypatch):
     """Set environment variables required by pipeline Lambdas."""
     monkeypatch.setenv("TABLE_NAME", "novascan-test")
-    monkeypatch.setenv("DEFAULT_PIPELINE", "ocr-ai")
     monkeypatch.setenv("STAGE", "dev")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
@@ -256,6 +255,10 @@ class TestFinalizeErrorSanitizationIntegration:
                     "error": "Bedrock: Model inference timeout after 30s on request req-abc-123",
                     "errorType": "TimeoutError",
                 },
+                {
+                    "error": "Nova 2 Lite: inference error",
+                    "errorType": "RuntimeError",
+                },
             ],
         }
 
@@ -292,7 +295,8 @@ class TestFinalizeErrorSanitizationIntegration:
                     "modelId": "amazon.nova-lite-v1:0",
                     "processingTimeMs": 1500,
                 },
-                {"error": "shadow failed", "errorType": "RuntimeError"},
+                {"error": "v1 failed", "errorType": "RuntimeError"},
+                {"error": "v2 failed", "errorType": "RuntimeError"},
             ],
         }
 

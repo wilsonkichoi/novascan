@@ -29,7 +29,6 @@ from moto import mock_aws
 def _pipeline_env(monkeypatch):
     """Set environment variables required by pipeline Lambdas."""
     monkeypatch.setenv("TABLE_NAME", "novascan-test")
-    monkeypatch.setenv("DEFAULT_PIPELINE", "ocr-ai")
     monkeypatch.setenv("STAGE", "dev")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
@@ -204,20 +203,25 @@ def _make_error_pipeline_result(
 
 
 def _build_finalize_event(
-    main_result: dict[str, Any],
-    shadow_result: dict[str, Any],
+    ocr_ai_result: dict[str, Any],
+    ai_multimodal_result: dict[str, Any],
+    ai_vision_v2_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the event that Step Functions sends to the Finalize Lambda.
 
-    Spec Section 3: Finalize receives both pipeline results after Parallel.
+    pipelineResults order: [ocr-ai, ai-multimodal, ai-vision-v2].
     """
+    if ai_vision_v2_result is None:
+        ai_vision_v2_result = _make_success_pipeline_result(
+            extraction=_make_extraction_result(confidence=0.85),
+        )
     return {
         "bucket": BUCKET,
         "key": IMAGE_KEY,
         "userId": USER_ID,
         "receiptId": RECEIPT_ID,
         "customCategories": [],
-        "pipelineResults": [main_result, shadow_result],
+        "pipelineResults": [ocr_ai_result, ai_multimodal_result, ai_vision_v2_result],
     }
 
 
@@ -392,7 +396,7 @@ class TestMainSuccessPath:
         _invoke_finalize(event)
 
         pipeline_records = _get_pipeline_results(table)
-        assert len(pipeline_records) == 2, (
+        assert len(pipeline_records) == 3, (
             f"Found {len(pipeline_records)} pipeline result records, expected 2. "
             "Spec Section 3: Both pipeline results stored regardless of outcome."
         )
@@ -474,7 +478,7 @@ class TestMainSuccessPath:
         _invoke_finalize(event)
 
         receipt = _get_receipt(table)
-        assert receipt.get("rankingWinner") in ("ocr-ai", "ai-multimodal"), (
+        assert receipt.get("rankingWinner") in ("ocr-ai", "ai-multimodal", "ai-vision-v2"), (
             f"rankingWinner is '{receipt.get('rankingWinner')}', "
             "expected 'ocr-ai' or 'ai-multimodal'. "
             "Spec Section 5: rankingWinner indicates which pipeline scored higher."
@@ -646,27 +650,22 @@ class TestFallbackPath:
             "Spec Section 3: Shadow fallback still results in confirmed status."
         )
 
-    def test_used_fallback_flag_set(self, aws_resources) -> None:
-        """usedFallback must be True when shadow result is used.
-
-        Spec Section 5: 'usedFallback: true if main pipeline failed and
-        shadow result was used'
-        """
+    def test_used_fallback_false_under_ranking(self, aws_resources) -> None:
+        """usedFallback is always False under ranking-based selection."""
         table = aws_resources["table"]
         _create_receipt_record(table)
 
-        main_result = _make_error_pipeline_result()
-        shadow_result = _make_success_pipeline_result(
+        ocr_ai_result = _make_error_pipeline_result()
+        ai_multimodal_result = _make_success_pipeline_result(
             extraction=_make_extraction_result(merchant_name="Fallback Store")
         )
-        event = _build_finalize_event(main_result, shadow_result)
+        event = _build_finalize_event(ocr_ai_result, ai_multimodal_result)
 
         _invoke_finalize(event)
 
         receipt = _get_receipt(table)
-        assert receipt.get("usedFallback") is True, (
-            f"usedFallback is '{receipt.get('usedFallback')}', expected True. "
-            "Spec Section 5: usedFallback must be true when shadow result used."
+        assert receipt.get("usedFallback") is not True, (
+            "usedFallback should not be True under ranking-based selection."
         )
 
     def test_receipt_populated_from_shadow(self, aws_resources) -> None:
@@ -710,7 +709,7 @@ class TestFallbackPath:
         _invoke_finalize(event)
 
         pipeline_records = _get_pipeline_results(table)
-        assert len(pipeline_records) == 2, (
+        assert len(pipeline_records) == 3, (
             f"Found {len(pipeline_records)} pipeline records, expected 2. "
             "Both results must be stored even when one pipeline fails."
         )
@@ -770,53 +769,33 @@ class TestFallbackPath:
 
 
 class TestBothFailPath:
-    """Pipeline flow when both pipelines fail.
+    """Pipeline flow when all pipelines fail."""
 
-    Spec Section 3: 'If both failed -> set status to failed'
-    """
+    def _all_fail_event(self) -> dict[str, Any]:
+        return _build_finalize_event(
+            _make_error_pipeline_result(error="Textract error", error_type="TextractException"),
+            _make_error_pipeline_result(error="Bedrock error", error_type="BedrockException"),
+            _make_error_pipeline_result(error="Nova 2 error", error_type="RuntimeError"),
+        )
 
     def test_receipt_status_set_to_failed(self, aws_resources) -> None:
-        """Receipt status must be 'failed' when both pipelines fail.
-
-        Spec Section 3: 'Receipt status transitions: processing -> failed'
-        """
+        """Receipt status must be 'failed' when all pipelines fail."""
         table = aws_resources["table"]
         _create_receipt_record(table)
 
-        main_result = _make_error_pipeline_result(
-            error="Textract error", error_type="TextractException"
-        )
-        shadow_result = _make_error_pipeline_result(
-            error="Bedrock error", error_type="BedrockException"
-        )
-        event = _build_finalize_event(main_result, shadow_result)
-
-        _invoke_finalize(event)
+        _invoke_finalize(self._all_fail_event())
 
         receipt = _get_receipt(table)
         assert receipt["status"] == "failed", (
-            f"Receipt status is '{receipt['status']}', expected 'failed'. "
-            "Spec Section 3: Both pipelines failed -> status is 'failed'."
+            f"Receipt status is '{receipt['status']}', expected 'failed'."
         )
 
     def test_failure_reason_populated(self, aws_resources) -> None:
-        """Receipt must have failureReason when both pipelines fail.
-
-        Spec Section 5: 'failureReason: Error message if failed'
-        SECURITY-REVIEW H4: failureReason must be generic — no raw error text.
-        """
+        """Receipt must have failureReason when all pipelines fail."""
         table = aws_resources["table"]
         _create_receipt_record(table)
 
-        main_result = _make_error_pipeline_result(
-            error="Textract error", error_type="TextractException"
-        )
-        shadow_result = _make_error_pipeline_result(
-            error="Bedrock error", error_type="BedrockException"
-        )
-        event = _build_finalize_event(main_result, shadow_result)
-
-        _invoke_finalize(event)
+        _invoke_finalize(self._all_fail_event())
 
         receipt = _get_receipt(table)
         failure_reason = receipt.get("failureReason", "")
@@ -831,18 +810,11 @@ class TestBothFailPath:
         )
 
     def test_no_line_items_created_on_failure(self, aws_resources) -> None:
-        """No line items should be created when both pipelines fail.
-
-        If there's no extraction result, there should be no line items.
-        """
+        """No line items should be created when all pipelines fail."""
         table = aws_resources["table"]
         _create_receipt_record(table)
 
-        main_result = _make_error_pipeline_result()
-        shadow_result = _make_error_pipeline_result()
-        event = _build_finalize_event(main_result, shadow_result)
-
-        _invoke_finalize(event)
+        _invoke_finalize(self._all_fail_event())
 
         line_items = _get_line_items(table)
         assert len(line_items) == 0, (
@@ -850,19 +822,12 @@ class TestBothFailPath:
             "No line items should be created when both pipelines fail."
         )
 
-    def test_used_fallback_not_set_on_both_fail(self, aws_resources) -> None:
-        """usedFallback should not be True when both pipelines fail.
-
-        Spec Section 5: usedFallback is only set when shadow is used as fallback.
-        """
+    def test_used_fallback_not_set_on_all_fail(self, aws_resources) -> None:
+        """usedFallback should not be True when all pipelines fail."""
         table = aws_resources["table"]
         _create_receipt_record(table)
 
-        main_result = _make_error_pipeline_result()
-        shadow_result = _make_error_pipeline_result()
-        event = _build_finalize_event(main_result, shadow_result)
-
-        _invoke_finalize(event)
+        _invoke_finalize(self._all_fail_event())
 
         receipt = _get_receipt(table)
         assert receipt.get("usedFallback") is not True, (
@@ -870,23 +835,15 @@ class TestBothFailPath:
             "Fallback only applies when shadow succeeds."
         )
 
-    def test_both_error_pipeline_results_stored(self, aws_resources) -> None:
-        """Both failed pipeline results must still be stored.
-
-        Spec Section 3: 'Stores both pipeline results in DynamoDB
-        regardless of outcome'
-        """
+    def test_all_error_pipeline_results_stored(self, aws_resources) -> None:
+        """All failed pipeline results must still be stored."""
         table = aws_resources["table"]
         _create_receipt_record(table)
 
-        main_result = _make_error_pipeline_result()
-        shadow_result = _make_error_pipeline_result()
-        event = _build_finalize_event(main_result, shadow_result)
-
-        _invoke_finalize(event)
+        _invoke_finalize(self._all_fail_event())
 
         pipeline_records = _get_pipeline_results(table)
-        assert len(pipeline_records) == 2, (
+        assert len(pipeline_records) == 3, (
             f"Found {len(pipeline_records)} pipeline records, expected 2. "
             "Both results must be stored even when both fail."
         )
@@ -1068,57 +1025,38 @@ class TestPipelineResultSKFormat:
                 f"'RECEIPT#{RECEIPT_ID}#PIPELINE#{{type}}'."
             )
             pipeline_type = sk.split("#PIPELINE#")[1]
-            assert pipeline_type in ("ocr-ai", "ai-multimodal"), (
-                f"Pipeline type '{pipeline_type}' in SK is not 'ocr-ai' or "
-                "'ai-multimodal'. Spec Section 5: type is ocr-ai or ai-multimodal."
+            assert pipeline_type in ("ocr-ai", "ai-multimodal", "ai-vision-v2"), (
+                f"Pipeline type '{pipeline_type}' in SK is not a valid pipeline type."
             )
 
 
-class TestDefaultPipelineConfig:
-    """Verify that DEFAULT_PIPELINE config controls main/shadow assignment.
+class TestRankingBasedSelection:
+    """Verify that ranking-based selection picks the highest-scoring result."""
 
-    Spec Section 9: 'defaultPipeline: Which pipeline is main vs shadow'
-    """
-
-    def test_ai_multimodal_as_default_pipeline(self, aws_resources, monkeypatch) -> None:
-        """When DEFAULT_PIPELINE=ai-multimodal, shadow becomes ocr-ai.
-
-        Spec Section 3: 'Which pipeline is main vs shadow is controlled by
-        defaultPipeline in cdk.json'
-        """
+    def test_highest_scoring_pipeline_wins(self, aws_resources) -> None:
+        """The pipeline with the highest ranking score should be selected."""
         table = aws_resources["table"]
         _create_receipt_record(table)
-        monkeypatch.setenv("DEFAULT_PIPELINE", "ai-multimodal")
 
-        # Need to reimport to pick up the env var change
-        import novascan.pipeline.finalize as finalize_module
-        original_default = finalize_module.DEFAULT_PIPELINE
-        finalize_module.DEFAULT_PIPELINE = "ai-multimodal"
+        event = _build_finalize_event(
+            _make_success_pipeline_result(
+                extraction=_make_extraction_result(merchant_name="OCR Store", confidence=0.60)
+            ),
+            _make_success_pipeline_result(
+                extraction=_make_extraction_result(merchant_name="V1 Store", confidence=0.70)
+            ),
+            _make_success_pipeline_result(
+                extraction=_make_extraction_result(merchant_name="V2 Store", confidence=0.98)
+            ),
+        )
 
-        try:
-            # When DEFAULT_PIPELINE=ai-multimodal:
-            # pipelineResults[0] is main = ai-multimodal
-            # pipelineResults[1] is shadow = ocr-ai
-            main_result = _make_success_pipeline_result(
-                extraction=_make_extraction_result(merchant_name="AI Multimodal Store")
-            )
-            shadow_result = _make_success_pipeline_result(
-                extraction=_make_extraction_result(merchant_name="OCR-AI Store")
-            )
-            event = _build_finalize_event(main_result, shadow_result)
+        _invoke_finalize(event)
 
-            _invoke_finalize(event)
-
-            receipt = _get_receipt(table)
-            # When ai-multimodal is main and succeeds, receipt should use it
-            assert receipt.get("merchant") == "AI Multimodal Store", (
-                f"Receipt merchant is '{receipt.get('merchant')}', "
-                "expected 'AI Multimodal Store'. "
-                "When DEFAULT_PIPELINE=ai-multimodal, the first result (main) "
-                "should be used."
-            )
-        finally:
-            finalize_module.DEFAULT_PIPELINE = original_default
+        receipt = _get_receipt(table)
+        assert receipt.get("merchant") == "V2 Store", (
+            f"Receipt merchant is '{receipt.get('merchant')}', expected 'V2 Store'. "
+            "The pipeline with the highest ranking score should be selected."
+        )
 
 
 # --- Helpers ---

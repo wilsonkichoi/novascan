@@ -48,7 +48,6 @@ aws sts get-caller-identity
 | `maxUploadFiles` | 10 | 10 |
 | `maxUploadSizeMb` | 10 | 10 |
 | `logLevel` | DEBUG | INFO |
-| `defaultPipeline` | ocr-ai | ocr-ai |
 | `domainName` | (none) | (none — add your domain here if needed) |
 
 ### Frontend Build Environment Variables

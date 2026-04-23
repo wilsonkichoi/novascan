@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-04-16
+Last updated: 2026-04-23
 
 ## Prerequisites
 
@@ -115,6 +115,19 @@ Last updated: 2026-04-16
 | 6.7  | UX Polish Tests | qa-engineer | done | [task-6.7](reviews/task-6.7.md) | 23 tests. 2026-04-15. Reviewed — no issues. TEST |
 | 6.8  | Production E2E Verification | devops-engineer | done | | Full teardown + redeploy verified 2026-04-16. |
 
+## Milestone 7: Nova 2 Lite Pipeline Branch + Ranking-Based Selection
+
+| Task | Title | Role | Status | Review | Notes |
+|------|-------|------|--------|--------|-------|
+| 7.1  | Allow Nova 2 Lite Model ID | backend-engineer | done | | 2026-04-23 |
+| 7.2  | Rewrite Finalize for 3-Way Ranking | backend-engineer | done | | 2026-04-23. Core logic change: ranking replaces main/shadow. |
+| 7.3  | Update Pydantic rankingWinner Type | backend-engineer | done | | 2026-04-23 |
+| 7.4  | Rename BedrockExtract + Add NovaLiteV2Extract + Third Branch | devops-engineer | done | | 2026-04-23. CDK rename + new Lambda + 3-branch Parallel. |
+| 7.5  | Update Types, Toggle, and Pipeline Comparison | frontend-developer | done | | 2026-04-23. 4-option toggle, 3-col comparison grid. |
+| 7.6  | Backend Unit + Integration Test Updates | qa-engineer | done | | 2026-04-23. 556 tests pass. TEST |
+| 7.7  | CDK Test Updates + Snapshot Regeneration | qa-engineer | done | | 2026-04-23. 101 tests pass. TEST |
+| 7.8  | Frontend Test Updates | qa-engineer | done | | 2026-04-23. 354 tests pass. TEST |
+
 ## Summary
 
 | Milestone | Total Tasks | Implementation | Test | Verification |
@@ -127,7 +140,8 @@ Last updated: 2026-04-16
 | M4        | 7          | 5              | 2    | 0            |
 | M5        | 6          | 4              | 2    | 0            |
 | M6        | 8          | 6              | 1    | 1            |
-| **Total** | **61**     | **45**         | **13** | **3**      |
+| M7        | 8          | 5              | 3    | 0            |
+| **Total** | **69**     | **50**         | **16** | **3**      |
 
 ## Wave 1 Review Fixes
 

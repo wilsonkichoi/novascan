@@ -72,10 +72,11 @@ def _make_error(error: str = "failed", error_type: str = "RuntimeError") -> dict
 
 
 def _make_event(
-    main: dict[str, Any] | None = None,
-    shadow: dict[str, Any] | None = None,
+    ocr_ai: dict[str, Any] | None = None,
+    ai_multimodal: dict[str, Any] | None = None,
+    ai_vision_v2: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build the finalize handler event."""
+    """Build the finalize handler event with 3 pipeline results."""
     return {
         "bucket": BUCKET,
         "key": KEY,
@@ -83,9 +84,12 @@ def _make_event(
         "receiptId": RECEIPT_ID,
         "customCategories": [],
         "pipelineResults": [
-            main or _make_success(),
-            shadow or _make_success(
-                extraction=_make_extraction_result(merchant_name="Shadow Store", confidence=0.85)
+            ocr_ai or _make_success(),
+            ai_multimodal or _make_success(
+                extraction=_make_extraction_result(merchant_name="V1 Vision Store", confidence=0.85)
+            ),
+            ai_vision_v2 or _make_success(
+                extraction=_make_extraction_result(merchant_name="V2 Vision Store", confidence=0.88)
             ),
         ],
     }
@@ -103,7 +107,6 @@ def _env(monkeypatch):
     monkeypatch.setenv("POWERTOOLS_SERVICE_NAME", "novascan-test")
     monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
     monkeypatch.setenv("POWERTOOLS_METRICS_NAMESPACE", "NovaScanTest")
-    monkeypatch.setenv("DEFAULT_PIPELINE", "ocr-ai")
 
 
 @pytest.fixture
@@ -184,11 +187,12 @@ class TestFailureReasonGeneric:
     """DynamoDB failureReason must not contain raw error details."""
 
     def test_failure_reason_is_generic_text(self, aws_resources):
-        """When both pipelines fail, failureReason must be a generic message."""
+        """When all pipelines fail, failureReason must be a generic message."""
         table, _ = aws_resources
         event = _make_event(
-            main=_make_error("Textract throttled: rate limit exceeded"),
-            shadow=_make_error("Bedrock: model inference timeout after 30s"),
+            ocr_ai=_make_error("Textract throttled: rate limit exceeded"),
+            ai_multimodal=_make_error("Bedrock: model inference timeout after 30s"),
+            ai_vision_v2=_make_error("Nova 2 Lite: model error"),
         )
         _invoke(event)
 
@@ -207,8 +211,7 @@ class TestFailureReasonGeneric:
         """Pipeline error records must store error type, not raw message."""
         table, _ = aws_resources
         event = _make_event(
-            main=_make_error("Secret internal error details", "TextractException"),
-            shadow=_make_success(),
+            ocr_ai=_make_error("Secret internal error details", "TextractException"),
         )
         _invoke(event)
 

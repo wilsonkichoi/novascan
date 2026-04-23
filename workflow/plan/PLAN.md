@@ -1244,3 +1244,123 @@
   - Full flow: sign up → sign in → upload receipt → see processing → see confirmed receipt → view detail → edit line items → dashboard shows totals → transactions shows entry → sign out
   - Dev and prod are isolated (separate stacks, separate resources)
 - **Test command:** `curl -s -o /dev/null -w "%{http_code}" https://subdomain.example.com`
+
+---
+
+## Milestone 7: Nova 2 Lite Pipeline Branch + Ranking-Based Selection
+
+Adds a third parallel pipeline branch using Amazon Nova 2 Lite (`amazon.nova-2-lite-v1:0`) and replaces the main/shadow fallback logic with ranking-based selection — the result with the highest composite ranking score wins across all three branches. Also renames `BedrockExtract` → `NovaLiteV1Extract` for naming consistency.
+
+### Wave 1: Backend Foundation
+
+#### [x] Task 7.1: Allow Nova 2 Lite Model ID
+- **Role:** backend-engineer
+- **Depends on:** none (M6 complete)
+- **Spec reference:** SPEC.md >> Section 3 (Processing Flow)
+- **Files:** `backend/src/novascan/pipeline/validation.py`
+- **Acceptance criteria:**
+  - `"amazon.nova-2-lite-v1:0"` added to `ALLOWED_MODEL_IDS` frozenset
+  - `validate_model_id("amazon.nova-2-lite-v1:0")` returns True
+- **Test: inline**
+- **Test command:** `cd backend && uv run python -c "from novascan.pipeline.validation import validate_model_id; assert validate_model_id('amazon.nova-2-lite-v1:0'); print('PASS')"`
+
+#### [x] Task 7.2: Rewrite Finalize for 3-Way Ranking-Based Selection
+- **Role:** backend-engineer
+- **Depends on:** 7.1
+- **Spec reference:** SPEC.md >> Section 3 (Processing Flow — Finalize)
+- **Files:** `backend/src/novascan/pipeline/finalize.py`
+- **Acceptance criteria:**
+  - `PIPELINE_AI_VISION_V2 = "ai-vision-v2"` constant added
+  - `PIPELINE_TYPES` list defines branch order: `[ocr-ai, ai-multimodal, ai-vision-v2]`
+  - Nova 2 Lite pricing constants: `$0.30/1M` input, `$2.50/1M` output
+  - `_compute_cost()` branches on `model_id` to apply correct pricing
+  - `_select_by_ranking()` replaces `_select_result()` — picks highest `rank_results()` score
+  - Handler reads 3 pipeline results from `pipelineResults[0..2]`
+  - `_store_pipeline_results()` and `_emit_pipeline_metrics()` iterate over all three
+  - `DEFAULT_PIPELINE` env var and `os` import removed
+  - `cd backend && uv run ruff check src/ && uv run mypy src/novascan/pipeline/finalize.py` passes
+- **Test command:** `cd backend && uv run ruff check src/ && uv run mypy src/novascan/pipeline/finalize.py`
+
+#### [x] Task 7.3: Update Pydantic `rankingWinner` Type
+- **Role:** backend-engineer
+- **Depends on:** none
+- **Spec reference:** SPEC.md >> Section 5 (Receipt Attributes)
+- **Files:** `backend/src/novascan/models/receipt.py`
+- **Acceptance criteria:**
+  - `Receipt.rankingWinner` and `ReceiptDetail.rankingWinner` Literal includes `"ai-vision-v2"`
+- **Test: inline**
+- **Test command:** `cd backend && uv run python -c "from novascan.models.receipt import Receipt; print('PASS')"`
+
+### Wave 2: Infrastructure (CDK)
+
+#### [x] Task 7.4: Rename BedrockExtract + Add NovaLiteV2Extract + Third Branch
+- **Role:** devops-engineer
+- **Depends on:** 7.1, 7.2
+- **Spec reference:** SPEC.md >> Section 3 (Pipeline State Machine)
+- **Files:** `infra/cdkconstructs/pipeline.py`
+- **Acceptance criteria:**
+  - `BedrockExtractFn` renamed to `NovaLiteV1ExtractFn` (Lambda: `novascan-{stage}-nova-lite-v1-extract`)
+  - New `NovaLiteV2ExtractFn` Lambda (same handler, `NOVA_MODEL_ID=amazon.nova-2-lite-v1:0`, IAM scoped to model)
+  - Step Functions: renamed task, new task with Catch, 3-branch Parallel state
+  - `DEFAULT_PIPELINE` removed from Finalize Lambda environment
+  - `cdk synth --context stage=dev` succeeds
+- **Test command:** `cd infra && uv run cdk synth --context stage=dev > /dev/null && echo "PASS"`
+
+### Wave 3: Frontend
+
+#### [x] Task 7.5: Update Types, Toggle, and Pipeline Comparison
+- **Role:** frontend-developer
+- **Depends on:** 7.2
+- **Files:**
+  - `frontend/src/api/categories.ts`
+  - `frontend/src/api/receipts.ts`
+  - `frontend/src/pages/ReceiptDetailPage.tsx`
+  - `frontend/src/components/PipelineComparison.tsx`
+- **Acceptance criteria:**
+  - `"ai-vision-v2"` added to types, toggle (4 options), comparison (3 columns)
+  - `PIPELINE_META` entry with Nova 2 Lite description, tooltips with $0.30/$2.50 pricing
+  - `cd frontend && npm run build` succeeds
+- **Test command:** `cd frontend && npm run build`
+
+### Wave 4: Tests
+
+#### [x] Task 7.6: Backend Unit + Integration Test Updates
+- **Role:** qa-engineer
+- **Depends on:** 7.2, 7.4
+- **Files:**
+  - `backend/tests/unit/test_finalize.py`
+  - `backend/tests/unit/test_security_finalize.py`
+  - `backend/tests/unit/test_security_pipeline.py`
+  - `backend/tests/unit/test_pipeline_results.py`
+  - `backend/tests/integration/test_pipeline_flow.py`
+  - `backend/tests/integration/test_security_pipeline_flow.py`
+- **Acceptance criteria:**
+  - All events produce 3 pipeline results; 3 PIPELINE# records verified
+  - Ranking-based selection tests replace main/shadow tests
+  - `DEFAULT_PIPELINE` removed from fixtures; `TestDefaultPipelineConfig` replaced with `TestRankingBasedSelection`
+  - `cd backend && uv run pytest` passes (556 tests)
+- **Test command:** `cd backend && uv run pytest`
+
+#### [x] Task 7.7: CDK Test Updates + Snapshot Regeneration
+- **Role:** qa-engineer
+- **Depends on:** 7.4
+- **Files:**
+  - `infra/tests/test_pipeline_construct.py`
+  - `infra/tests/snapshots/novascan-dev.template.json`
+- **Acceptance criteria:**
+  - 3 Parallel branches, >= 6 Lambdas, Nova Lite v2 `NOVA_MODEL_ID` env var verified
+  - CDK snapshot regenerated
+  - `cd infra && uv run pytest` passes (101 tests)
+- **Test command:** `cd infra && uv run pytest`
+
+#### [x] Task 7.8: Frontend Test Updates
+- **Role:** qa-engineer
+- **Depends on:** 7.5
+- **Files:**
+  - `frontend/src/components/__tests__/PipelineComparison.test.tsx`
+  - `frontend/src/pages/__tests__/ReceiptDetailPage.test.tsx`
+- **Acceptance criteria:**
+  - Mock data includes `"ai-vision-v2"` result
+  - Labels, toggle, and comparison tests verify "AI Vision v2"
+  - `cd frontend && npm run test -- --run` passes (354 tests)
+- **Test command:** `cd frontend && npm run test -- --run`

@@ -27,7 +27,8 @@ Every Lambda function and API Gateway stage writes structured JSON logs. Lambda 
 | API Lambda | `/aws/lambda/novascan-{stage}-api` | Powertools Logger (JSON) |
 | Textract Extract Lambda | `/aws/lambda/novascan-{stage}-textract-extract` | Powertools Logger (JSON) |
 | Nova Structure Lambda | `/aws/lambda/novascan-{stage}-nova-structure` | Powertools Logger (JSON) |
-| Bedrock Extract Lambda | `/aws/lambda/novascan-{stage}-bedrock-extract` | Powertools Logger (JSON) |
+| Nova Lite v1 Extract Lambda | `/aws/lambda/novascan-{stage}-nova-lite-v1-extract` | Powertools Logger (JSON) |
+| Nova Lite v2 Extract Lambda | `/aws/lambda/novascan-{stage}-nova-lite-v2-extract` | Powertools Logger (JSON) |
 | Load Custom Categories Lambda | `/aws/lambda/novascan-{stage}-load-custom-categories` | Powertools Logger (JSON) |
 | Finalize Lambda | `/aws/lambda/novascan-{stage}-finalize` | Powertools Logger (JSON) |
 | Pre-Sign-Up Lambda | `/aws/lambda/novascan-{stage}-pre-signup` | Powertools Logger (JSON) |
@@ -85,10 +86,8 @@ All custom metrics are published by the **Finalize Lambda** (`backend/src/novasc
 |-------------|------|------------|-------------|
 | `PipelineCompleted` | Count | `PipelineType` (`ocr-ai` or `ai-multimodal`), `Outcome` (`success` or `failure`) | Emitted once per pipeline per receipt. Tracks success/failure rate for each pipeline type. |
 | `PipelineLatency` | Milliseconds | `PipelineType` (`ocr-ai` or `ai-multimodal`) | Processing time for successful pipeline executions. Only emitted when the pipeline succeeds and reports `processingTimeMs`. |
-| `RankingDecision` | Count | `Winner` (`ocr-ai` or `ai-multimodal`) | Which pipeline the ranking algorithm scored higher, regardless of which was main/shadow. Only emitted when both pipelines produce a result. |
-| `RankingScoreDelta` | NoUnit | `Winner` (`ocr-ai` or `ai-multimodal`) | Absolute difference between the two pipeline ranking scores. Lower values mean closer parity. Only emitted when both pipelines produce a result. |
-| `ReceiptStatus` | Count | `Status` (`confirmed` or `failed`) | Final receipt status after main/shadow selection. One event per receipt. |
-| `UsedFallback` | Count | `Status` (`confirmed`) | Emitted only when the main pipeline failed and the shadow pipeline's result was used instead. |
+| `RankingDecision` | Count | `Winner` (`ocr-ai`, `ai-multimodal`, or `ai-vision-v2`) | Which pipeline scored highest in ranking-based selection. Emitted when at least one pipeline produces a result. |
+| `ReceiptStatus` | Count | `Status` (`confirmed` or `failed`) | Final receipt status after ranking-based selection. One event per receipt. |
 
 **Note:** The spec defines a `ReceiptUploaded` metric, but it is not yet implemented. It is planned for the API upload handler.
 
@@ -270,7 +269,7 @@ The Step Functions console is the primary tool for debugging individual receipt 
 ### State Machine
 
 - **Name:** `novascan-{stage}-receipt-pipeline`
-- **Flow:** LoadCustomCategories -> Parallel(TextractExtract -> NovaStructure, BedrockExtract) -> Finalize
+- **Flow:** LoadCustomCategories -> Parallel(TextractExtract -> NovaStructure, NovaLiteV1Extract, NovaLiteV2Extract) -> Finalize
 - **Timeout:** 15 minutes
 
 ### Inspecting Executions
@@ -597,7 +596,8 @@ This sends an email when actual spend reaches 80% of the $25 monthly budget.
 | API | `novascan-{stage}-api` |
 | Textract Extract | `novascan-{stage}-textract-extract` |
 | Nova Structure | `novascan-{stage}-nova-structure` |
-| Bedrock Extract | `novascan-{stage}-bedrock-extract` |
+| Nova Lite v1 Extract | `novascan-{stage}-nova-lite-v1-extract` |
+| Nova Lite v2 Extract | `novascan-{stage}-nova-lite-v2-extract` |
 | Load Custom Categories | `novascan-{stage}-load-custom-categories` |
 | Finalize | `novascan-{stage}-finalize` |
 | Pre-Sign-Up | `novascan-{stage}-pre-signup` |

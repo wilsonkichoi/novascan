@@ -6,7 +6,7 @@ AI-powered receipt scanner and spending tracker — personal MVP on AWS serverle
 
 - **Frontend:** Vite + React + Tailwind CSS v4 + shadcn/ui → static SPA on S3/CloudFront
 - **Backend:** Single API Lambda (AWS Lambda Powertools for Python + Pydantic) behind API Gateway HTTP API
-- **OCR Pipeline:** Step Functions orchestrating parallel Textract + Nova (tiered) and Bedrock Nova (single) paths
+- **OCR Pipeline:** Step Functions orchestrating three parallel paths: Textract + Nova Lite v1 (OCR-AI), Nova Lite v1 multimodal, and Nova 2 Lite multimodal — highest ranking score wins
 - **Storage:** DynamoDB single-table (on-demand), S3 for receipt images (presigned URL upload)
 - **Auth:** Cognito email OTP (passwordless), JWT validation via API Gateway authorizer
 - **IaC:** AWS CDK (Python), single stack per stage (dev/prod)

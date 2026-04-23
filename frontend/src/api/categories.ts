@@ -78,10 +78,11 @@ export interface PipelineResult {
 export interface PipelineResultsResponse {
   receiptId: string;
   usedFallback: boolean;
-  rankingWinner: "ocr-ai" | "ai-multimodal" | null;
+  rankingWinner: "ocr-ai" | "ai-multimodal" | "ai-vision-v2" | null;
   results: {
     "ocr-ai"?: PipelineResult;
     "ai-multimodal"?: PipelineResult;
+    "ai-vision-v2"?: PipelineResult;
   };
 }
 

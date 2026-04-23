@@ -512,7 +512,7 @@ describe("ReceiptDetailPage", () => {
 
   // ---- Pipeline source toggle ----
 
-  it("shows pipeline source toggle with Final, OCR + AI, and AI Vision options", async () => {
+  it("shows pipeline source toggle with Final, OCR + AI, AI Vision, and AI Vision v2 options", async () => {
     mockGetReceipt.mockResolvedValue(makeReceiptDetail());
     renderDetailPage();
 
@@ -521,5 +521,6 @@ describe("ReceiptDetailPage", () => {
     expect(screen.getByText("Final")).toBeInTheDocument();
     expect(screen.getByText(/OCR \+ AI/)).toBeInTheDocument();
     expect(screen.getByText("AI Vision")).toBeInTheDocument();
+    expect(screen.getByText("AI Vision v2")).toBeInTheDocument();
   });
 });

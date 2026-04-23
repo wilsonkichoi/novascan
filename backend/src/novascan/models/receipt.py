@@ -54,7 +54,7 @@ class Receipt(BaseModel):
     failureReason: str | None = None
     paymentMethod: str | None = None
     usedFallback: bool | None = None
-    rankingWinner: Literal["ocr-ai", "ai-multimodal"] | None = None
+    rankingWinner: Literal["ocr-ai", "ai-multimodal", "ai-vision-v2"] | None = None
     createdAt: str
     updatedAt: str
 
@@ -111,7 +111,7 @@ class ReceiptDetail(BaseModel):
     subcategoryDisplay: str | None = None
     status: Literal["processing", "confirmed", "failed"]
     usedFallback: bool | None = None
-    rankingWinner: Literal["ocr-ai", "ai-multimodal"] | None = None
+    rankingWinner: Literal["ocr-ai", "ai-multimodal", "ai-vision-v2"] | None = None
     imageUrl: str | None = None
     paymentMethod: str | None = None
     lineItems: list[ReceiptDetailLineItem] = Field(default_factory=list)

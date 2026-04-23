@@ -86,7 +86,8 @@ Pipeline Lambda log groups:
 - `/aws/lambda/novascan-{stage}-load-custom-categories`
 - `/aws/lambda/novascan-{stage}-textract-extract`
 - `/aws/lambda/novascan-{stage}-nova-structure`
-- `/aws/lambda/novascan-{stage}-bedrock-extract`
+- `/aws/lambda/novascan-{stage}-nova-lite-v1-extract`
+- `/aws/lambda/novascan-{stage}-nova-lite-v2-extract`
 - `/aws/lambda/novascan-{stage}-finalize`
 
 ### Finding errors across all Lambdas
@@ -158,7 +159,7 @@ Common causes:
 
 **Fix:**
 
-If Textract is consistently slow, the shadow pipeline (Bedrock direct multimodal) should have succeeded as a fallback. Check the receipt status:
+If Textract is consistently slow, the other pipelines (Nova Lite v1 / v2 direct multimodal) should produce results. The highest-scoring result is selected. Check the receipt status:
 
 ```bash
 aws dynamodb get-item \
@@ -168,7 +169,7 @@ aws dynamodb get-item \
   --expression-attribute-names '{"#s": "status"}'
 ```
 
-If `usedFallback` is `true`, the receipt was processed successfully by the shadow pipeline. If both failed, see [2.3 Both Pipelines Fail](#23-both-pipelines-fail).
+If the receipt is `confirmed`, at least one pipeline succeeded and the highest-scoring result was selected. If all three failed, see [2.3 Both Pipelines Fail](#23-both-pipelines-fail).
 
 To retry, see [Section 7: Replaying a Failed Pipeline Execution](#7-replaying-a-failed-pipeline-execution).
 
@@ -989,7 +990,7 @@ aws dynamodb query \
   }'
 ```
 
-This returns the receipt record, all line items (`RECEIPT#...#ITEM#001`, etc.), and both pipeline result records (`RECEIPT#...#PIPELINE#ocr-ai`, `RECEIPT#...#PIPELINE#ai-multimodal`).
+This returns the receipt record, all line items (`RECEIPT#...#ITEM#001`, etc.), and all three pipeline result records (`RECEIPT#...#PIPELINE#ocr-ai`, `RECEIPT#...#PIPELINE#ai-multimodal`, `RECEIPT#...#PIPELINE#ai-vision-v2`).
 
 ### Get just the receipt status
 

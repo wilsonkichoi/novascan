@@ -83,7 +83,7 @@ export default function ReceiptDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saveItemsError, setSaveItemsError] = useState<string | null>(null);
-  const [pipelineSource, setPipelineSource] = useState<"final" | "ocr-ai" | "ai-multimodal">("final");
+  const [pipelineSource, setPipelineSource] = useState<"final" | "ocr-ai" | "ai-multimodal" | "ai-vision-v2">("final");
   const { data: pipelineData } = usePipelineResults(id ?? "", pipelineSource !== "final");
 
   const handleSaveItems = useCallback(
@@ -426,18 +426,22 @@ const PIPELINE_LABELS: Record<string, string> = {
   final: "Final",
   "ocr-ai": "OCR + AI",
   "ai-multimodal": "AI Vision",
+  "ai-vision-v2": "AI Vision v2",
 };
+
+type PipelineSource = "final" | "ocr-ai" | "ai-multimodal" | "ai-vision-v2";
+type PipelineType = "ocr-ai" | "ai-multimodal" | "ai-vision-v2";
 
 function PipelineSourceToggle({
   value,
   onChange,
   rankingWinner,
 }: {
-  value: "final" | "ocr-ai" | "ai-multimodal";
-  onChange: (v: "final" | "ocr-ai" | "ai-multimodal") => void;
-  rankingWinner: "ocr-ai" | "ai-multimodal" | null;
+  value: PipelineSource;
+  onChange: (v: PipelineSource) => void;
+  rankingWinner: PipelineType | null;
 }) {
-  const options = ["final", "ocr-ai", "ai-multimodal"] as const;
+  const options: readonly PipelineSource[] = ["final", "ocr-ai", "ai-multimodal", "ai-vision-v2"];
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm font-medium text-muted-foreground">Source:</span>
@@ -471,7 +475,7 @@ function PipelineExtractedView({
   pipelineType,
   data,
 }: {
-  pipelineType: "ocr-ai" | "ai-multimodal";
+  pipelineType: PipelineType;
   data: PipelineExtractedData | null;
 }) {
   if (!data) {
