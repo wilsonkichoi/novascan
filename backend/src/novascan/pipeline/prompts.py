@@ -122,7 +122,8 @@ is below 0.5.
 4. For grocery receipts from general supermarkets: assign "supermarket-grocery" \
 as the receipt subcategory and tag each line item with the appropriate product \
 subcategory (e.g., "Chicken Breast" -> meat-seafood, "Milk" -> dairy-cheese-eggs).
-5. For non-grocery receipts: line-item subcategory is optional (null).
+5. For non-grocery receipts: set every line item subcategory to null. \
+Do NOT assign a category slug as a subcategory.
 6. All monetary values must be decimal numbers (e.g., 5.99 not 599).
 7. receiptDate is the date printed on the receipt, not today's date. Use \
 YYYY-MM-DD format. Set null if unreadable.
