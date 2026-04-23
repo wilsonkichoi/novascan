@@ -52,19 +52,13 @@ cd infra && uv venv --python 3.13 && uv sync && cd ..
 git config core.hooksPath .githooks
 ```
 
-### Deploy to Dev
-
-```bash
-cd infra && uv run cdk deploy --context stage=dev
-```
-
 ### Run Tests
 
 ```bash
-# Backend (553 tests)
+# Backend (555 tests)
 cd backend && uv run pytest
 
-# Frontend (355 tests)
+# Frontend (354 tests)
 cd frontend && npm run test -- --run
 
 # Infrastructure (101 tests)
@@ -74,11 +68,14 @@ cd infra && uv run pytest
 cd backend && uv run ruff check src/
 ```
 
-### Run Locally
+### Run Frontend Locally
 
 ```bash
 # Start DynamoDB Local
 docker run -d -p 8000:8000 amazon/dynamodb-local
+
+# Copy frontend/.env.example to frontend/.env and fill in values from CDK stack outputs
+cp frontend/.env.example frontend/.env
 
 # Frontend dev server
 cd frontend && npm run dev
@@ -93,10 +90,11 @@ cd frontend && npm run dev
    ```bash
    cd infra && uv run cdk bootstrap
    ```
-5. Deploy the dev stack:
+5. Deploy the dev stack (builds frontend, deploys infra + frontend to S3/CloudFront):
    ```bash
    python scripts/deploy.py all dev
    ```
+   The deploy script reads CDK stack outputs and injects them into the frontend build automatically — no manual `.env` configuration needed for deployed environments.
 6. Create a user:
    ```bash
    uv run scripts/add_user.py --stage dev --email you@example.com

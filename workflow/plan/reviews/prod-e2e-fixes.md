@@ -233,7 +233,7 @@ Flow: `LoadCustomCategories → CheckSkip (Choice) → Parallel → Finalize` (n
 
 **Symptom:** Receipt detail page showed broken image. Browser console:
 ```
-Refused to load the image 'https://novascan-prod-storagereceipts*.s3.amazonaws.com/...'
+Refused to load the image 'https://<S3_BUCKET>.s3.amazonaws.com/...'
 because it violates the following Content Security Policy directive: "img-src 'self' data: blob:".
 ```
 
