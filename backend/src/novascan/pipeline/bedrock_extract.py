@@ -106,7 +106,7 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         media_type = _infer_media_type(key)
 
         start_time = time.time()
-        raw_response = _call_bedrock(prompt, image_bytes, media_type)
+        raw_response, input_tokens, output_tokens = _call_bedrock(prompt, image_bytes, media_type)
         processing_time_ms = int((time.time() - start_time) * 1000)
 
         extraction_result = _parse_response(raw_response)
@@ -118,6 +118,8 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
                 "confidence": extraction_result.confidence,
                 "category": extraction_result.category,
                 "line_item_count": len(extraction_result.lineItems),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
             },
         )
 
@@ -125,6 +127,8 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             "extractionResult": json.loads(extraction_result.model_dump_json()),
             "modelId": MODEL_ID,
             "processingTimeMs": processing_time_ms,
+            "inputTokens": input_tokens,
+            "outputTokens": output_tokens,
         }
 
     except Exception as e:
@@ -136,7 +140,7 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         }
 
 
-@tracer.capture_method
+@tracer.capture_method(capture_response=False)
 def _read_image_from_s3(bucket: str, key: str) -> bytes:
     """Read the receipt image from S3.
 
@@ -159,7 +163,7 @@ def _infer_media_type(key: str) -> str:
     return "image/jpeg"
 
 
-@tracer.capture_method
+@tracer.capture_method(capture_response=False)
 def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
     """Call Bedrock Nova with the extraction prompt and receipt image."""
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -184,7 +188,7 @@ def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
             },
         ],
         "inferenceConfig": {
-            "maxNewTokens": 4096,
+            "maxTokens": 4096,
             "temperature": 0.1,
         },
     })
@@ -198,7 +202,8 @@ def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
 
     response_body = json.loads(response["body"].read())
     output_text: str = response_body["output"]["message"]["content"][0]["text"]
-    return output_text
+    usage = response_body.get("usage", {})
+    return output_text, usage.get("inputTokens", 0), usage.get("outputTokens", 0)
 
 
 @tracer.capture_method

@@ -88,7 +88,8 @@ Automatically process uploaded receipts through both OCR pipeline paths.
 - Receipt status updated to `confirmed` or `failed`
 - Error handling: Catch blocks within each parallel branch — each branch always completes (returns success or error payload). Parallel state never fails.
 - Receipt extraction schema enforced on both pipeline outputs
-- Pipeline comparison toggle: staff-role users can view both pipeline results side-by-side (UI only, no DB mutation)
+- Pipeline comparison toggle: users can view both pipeline results side-by-side (UI only, no DB mutation)
+- Pipeline source toggle: users can switch the receipt detail view between Final (committed data), OCR + AI, and AI Vision extraction results
 
 **Acceptance criteria:**
 - Uploading a receipt image to S3 triggers automatic processing via SQS → EventBridge Pipes → Step Functions
@@ -96,7 +97,7 @@ Automatically process uploaded receipts through both OCR pipeline paths.
 - Both pipelines execute in parallel for every receipt
 - Main pipeline (default: OCR-AI) result populates the receipt. Shadow (default: AI-multimodal) stored for comparison only.
 - If main fails but shadow succeeds, shadow result used with `usedFallback: true`
-- Staff-role users can compare both pipeline results via UI toggle (UI only, no DB write)
+- All users can compare both pipeline results via UI toggle (UI only, no DB write)
 - Receipt status transitions: `processing` → `confirmed` (or `failed`)
 - Failed receipts include a `failureReason` attribute
 - A receipt with a failed shadow pipeline but successful main pipeline is still marked `confirmed`
@@ -115,9 +116,11 @@ Enable users to view, edit, and manage processed receipts.
 - `GET /api/categories` endpoint — predefined + user custom categories
 - `POST /api/categories` endpoint — create custom category
 - `DELETE /api/categories/{slug}` endpoint — delete custom category
-- `GET /api/receipts/{id}/pipeline-results` endpoint — both pipeline outputs (staff role only)
+- `GET /api/receipts/{id}/pipeline-results` endpoint — both pipeline outputs (all authenticated users)
 - Receipt detail page: image alongside extracted data (responsive layout)
-- Per-receipt pipeline comparison toggle (staff role only, UI-only — no DB mutation)
+- Pipeline source toggle: switch between Final (committed/edited data), OCR + AI, and AI Vision extraction views
+- Per-receipt pipeline comparison accordion: side-by-side metrics and extracted data summary
+- Line items table: calculated "Items Total" row showing sum of line item prices
 - Line item editing: inline edit name, quantity, price, subcategory; add/remove items
 - Category picker: select from predefined taxonomy or custom categories
 - Delete receipt with confirmation dialog
@@ -125,9 +128,9 @@ Enable users to view, edit, and manage processed receipts.
 
 **Acceptance criteria:**
 - User can view receipt image side-by-side with extracted data (desktop) or stacked (mobile)
-- Staff-role users can toggle between OCR-AI and AI-multimodal results on each receipt (UI-only comparison, no DB write)
-- Non-staff users do not see the pipeline toggle
-- `GET /api/receipts/{id}/pipeline-results` returns 403 for non-staff users
+- All users can toggle between Final, OCR + AI, and AI Vision extraction results on each receipt (UI-only comparison, no DB write)
+- Pipeline source toggle shows read-only extracted data (summary, totals, line items) from the selected pipeline
+- Line items table shows calculated "Items Total" footer row
 - User can edit any line item field and save changes
 - User can add new line items or remove existing ones
 - User can change category and subcategory from the predefined taxonomy
@@ -245,8 +248,8 @@ Cognito User Pool Groups provide role-based access:
 
 | Role | Cognito Group | Capabilities |
 |------|--------------|-------------|
-| `user` | `user` | Full CRUD on own receipts, categories. View own dashboard/transactions. |
-| `staff` | `staff` | All `user` permissions + view pipeline comparison toggle + `GET /api/receipts/{id}/pipeline-results` |
+| `user` | `user` | Full CRUD on own receipts, categories. View own dashboard/transactions. View pipeline comparison and extraction results. |
+| `staff` | `staff` | All `user` permissions (reserved for future staff-only features) |
 | `admin` | `admin` | All `staff` permissions + manage user roles (via Cognito Console/CLI) |
 
 **Enforcement:**
@@ -597,7 +600,7 @@ A **sparse GSI** containing only receipt records, enabling efficient date-range 
 
 - **Sparse:** Only RECEIPT entities have `GSI1PK`/`GSI1SK` attributes. Line items, pipeline results, profiles, and custom categories are excluded automatically.
 - **Projection:** `ALL` (project all receipt attributes into GSI)
-- **Sort:** GSI1SK sorts by `receiptDate` then by ULID within the same date (most recent first with reverse query)
+- **Sort:** Two modes — `receiptDate` (default, via GSI1SK: `{receiptDate}#{receiptId}`) and `scanDate` (via primary table SK: `RECEIPT#{ulid}`, where ULID encodes upload timestamp). Both sort most recent first with reverse query.
 - **Cost:** ~$0.01/month additional writes at MVP scale. Net read cost reduction vs full partition scans.
 
 #### User Profile Attributes
@@ -705,7 +708,7 @@ See [api-contracts.md](api-contracts.md) for full endpoint specifications.
 | `GET` | `/api/categories` | List all categories |
 | `POST` | `/api/categories` | Create custom category |
 | `DELETE` | `/api/categories/{slug}` | Delete custom category |
-| `GET` | `/api/receipts/{id}/pipeline-results` | Both pipeline results — **staff role only** |
+| `GET` | `/api/receipts/{id}/pipeline-results` | Both pipeline results — all authenticated users |
 
 ---
 

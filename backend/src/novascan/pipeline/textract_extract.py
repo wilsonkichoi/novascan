@@ -69,15 +69,17 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         response = _call_textract(bucket, key)
 
         expense_documents = response.get("ExpenseDocuments", [])
+        textract_pages = response.get("DocumentMetadata", {}).get("Pages", 0)
         logger.info(
             "Textract AnalyzeExpense completed",
-            extra={"document_count": len(expense_documents)},
+            extra={"document_count": len(expense_documents), "textract_pages": textract_pages},
         )
 
         return {
             "expenseDocuments": expense_documents,
             "bucket": bucket,
             "key": key,
+            "textractPages": textract_pages,
         }
 
     except Exception as e:
@@ -89,7 +91,7 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         }
 
 
-@tracer.capture_method
+@tracer.capture_method(capture_response=False)
 def _call_textract(bucket: str, key: str) -> dict[str, Any]:
     """Call Textract AnalyzeExpense synchronously."""
     response: dict[str, Any] = textract_client.analyze_expense(

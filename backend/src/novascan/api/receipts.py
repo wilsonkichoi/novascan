@@ -26,6 +26,7 @@ from novascan.models.receipt import (
 )
 from novascan.shared.constants import (
     ITEM,
+    RECEIPT,
     get_all_category_slugs,
     get_category_display_name,
     get_subcategory_display_name,
@@ -144,25 +145,21 @@ def list_receipts() -> Response[Any]:
     start_date = params.get("startDate")
     end_date = params.get("endDate")
     cursor = params.get("cursor")
+    sort = params.get("sort", "receiptDate")
 
     try:
         limit = min(max(int(params.get("limit", "50")), 1), 100)
     except (ValueError, TypeError):
         limit = 50
 
+    if sort not in ("receiptDate", "scanDate"):
+        return error_response(400, "VALIDATION_ERROR", "sort must be receiptDate or scanDate")
+
     if start_date and end_date and start_date > end_date:
         return error_response(400, "VALIDATION_ERROR", "startDate must not be after endDate")
 
     table = get_table()
     bucket = os.environ["RECEIPTS_BUCKET"]
-    # Key condition on GSI1
-    key_cond: ConditionBase = Key("GSI1PK").eq(f"USER#{user_id}")
-    if start_date and end_date:
-        key_cond = key_cond & Key("GSI1SK").between(start_date, f"{end_date}~")
-    elif start_date:
-        key_cond = key_cond & Key("GSI1SK").gte(start_date)
-    elif end_date:
-        key_cond = key_cond & Key("GSI1SK").lte(f"{end_date}~")
 
     # Optional filter expression for post-query filtering
     filter_expr: ConditionBase | None = None
@@ -172,21 +169,45 @@ def list_receipts() -> Response[Any]:
         cat_expr: ConditionBase = Attr("category").eq(category_filter)
         filter_expr = (filter_expr & cat_expr) if filter_expr else cat_expr
 
-    query_kwargs: dict[str, Any] = {
-        "IndexName": "GSI1",
-        "KeyConditionExpression": key_cond,
-        "ScanIndexForward": False,
-        "Limit": limit,
-    }
+    use_primary = sort == "scanDate"
+
+    if use_primary:
+        # Query primary table: PK=USER#{id}, SK begins_with RECEIPT#
+        # ULIDs encode creation time, so SK order = scan date order
+        key_cond: ConditionBase = Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with(f"{RECEIPT}#")
+        entity_filter: ConditionBase = Attr("entityType").eq(RECEIPT)
+        filter_expr = (filter_expr & entity_filter) if filter_expr else entity_filter
+
+        query_kwargs: dict[str, Any] = {
+            "KeyConditionExpression": key_cond,
+            "ScanIndexForward": False,
+            "Limit": limit,
+        }
+    else:
+        # Query GSI1 sorted by receipt date
+        key_cond = Key("GSI1PK").eq(f"USER#{user_id}")
+        if start_date and end_date:
+            key_cond = key_cond & Key("GSI1SK").between(start_date, f"{end_date}~")
+        elif start_date:
+            key_cond = key_cond & Key("GSI1SK").gte(start_date)
+        elif end_date:
+            key_cond = key_cond & Key("GSI1SK").lte(f"{end_date}~")
+
+        query_kwargs = {
+            "IndexName": "GSI1",
+            "KeyConditionExpression": key_cond,
+            "ScanIndexForward": False,
+            "Limit": limit,
+        }
+
     if filter_expr:
         query_kwargs["FilterExpression"] = filter_expr
     if cursor:
         try:
             query_kwargs["ExclusiveStartKey"] = decode_cursor(
-                cursor, user_id=user_id
+                cursor, user_id=user_id, primary=use_primary
             )
         except Exception as e:
-            # Log detailed error server-side, return generic message (M7 mitigation)
             logger.warning(
                 "Invalid pagination cursor",
                 extra={"error": str(e), "user_id": user_id},

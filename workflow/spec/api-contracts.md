@@ -116,6 +116,7 @@ List all receipts for the authenticated user.
 | `category` | string | — | Filter by category slug |
 | `startDate` | string | — | Receipts on or after this date (YYYY-MM-DD). Returns 400 if malformed. |
 | `endDate` | string | — | Receipts on or before this date (YYYY-MM-DD). Returns 400 if malformed. |
+| `sort` | string | `receiptDate` | Sort order: `receiptDate` (date printed on receipt, via GSI1) or `scanDate` (upload/scan time, via ULID order on primary table) |
 | `limit` | integer | 50 | Max results, 1–100 |
 | `cursor` | string | — | Pagination cursor from previous response |
 
@@ -148,8 +149,9 @@ List all receipts for the authenticated user.
 | `nextCursor` | Opaque pagination token. Null if no more results. |
 
 **Notes:**
-- Results sorted by ULID descending (most recent first)
-- Cursor-based pagination (not offset)
+- Default sort is by `receiptDate` descending (most recent receipt date first) via GSI1
+- `sort=scanDate` sorts by upload/scan time descending via ULID order on the primary table
+- Cursor-based pagination (not offset) — cursor format differs between sort modes
 - Receipts with status `processing` have null values for merchant, total, category
 
 ---
@@ -502,7 +504,7 @@ Delete a custom category. Predefined categories cannot be deleted.
 
 ### GET /api/receipts/{id}/pipeline-results
 
-Get extraction results from both pipeline paths. For A/B comparison and debugging. **Requires `staff` role.**
+Get extraction results from both pipeline paths. For A/B comparison and debugging. Available to all authenticated users.
 
 **Response:** `200 OK`
 
@@ -549,14 +551,13 @@ Get extraction results from both pipeline paths. For A/B comparison and debuggin
 ```
 
 **Errors:**
-- `403 FORBIDDEN` — user does not have `staff` role
 - `404 NOT_FOUND`
 
 **Notes:**
-- **Requires `staff` role** — non-staff users receive 403
+- Available to all authenticated users (staff gate removed)
 - `usedFallback` — `true` if main pipeline failed and shadow result was used for this receipt
 - `rankingWinner` — which pipeline the ranking algorithm scored higher, independent of main/shadow selection
 - `rankingScore` — composite score (0–1) per pipeline based on confidence, field completeness, line item count, and total consistency. For studying pipeline performance only.
 - `extractedData` follows the Receipt Extraction Schema (SPEC.md Section 7)
 - Either `ocr-ai` or `ai-multimodal` may be null if that pipeline path failed
-- The frontend pipeline comparison toggle uses this endpoint and is only rendered for staff users
+- The frontend receipt detail page uses this endpoint for the pipeline source toggle (Final / OCR + AI / AI Vision) and the pipeline comparison accordion

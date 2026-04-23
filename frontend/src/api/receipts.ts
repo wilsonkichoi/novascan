@@ -80,14 +80,18 @@ export interface ReceiptListResponse {
   nextCursor: string | null;
 }
 
+export type ReceiptSort = "receiptDate" | "scanDate";
+
 export async function fetchReceipts(
   cursor?: string,
+  sort?: ReceiptSort,
 ): Promise<ReceiptListResponse> {
   const token = await getValidIdToken();
   if (!token) throw new Error("Not authenticated");
 
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
+  if (sort) params.set("sort", sort);
 
   const url = `${API_URL}/api/receipts${params.size > 0 ? `?${params}` : ""}`;
   const res = await fetch(url, {

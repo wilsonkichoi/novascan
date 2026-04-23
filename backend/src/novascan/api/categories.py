@@ -57,12 +57,18 @@ def _get_user_groups() -> list[str]:
     """Extract user groups from JWT cognito:groups claim.
 
     Returns empty list if claim is missing.
+    API Gateway HTTP API JWT authorizer stringifies array claims,
+    so ["admin", "user"] arrives as "[admin, user]".
     """
     claims = router.current_event.request_context.authorizer.jwt_claim  # type: ignore[attr-defined]
     groups = claims.get("cognito:groups", [])
     if isinstance(groups, str):
-        # Sometimes the claim comes as a single string
-        return [groups]
+        stripped = groups.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            inner = stripped[1:-1]
+            sep = "," if "," in inner else " "
+            return [g.strip() for g in inner.split(sep) if g.strip()]
+        return [stripped] if stripped else []
     if isinstance(groups, list):
         return [str(g) for g in groups]
     return []
@@ -290,15 +296,6 @@ def get_pipeline_results(receipt_id: str) -> Response[Any]:
     if err := _validate_receipt_id(receipt_id):
         return err
 
-    # Check staff role
-    groups = _get_user_groups()
-    if "staff" not in groups and "admin" not in groups:
-        return error_response(
-            403,
-            "FORBIDDEN",
-            "Pipeline results require staff role",
-        )
-
     user_id = _get_user_id()
     table = get_table()
     pk = f"USER#{user_id}"
@@ -353,6 +350,13 @@ def get_pipeline_results(receipt_id: str) -> Response[Any]:
 
         # createdAt
         pipeline_data["createdAt"] = str(item.get("createdAt", ""))
+
+        # Cost tracking fields
+        pipeline_data["inputTokens"] = int(item.get("inputTokens", 0))
+        pipeline_data["outputTokens"] = int(item.get("outputTokens", 0))
+        pipeline_data["textractPages"] = int(item.get("textractPages", 0))
+        cost_usd = item.get("costUsd")
+        pipeline_data["costUsd"] = float(cost_usd) if cost_usd is not None else None
 
         results[pipeline_type] = pipeline_data
 

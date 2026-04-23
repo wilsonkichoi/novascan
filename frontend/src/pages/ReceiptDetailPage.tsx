@@ -18,11 +18,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { useReceipt, useDeleteReceipt, useUpdateItems, useUpdateReceipt } from "@/hooks/useReceipt";
-import { useAuth } from "@/hooks/useAuth";
-import { useCategories } from "@/hooks/useCategories";
+import { useCategories, usePipelineResults } from "@/hooks/useCategories";
 import { NotFoundError } from "@/api/receipts";
+import type { PipelineExtractedData, PipelineLineItem } from "@/api/categories";
 import LineItemEditor from "@/components/LineItemEditor";
 import CategoryPicker from "@/components/CategoryPicker";
 import PipelineComparison from "@/components/PipelineComparison";
@@ -68,7 +76,6 @@ function formatDate(dateStr: string): string {
 export default function ReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { data: receipt, isLoading, error } = useReceipt(id ?? "");
   const updateReceipt = useUpdateReceipt(id ?? "");
   const deleteReceipt = useDeleteReceipt();
@@ -76,6 +83,8 @@ export default function ReceiptDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saveItemsError, setSaveItemsError] = useState<string | null>(null);
+  const [pipelineSource, setPipelineSource] = useState<"final" | "ocr-ai" | "ai-multimodal">("final");
+  const { data: pipelineData } = usePipelineResults(id ?? "", pipelineSource !== "final");
 
   const handleSaveItems = useCallback(
     (
@@ -98,8 +107,6 @@ export default function ReceiptDetailPage() {
     [updateItems],
   );
 
-  // UX convenience only -- backend enforces staff-only access on GET /api/receipts/{id}/pipeline-results (403 for non-staff)
-  const isStaff = user?.roles.includes("staff") || user?.roles.includes("admin");
   const { data: categoriesData } = useCategories();
   const selectedCategoryData = categoriesData?.categories.find(
     (c) => c.slug === receipt?.category,
@@ -202,6 +209,13 @@ export default function ReceiptDetailPage() {
         </div>
       </div>
 
+      {/* Pipeline source toggle */}
+      <PipelineSourceToggle
+        value={pipelineSource}
+        onChange={setPipelineSource}
+        rankingWinner={receipt.rankingWinner}
+      />
+
       {/* Main content: side-by-side on desktop, stacked on mobile */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Image section */}
@@ -223,138 +237,149 @@ export default function ReceiptDetailPage() {
         </section>
 
         {/* Extracted data section */}
-        <section aria-label="Receipt details" className="space-y-6">
-          {/* Summary card */}
-          <div className="rounded-lg border p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Summary
-            </h2>
-            <dl className="space-y-2">
-              {receipt.merchant && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Merchant</dt>
-                  <dd className="text-sm font-medium">{receipt.merchant}</dd>
-                </div>
-              )}
-              {receipt.merchantAddress && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Address</dt>
-                  <dd className="text-right text-sm">{receipt.merchantAddress}</dd>
-                </div>
-              )}
-              {receipt.receiptDate && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Date</dt>
-                  <dd className="text-sm font-medium">
-                    {formatDate(receipt.receiptDate)}
-                  </dd>
-                </div>
-              )}
-              <div className="space-y-1">
-                <dt className="text-muted-foreground text-sm">Category</dt>
-                <dd>
-                  <CategoryPicker
-                    value={receipt.category}
-                    onSelect={(slug) => {
-                      // Clear subcategory when category changes
-                      updateReceipt.mutate({ category: slug, subcategory: "" });
-                    }}
-                  />
-                </dd>
-              </div>
-              {subcategories.length > 0 && (
+        {pipelineSource === "final" ? (
+          <section aria-label="Receipt details" className="space-y-6">
+            {/* Summary card */}
+            <div className="rounded-lg border p-4">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Summary
+              </h2>
+              <dl className="space-y-2">
+                {receipt.merchant && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Merchant</dt>
+                    <dd className="text-sm font-medium">{receipt.merchant}</dd>
+                  </div>
+                )}
+                {receipt.merchantAddress && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Address</dt>
+                    <dd className="text-right text-sm">{receipt.merchantAddress}</dd>
+                  </div>
+                )}
+                {receipt.receiptDate && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Date</dt>
+                    <dd className="text-sm font-medium">
+                      {formatDate(receipt.receiptDate)}
+                    </dd>
+                  </div>
+                )}
                 <div className="space-y-1">
-                  <dt className="text-muted-foreground text-sm">Subcategory</dt>
+                  <dt className="text-muted-foreground text-sm">Category</dt>
                   <dd>
-                    <select
-                      value={receipt.subcategory ?? ""}
-                      onChange={(e) => {
-                        updateReceipt.mutate({
-                          subcategory: e.target.value || "",
-                        });
+                    <CategoryPicker
+                      value={receipt.category}
+                      onSelect={(slug) => {
+                        updateReceipt.mutate({ category: slug, subcategory: "" });
                       }}
-                      aria-label="Select subcategory"
-                      className={cn(
-                        "flex w-full rounded-md border px-3 py-2 text-sm",
-                        "bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                      )}
-                    >
-                      <option value="">None</option>
-                      {subcategories.map((sub) => (
-                        <option key={sub.slug} value={sub.slug}>
-                          {sub.displayName}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </dd>
                 </div>
-              )}
-              {subcategories.length === 0 && receipt.subcategoryDisplay && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Subcategory</dt>
-                  <dd className="text-sm">{receipt.subcategoryDisplay}</dd>
-                </div>
-              )}
-              {receipt.paymentMethod && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Payment</dt>
-                  <dd className="text-sm">{receipt.paymentMethod}</dd>
-                </div>
-              )}
-            </dl>
-          </div>
+                {subcategories.length > 0 && (
+                  <div className="space-y-1">
+                    <dt className="text-muted-foreground text-sm">Subcategory</dt>
+                    <dd>
+                      <select
+                        value={receipt.subcategory ?? ""}
+                        onChange={(e) => {
+                          updateReceipt.mutate({
+                            subcategory: e.target.value || "",
+                          });
+                        }}
+                        aria-label="Select subcategory"
+                        className={cn(
+                          "flex w-full rounded-md border px-3 py-2 text-sm",
+                          "bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                        )}
+                      >
+                        <option value="">None</option>
+                        {subcategories.map((sub) => (
+                          <option key={sub.slug} value={sub.slug}>
+                            {sub.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </dd>
+                  </div>
+                )}
+                {subcategories.length === 0 && receipt.subcategoryDisplay && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Subcategory</dt>
+                    <dd className="text-sm">{receipt.subcategoryDisplay}</dd>
+                  </div>
+                )}
+                {receipt.paymentMethod && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Payment</dt>
+                    <dd className="text-sm">{receipt.paymentMethod}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
 
-          {/* Totals card */}
-          <div className="rounded-lg border p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Totals
-            </h2>
-            <dl className="space-y-2">
-              {receipt.subtotal != null && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Subtotal</dt>
-                  <dd className="text-sm">{formatCurrency(receipt.subtotal)}</dd>
+            {/* Totals card */}
+            <div className="rounded-lg border p-4">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Totals
+              </h2>
+              <dl className="space-y-2">
+                {receipt.subtotal != null && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Subtotal</dt>
+                    <dd className="text-sm">{formatCurrency(receipt.subtotal)}</dd>
+                  </div>
+                )}
+                {receipt.tax != null && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Tax</dt>
+                    <dd className="text-sm">{formatCurrency(receipt.tax)}</dd>
+                  </div>
+                )}
+                {receipt.tip != null && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground text-sm">Tip</dt>
+                    <dd className="text-sm">{formatCurrency(receipt.tip)}</dd>
+                  </div>
+                )}
+                <div className="border-t pt-2">
+                  <div className="flex justify-between">
+                    <dt className="text-sm font-semibold">Total</dt>
+                    <dd className="text-sm font-semibold">
+                      {receipt.total != null
+                        ? formatCurrency(receipt.total)
+                        : "--"}
+                    </dd>
+                  </div>
                 </div>
-              )}
-              {receipt.tax != null && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Tax</dt>
-                  <dd className="text-sm">{formatCurrency(receipt.tax)}</dd>
-                </div>
-              )}
-              {receipt.tip != null && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground text-sm">Tip</dt>
-                  <dd className="text-sm">{formatCurrency(receipt.tip)}</dd>
-                </div>
-              )}
-              <div className="border-t pt-2">
-                <div className="flex justify-between">
-                  <dt className="text-sm font-semibold">Total</dt>
-                  <dd className="text-sm font-semibold">
-                    {receipt.total != null
-                      ? formatCurrency(receipt.total)
-                      : "--"}
-                  </dd>
-                </div>
-              </div>
-            </dl>
-          </div>
+              </dl>
+            </div>
 
-          {/* Line items (editor) */}
-          <LineItemEditor
-            lineItems={receipt.lineItems}
-            onSave={handleSaveItems}
-            isSaving={updateItems.isPending}
-            saveError={saveItemsError}
+          </section>
+        ) : (
+          <PipelineExtractedView
+            pipelineType={pipelineSource}
+            data={pipelineData?.results[pipelineSource]?.extractedData ?? null}
           />
-
-          {/* Pipeline comparison toggle (staff only) */}
-          {isStaff && (
-            <PipelineComparison receiptId={receipt.receiptId} />
-          )}
-        </section>
+        )}
       </div>
+
+      {/* Line items — full width */}
+      {pipelineSource === "final" ? (
+        <LineItemEditor
+          lineItems={receipt.lineItems}
+          onSave={handleSaveItems}
+          isSaving={updateItems.isPending}
+          saveError={saveItemsError}
+        />
+      ) : (
+        <PipelineLineItemsView
+          items={pipelineData?.results[pipelineSource]?.extractedData?.lineItems ?? []}
+        />
+      )}
+
+      {/* Pipeline comparison — full width */}
+      <PipelineComparison receiptId={receipt.receiptId} />
 
       {/* Delete confirmation dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -391,6 +416,230 @@ export default function ReceiptDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// --- Pipeline source toggle ---
+
+const PIPELINE_LABELS: Record<string, string> = {
+  final: "Final",
+  "ocr-ai": "OCR + AI",
+  "ai-multimodal": "AI Vision",
+};
+
+function PipelineSourceToggle({
+  value,
+  onChange,
+  rankingWinner,
+}: {
+  value: "final" | "ocr-ai" | "ai-multimodal";
+  onChange: (v: "final" | "ocr-ai" | "ai-multimodal") => void;
+  rankingWinner: "ocr-ai" | "ai-multimodal" | null;
+}) {
+  const options = ["final", "ocr-ai", "ai-multimodal"] as const;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm font-medium text-muted-foreground">Source:</span>
+      <div className="inline-flex rounded-lg border p-0.5">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={cn(
+              "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              value === opt
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {PIPELINE_LABELS[opt]}
+            {rankingWinner === opt && (
+              <span className="ml-1 text-xs" title="Ranking winner">&#9733;</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Read-only pipeline extracted data view ---
+
+function PipelineExtractedView({
+  pipelineType,
+  data,
+}: {
+  pipelineType: "ocr-ai" | "ai-multimodal";
+  data: PipelineExtractedData | null;
+}) {
+  if (!data) {
+    return (
+      <section aria-label="Pipeline details" className="space-y-6">
+        <div className="rounded-lg border border-dashed p-4">
+          <p className="text-sm text-muted-foreground">
+            No extraction data available for {PIPELINE_LABELS[pipelineType]}.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="Pipeline details" className="space-y-6">
+      <div className="rounded-lg border p-4">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Summary
+          <Badge variant="outline" className="ml-2 text-xs font-normal normal-case">
+            {PIPELINE_LABELS[pipelineType]}
+          </Badge>
+        </h2>
+        <dl className="space-y-2">
+          {data.merchant?.name && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Merchant</dt>
+              <dd className="text-sm font-medium">{data.merchant.name}</dd>
+            </div>
+          )}
+          {data.merchant?.address && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Address</dt>
+              <dd className="text-right text-sm whitespace-pre-line">{data.merchant.address}</dd>
+            </div>
+          )}
+          {data.merchant?.phone && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Phone</dt>
+              <dd className="text-sm">{data.merchant.phone}</dd>
+            </div>
+          )}
+          {data.receiptDate && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Date</dt>
+              <dd className="text-sm font-medium">{formatDate(data.receiptDate)}</dd>
+            </div>
+          )}
+          {data.category && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Category</dt>
+              <dd className="text-sm">{data.category}</dd>
+            </div>
+          )}
+          {data.subcategory && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Subcategory</dt>
+              <dd className="text-sm">{data.subcategory}</dd>
+            </div>
+          )}
+          {data.paymentMethod && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Payment</dt>
+              <dd className="text-sm">{data.paymentMethod}</dd>
+            </div>
+          )}
+          {data.confidence != null && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Confidence</dt>
+              <dd className="text-sm font-medium">{(data.confidence * 100).toFixed(1)}%</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+
+      <div className="rounded-lg border p-4">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Totals
+        </h2>
+        <dl className="space-y-2">
+          {data.subtotal != null && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Subtotal</dt>
+              <dd className="text-sm">{formatCurrency(data.subtotal)}</dd>
+            </div>
+          )}
+          {data.tax != null && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Tax</dt>
+              <dd className="text-sm">{formatCurrency(data.tax)}</dd>
+            </div>
+          )}
+          {data.tip != null && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground text-sm">Tip</dt>
+              <dd className="text-sm">{formatCurrency(data.tip)}</dd>
+            </div>
+          )}
+          <div className="border-t pt-2">
+            <div className="flex justify-between">
+              <dt className="text-sm font-semibold">Total</dt>
+              <dd className="text-sm font-semibold">
+                {data.total != null ? formatCurrency(data.total) : "--"}
+              </dd>
+            </div>
+          </div>
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+// --- Read-only pipeline line items ---
+
+function PipelineLineItemsView({ items }: { items: PipelineLineItem[] }) {
+  const itemsTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+  return (
+    <div className="rounded-lg border">
+      <div className="p-4 pb-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Line Items
+          <Badge variant="outline" className="ml-2 text-xs font-normal normal-case">
+            Read-only
+          </Badge>
+        </h2>
+      </div>
+      {items.length === 0 ? (
+        <p className="px-4 pb-4 text-sm text-muted-foreground">
+          No line items extracted.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="hidden sm:table-cell">Subcategory</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.totalPrice)}</TableCell>
+                  <TableCell className="text-muted-foreground hidden sm:table-cell">
+                    {item.subcategory ?? "--"}
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="border-t-2">
+                <TableCell colSpan={3} className="text-right text-sm font-semibold">
+                  Items Total
+                </TableCell>
+                <TableCell className="text-right text-sm font-semibold">
+                  {formatCurrency(itemsTotal)}
+                </TableCell>
+                <TableCell className="hidden sm:table-cell" />
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

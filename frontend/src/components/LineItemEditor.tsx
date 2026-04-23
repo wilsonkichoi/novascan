@@ -228,6 +228,8 @@ export default function LineItemEditor({
     onSave(payload);
   }, [items, onSave]);
 
+  const itemsTotal = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+
   // Read-only view: show table of line items with Edit button
   if (!isEditing) {
     return (
@@ -281,6 +283,15 @@ export default function LineItemEditor({
                     </TableCell>
                   </TableRow>
                 ))}
+                <TableRow className="border-t-2">
+                  <TableCell colSpan={3} className="text-right text-sm font-semibold">
+                    Items Total
+                  </TableCell>
+                  <TableCell className="text-right text-sm font-semibold">
+                    {formatCurrency(itemsTotal)}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell" />
+                </TableRow>
               </TableBody>
             </Table>
           </div>

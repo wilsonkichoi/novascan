@@ -388,7 +388,7 @@ describe("ReceiptDetailPage", () => {
     await waitForReceiptLoaded();
 
     expect(screen.getByText("$2.50")).toBeInTheDocument();
-    expect(screen.getByText("$7.50")).toBeInTheDocument();
+    expect(screen.getAllByText("$7.50").length).toBeGreaterThan(0);
   });
 
   // ---- 404 / Not Found ----
@@ -497,45 +497,9 @@ describe("ReceiptDetailPage", () => {
     expect(backLink).toHaveAttribute("href", "/receipts");
   });
 
-  // ---- Staff role: pipeline comparison visibility ----
+  // ---- Pipeline comparison visibility (available to all users) ----
 
-  it("does not show pipeline comparison toggle for non-staff users", async () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      user: {
-        userId: "user-123",
-        email: "user@example.com",
-        roles: ["user"],
-      },
-      isLoading: false,
-      signIn: vi.fn(),
-      verifyOtp: vi.fn(),
-      signOut: vi.fn(),
-    });
-    mockGetReceipt.mockResolvedValue(makeReceiptDetail());
-    renderDetailPage();
-
-    await waitForReceiptLoaded();
-
-    // Pipeline comparison should not be visible for regular users
-    expect(
-      screen.queryByText(/pipeline comparison/i),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows pipeline comparison toggle for staff users", async () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      user: {
-        userId: "user-123",
-        email: "staff@example.com",
-        roles: ["staff"],
-      },
-      isLoading: false,
-      signIn: vi.fn(),
-      verifyOtp: vi.fn(),
-      signOut: vi.fn(),
-    });
+  it("shows pipeline comparison toggle for all users", async () => {
     mockGetReceipt.mockResolvedValue(makeReceiptDetail());
     renderDetailPage();
 
@@ -546,26 +510,16 @@ describe("ReceiptDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows pipeline comparison toggle for admin users", async () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      user: {
-        userId: "user-123",
-        email: "admin@example.com",
-        roles: ["admin"],
-      },
-      isLoading: false,
-      signIn: vi.fn(),
-      verifyOtp: vi.fn(),
-      signOut: vi.fn(),
-    });
+  // ---- Pipeline source toggle ----
+
+  it("shows pipeline source toggle with Final, OCR + AI, and AI Vision options", async () => {
     mockGetReceipt.mockResolvedValue(makeReceiptDetail());
     renderDetailPage();
 
     await waitForReceiptLoaded();
 
-    expect(
-      screen.getByText(/pipeline comparison/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Final")).toBeInTheDocument();
+    expect(screen.getByText(/OCR \+ AI/)).toBeInTheDocument();
+    expect(screen.getByText("AI Vision")).toBeInTheDocument();
   });
 });

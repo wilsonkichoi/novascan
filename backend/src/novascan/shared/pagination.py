@@ -13,18 +13,24 @@ from typing import Any
 # Expected keys in a valid GSI1 pagination cursor
 VALID_CURSOR_KEYS = {"GSI1PK", "GSI1SK", "PK", "SK"}
 
+# Expected keys in a valid primary-table pagination cursor
+VALID_PRIMARY_CURSOR_KEYS = {"PK", "SK"}
+
 
 def encode_cursor(last_key: dict[str, Any]) -> str:
     """Base64-encode DynamoDB LastEvaluatedKey as opaque pagination cursor."""
     return base64.urlsafe_b64encode(json.dumps(last_key).encode()).decode()
 
 
-def decode_cursor(cursor: str, *, user_id: str) -> dict[str, Any]:
+def decode_cursor(cursor: str, *, user_id: str, primary: bool = False) -> dict[str, Any]:
     """Decode and validate opaque pagination cursor.
 
     Validates that:
-    - Decoded JSON has exactly {GSI1PK, GSI1SK, PK, SK} keys (H1 mitigation)
-    - GSI1PK and PK match USER#{authenticated_userId} (ownership check)
+    - Decoded JSON has exactly the expected key set (H1 mitigation)
+    - PK (and GSI1PK when applicable) match USER#{authenticated_userId}
+
+    Args:
+        primary: If True, expect primary-table cursor keys {PK, SK} only.
 
     Raises:
         ValueError: If cursor is invalid or targets another user.
@@ -37,11 +43,12 @@ def decode_cursor(cursor: str, *, user_id: str) -> dict[str, Any]:
     if not isinstance(decoded, dict):
         raise ValueError("Cursor must decode to a JSON object")
 
-    if set(decoded.keys()) != VALID_CURSOR_KEYS:
+    expected_keys = VALID_PRIMARY_CURSOR_KEYS if primary else VALID_CURSOR_KEYS
+    if set(decoded.keys()) != expected_keys:
         raise ValueError(f"Cursor has invalid keys: {set(decoded.keys())}")
 
     expected_user = f"USER#{user_id}"
-    if decoded.get("GSI1PK") != expected_user:
+    if not primary and decoded.get("GSI1PK") != expected_user:
         raise ValueError("Cursor GSI1PK does not match authenticated user")
     if decoded.get("PK") != expected_user:
         raise ValueError("Cursor PK does not match authenticated user")

@@ -82,6 +82,10 @@ function makePipelineResults(
         processingTimeMs: 4523,
         modelId: "amazon.nova-lite-v1:0",
         createdAt: "2026-03-25T14:30:45Z",
+        inputTokens: 1500,
+        outputTokens: 800,
+        textractPages: 1,
+        costUsd: 0.0103,
       },
       "ai-multimodal": {
         extractedData: {
@@ -98,6 +102,10 @@ function makePipelineResults(
         processingTimeMs: 2100,
         modelId: "amazon.nova-lite-v1:0",
         createdAt: "2026-03-25T14:30:43Z",
+        inputTokens: 2000,
+        outputTokens: 750,
+        textractPages: 0,
+        costUsd: 0.0003,
       },
     },
     ...overrides,
@@ -178,7 +186,7 @@ describe("PipelineComparison", () => {
 
   // ---- Displaying both pipeline results ----
 
-  it("displays OCR+AI and AI Multimodal pipeline labels", async () => {
+  it("displays Textract + AI Categorization and AI Vision pipeline labels", async () => {
     const user = userEvent.setup();
     mockFetchPipelineResults.mockResolvedValue(makePipelineResults());
     renderPipeline();
@@ -187,10 +195,9 @@ describe("PipelineComparison", () => {
     await user.click(toggle);
 
     await waitFor(() => {
-      // The component labels them as "OCR + AI" and "AI Multimodal"
       const allText = document.body.textContent;
-      expect(allText).toContain("OCR");
-      expect(allText).toContain("Multimodal");
+      expect(allText).toContain("Textract + AI Categorization");
+      expect(allText).toContain("AI Vision");
     });
   });
 
@@ -271,7 +278,7 @@ describe("PipelineComparison", () => {
       // Should still render without crashing
       // The ai-multimodal results should still show
       const bodyText = document.body.textContent;
-      expect(bodyText).toContain("Multimodal");
+      expect(bodyText).toContain("AI Vision");
     });
   });
 
@@ -289,7 +296,7 @@ describe("PipelineComparison", () => {
       // Should still render without crashing
       // The ocr-ai results should still show
       const bodyText = document.body.textContent;
-      expect(bodyText).toContain("OCR");
+      expect(bodyText).toContain("Textract + AI Categorization");
     });
   });
 
@@ -341,7 +348,7 @@ describe("PipelineComparison", () => {
     await user.click(toggle);
 
     await waitFor(() => {
-      expect(screen.getByText(/fallback/i)).toBeInTheDocument();
+      expect(screen.getByText("Fallback used")).toBeInTheDocument();
     });
   });
 

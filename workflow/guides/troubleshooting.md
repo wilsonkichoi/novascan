@@ -35,7 +35,8 @@ Practical guide for diagnosing and fixing failures across the NovaScan stack. Ea
    - [6.2 Drift Detection](#62-drift-detection)
    - [6.3 Lambda Import Failure (Cross-Platform Bundling)](#63-lambda-import-failure-cross-platform-bundling)
 7. [Replaying a Failed Pipeline Execution](#7-replaying-a-failed-pipeline-execution)
-8. [DynamoDB Inspection Examples](#8-dynamodb-inspection-examples)
+8. [Receipt List Sort Modes](#8-receipt-list-sort-modes)
+9. [DynamoDB Inspection Examples](#9-dynamodb-inspection-examples)
 
 ---
 
@@ -429,13 +430,15 @@ Check the `exp` claim (Unix timestamp). Cognito ID tokens expire after 1 hour by
 
 **Symptoms:**
 - API returns HTTP 403
-- The user is authenticated but trying to access a resource they do not own, or an endpoint restricted to a higher role (`staff` or `admin`)
+- The user is authenticated but trying to access a resource they do not own, or an endpoint restricted to a higher role
 
 **Diagnosis:**
 
 All DynamoDB queries are scoped to `PK = USER#{authenticated userId}`. A 403 typically means:
 1. The user is trying to access an admin-only endpoint without the required Cognito group.
 2. The JWT `cognito:groups` claim does not include the required group.
+
+Note: The `GET /api/receipts/{id}/pipeline-results` endpoint no longer requires staff role — it is available to all authenticated users.
 
 ```bash
 # Check user's Cognito groups
@@ -941,7 +944,26 @@ Note: When providing `userId` and `receiptId` in the input, the `LoadCustomCateg
 
 ---
 
-## 8. DynamoDB Inspection Examples
+## 8. Receipt List Sort Modes
+
+### Sort by Receipt Date vs Scan Date
+
+The `GET /api/receipts` endpoint supports two sort modes via the `sort` query parameter:
+
+| Sort Mode | Value | Index | Sort Key | Description |
+|-----------|-------|-------|----------|-------------|
+| Receipt Date | `receiptDate` (default) | GSI1 | `GSI1SK = {receiptDate}#{receiptId}` | Date printed on the receipt (extracted by OCR) |
+| Scan Date | `scanDate` | Primary table | `SK = RECEIPT#{ulid}` | Upload/scan time (encoded in ULID) |
+
+**Pagination cursor incompatibility:** Cursors from one sort mode are invalid for the other. GSI1 cursors contain `{GSI1PK, GSI1SK, PK, SK}` while primary-table cursors contain only `{PK, SK}`. If a user switches sort mode mid-pagination, the frontend resets the query (React Query key includes the sort value), so stale cursors are not reused.
+
+**Troubleshooting "Invalid pagination cursor" (400):**
+- Check if the cursor was generated with a different sort mode than the current request
+- Primary-table queries filter by `entityType=RECEIPT` to exclude ITEM and PIPELINE records that share the same SK prefix space
+
+---
+
+## 9. DynamoDB Inspection Examples
 
 Table name: `novascan-{stage}`
 

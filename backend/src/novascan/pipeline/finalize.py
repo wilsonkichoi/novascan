@@ -40,6 +40,11 @@ DEFAULT_PIPELINE = os.environ.get("DEFAULT_PIPELINE", "ocr-ai")
 PIPELINE_OCR_AI = "ocr-ai"
 PIPELINE_AI_MULTIMODAL = "ai-multimodal"
 
+# Pricing constants (USD per unit) — Nova Lite as of 2026-04
+NOVA_LITE_INPUT_COST_PER_TOKEN = Decimal("0.00000006")   # $0.06 / 1M tokens
+NOVA_LITE_OUTPUT_COST_PER_TOKEN = Decimal("0.00000024")  # $0.24 / 1M tokens
+TEXTRACT_EXPENSE_COST_PER_PAGE = Decimal("0.01")         # $0.01 / page
+
 
 @logger.inject_lambda_context
 @tracer.capture_lambda_handler
@@ -288,6 +293,22 @@ def _store_pipeline_results(
     _write_pipeline_record(table, user_id, receipt_id, shadow_raw, shadow_result, shadow_type, now)
 
 
+def _compute_cost(
+    pipeline_type: str,
+    input_tokens: int,
+    output_tokens: int,
+    textract_pages: int,
+) -> Decimal:
+    """Compute the USD cost for a single pipeline execution."""
+    nova_cost = (
+        Decimal(str(input_tokens)) * NOVA_LITE_INPUT_COST_PER_TOKEN
+        + Decimal(str(output_tokens)) * NOVA_LITE_OUTPUT_COST_PER_TOKEN
+    )
+    if pipeline_type == PIPELINE_OCR_AI:
+        return nova_cost + Decimal(str(textract_pages)) * TEXTRACT_EXPENSE_COST_PER_PAGE
+    return nova_cost
+
+
 def _write_pipeline_record(
     table: Any,
     user_id: str,
@@ -300,6 +321,10 @@ def _write_pipeline_record(
     """Write a single PIPELINE# record to DynamoDB."""
     ranking_score = rank_results(parsed) if parsed else None
 
+    input_tokens = raw.get("inputTokens", 0)
+    output_tokens = raw.get("outputTokens", 0)
+    textract_pages = raw.get("textractPages", 0)
+
     item: dict[str, Any] = {
         "PK": f"USER#{user_id}",
         "SK": f"{RECEIPT}#{receipt_id}#{PIPELINE}#{pipeline_type}",
@@ -307,6 +332,10 @@ def _write_pipeline_record(
         "createdAt": now,
         "modelId": raw.get("modelId", "unknown"),
         "processingTimeMs": raw.get("processingTimeMs", 0),
+        "inputTokens": input_tokens,
+        "outputTokens": output_tokens,
+        "textractPages": textract_pages,
+        "costUsd": _compute_cost(pipeline_type, input_tokens, output_tokens, textract_pages),
     }
 
     if parsed is not None:

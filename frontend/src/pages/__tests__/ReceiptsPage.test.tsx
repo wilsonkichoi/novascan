@@ -415,7 +415,7 @@ describe("ReceiptsPage", () => {
     );
 
     await waitFor(() => {
-      expect(mockFetchReceipts).toHaveBeenCalledWith("cursor-abc-123");
+      expect(mockFetchReceipts).toHaveBeenCalledWith("cursor-abc-123", "receiptDate");
     });
   });
 
@@ -494,7 +494,7 @@ describe("ReceiptsPage", () => {
     renderReceiptsPage();
 
     await waitFor(() => {
-      expect(mockFetchReceipts).toHaveBeenCalledWith(undefined);
+      expect(mockFetchReceipts).toHaveBeenCalledWith(undefined, "receiptDate");
     });
   });
 

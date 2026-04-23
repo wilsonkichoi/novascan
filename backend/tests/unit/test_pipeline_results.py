@@ -395,11 +395,11 @@ class TestPipelineResultsStaffAccess:
 # ---------------------------------------------------------------------------
 
 
-class TestPipelineResultsNonStaffAccess:
-    """GET /api/receipts/{id}/pipeline-results returns 403 for non-staff."""
+class TestPipelineResultsAccess:
+    """GET /api/receipts/{id}/pipeline-results is accessible to all authenticated users."""
 
-    def test_403_for_non_staff_user(self, _aws_setup):
-        """Non-staff user gets 403 FORBIDDEN."""
+    def test_200_for_regular_user(self, _aws_setup):
+        """Non-staff user can access pipeline results."""
         table, _ = _aws_setup
         receipt_id = "01JQTEST000000000000000001"
         _seed_receipt(table, receipt_id=receipt_id)
@@ -409,30 +409,28 @@ class TestPipelineResultsNonStaffAccess:
             method="GET",
             path=f"/api/receipts/{receipt_id}/pipeline-results",
             path_params={"receipt_id": receipt_id},
-            # No groups = no staff role
         )
         response = _invoke_handler(event)
-        assert response["statusCode"] == 403, (
-            f"Expected 403 for non-staff user, got {response['statusCode']}: {response.get('body')}"
+        assert response["statusCode"] == 200, (
+            f"Expected 200 for regular user, got {response['statusCode']}: {response.get('body')}"
         )
-        body = json.loads(response["body"])
-        assert body["error"]["code"] == "FORBIDDEN"
 
-    def test_403_for_user_with_other_groups(self, _aws_setup):
-        """User with non-staff groups gets 403."""
+    def test_200_for_user_with_non_staff_groups(self, _aws_setup):
+        """User with non-staff groups can access pipeline results."""
         table, _ = _aws_setup
         receipt_id = "01JQTEST000000000000000001"
         _seed_receipt(table, receipt_id=receipt_id)
+        _seed_pipeline_result(table, receipt_id=receipt_id, pipeline_type="ocr-ai")
 
         event = _build_apigw_event(
             method="GET",
             path=f"/api/receipts/{receipt_id}/pipeline-results",
             path_params={"receipt_id": receipt_id},
-            groups=["users", "premium"],  # Not "staff"
+            groups=["users", "premium"],
         )
         response = _invoke_handler(event)
-        assert response["statusCode"] == 403, (
-            f"Expected 403 for non-staff groups, got {response['statusCode']}"
+        assert response["statusCode"] == 200, (
+            f"Expected 200 for non-staff groups, got {response['statusCode']}"
         )
 
 

@@ -318,7 +318,7 @@ class TestPipelineErrorSanitization:
         # Mock internal function to raise, testing the actual H4 error path
         with patch.object(
             ns_module,
-            "_read_image_from_s3",
+            "_call_bedrock",
             side_effect=RuntimeError("Super secret internal error details"),
         ), patch.dict("os.environ", {"RECEIPTS_BUCKET": "novascan-receipts-test"}):
             result = ns_module.handler(

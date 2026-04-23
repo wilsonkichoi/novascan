@@ -1,9 +1,9 @@
-"""Nova Structure Lambda — sends Textract output to Bedrock Nova for structured extraction.
+"""Nova Structure Lambda — categorizes and normalizes Textract OCR output.
 
-Receives Textract ExpenseDocuments output, the S3 image reference, predefined
-taxonomy, and optional custom categories from Step Functions. Constructs a
-Bedrock prompt, calls invoke_model with Nova, and parses the response into
-an ExtractionResult JSON.
+Receives Textract ExpenseDocuments output and optional custom categories from
+Step Functions. Constructs a text-only Bedrock prompt with Textract's structured
+OCR data, calls invoke_model with Nova for categorization and normalization,
+and parses the response into an ExtractionResult JSON.
 
 Errors are caught and returned as error payloads (not raised) so Step Functions
 Catch blocks can route them.
@@ -11,7 +11,6 @@ Catch blocks can route them.
 
 from __future__ import annotations
 
-import base64
 import json
 import os
 import time
@@ -24,7 +23,6 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 from novascan.models.extraction import ExtractionResult
 from novascan.pipeline.prompts import build_extraction_prompt
 from novascan.pipeline.validation import (
-    check_image_size,
     validate_event_fields,
     validate_model_id,
     validate_s3_key,
@@ -34,7 +32,6 @@ logger = Logger()
 tracer = Tracer()
 
 bedrock_client = boto3.client("bedrock-runtime")
-s3_client = boto3.client("s3")
 
 MODEL_ID = os.environ.get("NOVA_MODEL_ID", "amazon.nova-lite-v1:0")
 
@@ -95,6 +92,7 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             return {"error": "invalid_event", "errorType": "ValidationError"}
 
         expense_documents = textract_result.get("expenseDocuments", [])
+        textract_pages = textract_result.get("textractPages", 0)
 
         logger.info(
             "Starting Nova structuring",
@@ -112,11 +110,8 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             textract_output=textract_text,
         )
 
-        image_bytes = _read_image_from_s3(bucket, key)
-        media_type = _infer_media_type(key)
-
         start_time = time.time()
-        raw_response = _call_bedrock(prompt, image_bytes, media_type)
+        raw_response, input_tokens, output_tokens = _call_bedrock(prompt)
         processing_time_ms = int((time.time() - start_time) * 1000)
 
         extraction_result = _parse_response(raw_response)
@@ -128,6 +123,8 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
                 "confidence": extraction_result.confidence,
                 "category": extraction_result.category,
                 "line_item_count": len(extraction_result.lineItems),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
             },
         )
 
@@ -135,6 +132,9 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             "extractionResult": json.loads(extraction_result.model_dump_json()),
             "modelId": MODEL_ID,
             "processingTimeMs": processing_time_ms,
+            "inputTokens": input_tokens,
+            "outputTokens": output_tokens,
+            "textractPages": textract_pages,
         }
 
     except Exception as e:
@@ -146,7 +146,7 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
         }
 
 
-@tracer.capture_method
+@tracer.capture_method(capture_response=False)
 def _format_textract_output(expense_documents: list[dict[str, Any]]) -> str:
     """Convert Textract ExpenseDocuments into a readable text summary.
 
@@ -186,47 +186,14 @@ def _format_textract_output(expense_documents: list[dict[str, Any]]) -> str:
     return "\n".join(lines) if lines else "No expense data found in Textract output."
 
 
-@tracer.capture_method
-def _read_image_from_s3(bucket: str, key: str) -> bytes:
-    """Read the receipt image from S3.
-
-    L5 — Checks ContentLength before reading to guard against oversized images.
-    """
-    response = s3_client.get_object(Bucket=bucket, Key=key)
-    content_length = response.get("ContentLength", 0)
-    check_image_size(content_length)
-    return response["Body"].read()
-
-
-def _infer_media_type(key: str) -> str:
-    """Infer MIME type from the S3 key extension."""
-    lower_key = key.lower()
-    if lower_key.endswith(".png"):
-        return "image/png"
-    if lower_key.endswith(".jpg") or lower_key.endswith(".jpeg"):
-        return "image/jpeg"
-    # Default to JPEG for receipt images
-    return "image/jpeg"
-
-
-@tracer.capture_method
-def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
-    """Call Bedrock Nova with the extraction prompt and receipt image."""
-    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-
+@tracer.capture_method(capture_response=False)
+def _call_bedrock(prompt: str) -> tuple[str, int, int]:
+    """Call Bedrock Nova with Textract text only (no image)."""
     body = json.dumps({
         "messages": [
             {
                 "role": "user",
                 "content": [
-                    {
-                        "image": {
-                            "format": media_type.split("/")[1],
-                            "source": {
-                                "bytes": image_b64,
-                            },
-                        },
-                    },
                     {
                         "text": prompt,
                     },
@@ -234,7 +201,7 @@ def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
             },
         ],
         "inferenceConfig": {
-            "maxNewTokens": 4096,
+            "maxTokens": 4096,
             "temperature": 0.1,
         },
     })
@@ -248,7 +215,8 @@ def _call_bedrock(prompt: str, image_bytes: bytes, media_type: str) -> str:
 
     response_body = json.loads(response["body"].read())
     output_text: str = response_body["output"]["message"]["content"][0]["text"]
-    return output_text
+    usage = response_body.get("usage", {})
+    return output_text, usage.get("inputTokens", 0), usage.get("outputTokens", 0)
 
 
 @tracer.capture_method

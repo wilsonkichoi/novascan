@@ -39,14 +39,27 @@ export interface CreateCategoryResponse {
 
 // --- Pipeline results types ---
 
+export interface PipelineLineItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  subcategory?: string | null;
+}
+
 export interface PipelineExtractedData {
-  merchant?: { name: string; address?: string } | null;
+  merchant?: { name: string; address?: string; phone?: string } | null;
   receiptDate?: string | null;
-  lineItems?: unknown[];
+  lineItems?: PipelineLineItem[];
+  subtotal?: number | null;
+  tax?: number | null;
+  tip?: number | null;
   total?: number | null;
   category?: string | null;
   subcategory?: string | null;
+  paymentMethod?: string | null;
   confidence?: number | null;
+  currency?: string | null;
 }
 
 export interface PipelineResult {
@@ -56,6 +69,10 @@ export interface PipelineResult {
   processingTimeMs: number;
   modelId: string;
   createdAt: string;
+  inputTokens: number;
+  outputTokens: number;
+  textractPages: number;
+  costUsd: number | null;
 }
 
 export interface PipelineResultsResponse {
