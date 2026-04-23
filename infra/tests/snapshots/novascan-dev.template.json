@@ -1820,7 +1820,11 @@
                     {
                       "Ref": "AWS::Region"
                     },
-                    "::foundation-model/amazon.nova-2-lite-v1:0"
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":inference-profile/us.amazon.nova-2-lite-v1:0"
                   ]
                 ]
               }
