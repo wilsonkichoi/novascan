@@ -1,10 +1,9 @@
-"""Tests for Finalize Lambda handler — main/shadow selection, ranking, and persistence.
+"""Tests for Finalize Lambda handler — ranking-based selection and persistence.
 
 Validates the spec contract from SPEC.md Section 3 (Processing Flow):
-- Main success -> uses main, status confirmed
-- Main fail + shadow success -> uses shadow with usedFallback=true
-- Both fail -> status failed
-- Ranking scores computed for both results
+- Highest-scoring pipeline result is selected
+- All three pipelines fail -> status failed
+- Ranking scores computed for all results
 - DynamoDB records: receipt update, pipeline results, line items
 - S3 metadata updated
 """
@@ -96,17 +95,28 @@ def _make_error_pipeline_result(
 
 
 def _make_event(
-    main_result: dict[str, Any] | None = None,
-    shadow_result: dict[str, Any] | None = None,
+    ocr_ai_result: dict[str, Any] | None = None,
+    ai_multimodal_result: dict[str, Any] | None = None,
+    ai_vision_v2_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build the finalize handler event from Step Functions."""
-    if main_result is None:
-        main_result = _make_success_pipeline_result()
-    if shadow_result is None:
-        shadow_result = _make_success_pipeline_result(
-            extraction=_make_extraction_result(merchant_name="Shadow Store", confidence=0.85),
-            model_id="amazon.nova-lite-v1:0",
+    """Build the finalize handler event from Step Functions.
+
+    pipelineResults order matches PIPELINE_TYPES: [ocr-ai, ai-multimodal, ai-vision-v2].
+    """
+    if ocr_ai_result is None:
+        ocr_ai_result = _make_success_pipeline_result(
+            extraction=_make_extraction_result(confidence=0.92),
+        )
+    if ai_multimodal_result is None:
+        ai_multimodal_result = _make_success_pipeline_result(
+            extraction=_make_extraction_result(merchant_name="V1 Vision Store", confidence=0.85),
             processing_time_ms=1800,
+        )
+    if ai_vision_v2_result is None:
+        ai_vision_v2_result = _make_success_pipeline_result(
+            extraction=_make_extraction_result(merchant_name="V2 Vision Store", confidence=0.88),
+            model_id="us.amazon.nova-2-lite-v1:0",
+            processing_time_ms=1500,
         )
 
     return {
@@ -115,7 +125,7 @@ def _make_event(
         "userId": USER_ID,
         "receiptId": RECEIPT_ID,
         "customCategories": [],
-        "pipelineResults": [main_result, shadow_result],
+        "pipelineResults": [ocr_ai_result, ai_multimodal_result, ai_vision_v2_result],
     }
 
 
@@ -131,7 +141,6 @@ def _pipeline_env(monkeypatch):
     monkeypatch.setenv("POWERTOOLS_SERVICE_NAME", "novascan-test")
     monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
     monkeypatch.setenv("POWERTOOLS_METRICS_NAMESPACE", "NovaScanTest")
-    monkeypatch.setenv("DEFAULT_PIPELINE", "ocr-ai")
 
 
 @pytest.fixture
@@ -230,15 +239,15 @@ def _query_line_items(table, user_id: str = USER_ID, receipt_id: str = RECEIPT_I
 
 
 # ---------------------------------------------------------------------------
-# Main success -> uses main
+# Ranking-based selection -> highest score wins
 # ---------------------------------------------------------------------------
 
 
-class TestFinalizeMainSuccess:
-    """When main pipeline succeeds, use its result."""
+class TestFinalizeRankingSelection:
+    """The pipeline result with the highest ranking score is selected."""
 
     def test_status_confirmed(self, aws_resources):
-        """Receipt status should be 'confirmed' when main succeeds."""
+        """Receipt status should be 'confirmed' when at least one pipeline succeeds."""
         table, _ = aws_resources
         result = _invoke_handler(_make_event())
 
@@ -248,15 +257,16 @@ class TestFinalizeMainSuccess:
         assert receipt["status"] == "confirmed"
 
     def test_used_fallback_false(self, aws_resources):
-        """usedFallback should be False when main succeeds."""
+        """usedFallback should always be False under ranking-based selection."""
         table, _ = aws_resources
         result = _invoke_handler(_make_event())
 
         assert result["usedFallback"] is False
 
-    def test_extracted_data_populated(self, aws_resources):
-        """Receipt record should have extracted data from the main result."""
+    def test_highest_scoring_result_selected(self, aws_resources):
+        """Receipt data should come from the highest-scoring pipeline."""
         table, _ = aws_resources
+        # ocr-ai has confidence=0.92 (highest in default event)
         _invoke_handler(_make_event())
 
         receipt = _get_receipt(table)
@@ -278,81 +288,88 @@ class TestFinalizeMainSuccess:
         result = _invoke_handler(_make_event())
 
         assert result["rankingWinner"] is not None
-        assert result["rankingWinner"] in ("ocr-ai", "ai-multimodal")
+        assert result["rankingWinner"] in ("ocr-ai", "ai-multimodal", "ai-vision-v2")
 
         receipt = _get_receipt(table)
-        assert receipt.get("rankingWinner") in ("ocr-ai", "ai-multimodal")
+        assert receipt.get("rankingWinner") in ("ocr-ai", "ai-multimodal", "ai-vision-v2")
 
 
 # ---------------------------------------------------------------------------
-# Main fail + shadow success -> uses shadow with fallback flag
+# Partial pipeline failures -> surviving pipelines compete on ranking
 # ---------------------------------------------------------------------------
 
 
-class TestFinalizeFallback:
-    """When main fails but shadow succeeds, use shadow with usedFallback=true."""
+class TestFinalizePartialFailure:
+    """When some pipelines fail, surviving results compete on ranking."""
 
-    def test_status_confirmed_on_fallback(self, aws_resources):
-        """Receipt should still be 'confirmed' when shadow is used."""
+    def test_status_confirmed_with_one_survivor(self, aws_resources):
+        """Receipt should be 'confirmed' if at least one pipeline succeeds."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_success_pipeline_result(
-                extraction=_make_extraction_result(merchant_name="Shadow Store")
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(merchant_name="V2 Store"),
+                model_id="us.amazon.nova-2-lite-v1:0",
             ),
         )
         result = _invoke_handler(event)
 
         assert result["status"] == "confirmed"
-
         receipt = _get_receipt(table)
         assert receipt["status"] == "confirmed"
 
-    def test_used_fallback_true(self, aws_resources):
-        """usedFallback should be True when shadow is used."""
+    def test_sole_survivor_selected(self, aws_resources):
+        """When only one pipeline succeeds, its data is used."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_success_pipeline_result(
-                extraction=_make_extraction_result(merchant_name="Shadow Store")
-            ),
-        )
-        result = _invoke_handler(event)
-
-        assert result["usedFallback"] is True
-
-        receipt = _get_receipt(table)
-        assert receipt.get("usedFallback") is True
-
-    def test_shadow_data_used(self, aws_resources):
-        """Shadow pipeline's extracted data should populate the receipt."""
-        table, _ = aws_resources
-        event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_success_pipeline_result(
-                extraction=_make_extraction_result(merchant_name="Shadow Store")
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(merchant_name="V2 Store"),
+                model_id="us.amazon.nova-2-lite-v1:0",
             ),
         )
         _invoke_handler(event)
 
         receipt = _get_receipt(table)
-        assert receipt.get("merchant") == "Shadow Store"
+        assert receipt.get("merchant") == "V2 Store"
 
-
-# ---------------------------------------------------------------------------
-# Both fail -> status failed
-# ---------------------------------------------------------------------------
-
-
-class TestFinalizeBothFailed:
-    """When both pipelines fail, receipt status is 'failed'."""
-
-    def test_status_failed(self, aws_resources):
-        """Receipt status should be 'failed' when both pipelines error."""
+    def test_higher_scoring_survivor_wins(self, aws_resources):
+        """When two survive, the higher-scoring one is selected."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(error="Textract timed out"),
-            shadow_result=_make_error_pipeline_result(error="Bedrock crashed"),
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(merchant_name="V1 Store", confidence=0.60),
+            ),
+            ai_vision_v2_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(merchant_name="V2 Store", confidence=0.95),
+                model_id="us.amazon.nova-2-lite-v1:0",
+            ),
+        )
+        result = _invoke_handler(event)
+
+        assert result["selectedPipeline"] == "ai-vision-v2"
+        receipt = _get_receipt(table)
+        assert receipt.get("merchant") == "V2 Store"
+
+
+# ---------------------------------------------------------------------------
+# All three fail -> status failed
+# ---------------------------------------------------------------------------
+
+
+class TestFinalizeAllFailed:
+    """When all three pipelines fail, receipt status is 'failed'."""
+
+    def test_status_failed(self, aws_resources):
+        """Receipt status should be 'failed' when all pipelines error."""
+        table, _ = aws_resources
+        event = _make_event(
+            ocr_ai_result=_make_error_pipeline_result(error="Textract timed out"),
+            ai_multimodal_result=_make_error_pipeline_result(error="Bedrock crashed"),
+            ai_vision_v2_result=_make_error_pipeline_result(error="Nova 2 Lite error"),
         )
         result = _invoke_handler(event)
 
@@ -361,12 +378,13 @@ class TestFinalizeBothFailed:
         receipt = _get_receipt(table)
         assert receipt["status"] == "failed"
 
-    def test_used_fallback_false_when_both_fail(self, aws_resources):
-        """usedFallback should be False — no fallback was used, both failed."""
+    def test_used_fallback_false_when_all_fail(self, aws_resources):
+        """usedFallback should be False — all failed."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_error_pipeline_result(),
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_error_pipeline_result(),
         )
         result = _invoke_handler(event)
 
@@ -376,8 +394,9 @@ class TestFinalizeBothFailed:
         """Failed receipts should include a failureReason attribute per SPEC."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(error="Textract error"),
-            shadow_result=_make_error_pipeline_result(error="Bedrock error"),
+            ocr_ai_result=_make_error_pipeline_result(error="Textract error"),
+            ai_multimodal_result=_make_error_pipeline_result(error="Bedrock error"),
+            ai_vision_v2_result=_make_error_pipeline_result(error="Nova 2 error"),
         )
         _invoke_handler(event)
 
@@ -391,16 +410,17 @@ class TestFinalizeBothFailed:
         assert "CloudWatch" in receipt["failureReason"]
 
     def test_no_line_items_created(self, aws_resources):
-        """When both fail, no line items should be created."""
+        """When all fail, no line items should be created."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_error_pipeline_result(),
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_error_pipeline_result(),
         )
         _invoke_handler(event)
 
         items = _query_line_items(table)
-        assert len(items) == 0, "No line items should exist when both pipelines fail"
+        assert len(items) == 0, "No line items should exist when all pipelines fail"
 
 
 # ---------------------------------------------------------------------------
@@ -409,16 +429,16 @@ class TestFinalizeBothFailed:
 
 
 class TestFinalizePipelineRecords:
-    """Both pipeline results stored as PIPELINE# records in DynamoDB."""
+    """All three pipeline results stored as PIPELINE# records in DynamoDB."""
 
-    def test_two_pipeline_records_created(self, aws_resources):
-        """Both ocr-ai and ai-multimodal pipeline records should be created."""
+    def test_three_pipeline_records_created(self, aws_resources):
+        """All three pipeline records should be created."""
         table, _ = aws_resources
         _invoke_handler(_make_event())
 
         records = _query_pipeline_records(table)
-        assert len(records) == 2, (
-            f"Expected 2 pipeline records (ocr-ai + ai-multimodal), got {len(records)}"
+        assert len(records) == 3, (
+            f"Expected 3 pipeline records, got {len(records)}"
         )
 
     def test_pipeline_record_sk_format(self, aws_resources):
@@ -431,9 +451,11 @@ class TestFinalizePipelineRecords:
 
         expected_ocr = f"RECEIPT#{RECEIPT_ID}#PIPELINE#ocr-ai"
         expected_multi = f"RECEIPT#{RECEIPT_ID}#PIPELINE#ai-multimodal"
+        expected_v2 = f"RECEIPT#{RECEIPT_ID}#PIPELINE#ai-vision-v2"
 
         assert expected_ocr in sks, f"Missing ocr-ai pipeline record. Found: {sks}"
         assert expected_multi in sks, f"Missing ai-multimodal pipeline record. Found: {sks}"
+        assert expected_v2 in sks, f"Missing ai-vision-v2 pipeline record. Found: {sks}"
 
     def test_pipeline_record_has_entity_type(self, aws_resources):
         """Pipeline records should have entityType=PIPELINE."""
@@ -460,16 +482,17 @@ class TestFinalizePipelineRecords:
             assert 0.0 <= score <= 1.0, f"rankingScore {score} out of range"
 
     def test_pipeline_records_stored_even_on_failure(self, aws_resources):
-        """Pipeline records should be stored even when the pipeline errored."""
+        """Pipeline records should be stored even when pipelines errored."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_error_pipeline_result(),
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_error_pipeline_result(),
         )
         _invoke_handler(event)
 
         records = _query_pipeline_records(table)
-        assert len(records) == 2, "Pipeline records should be stored even on failure"
+        assert len(records) == 3, "Pipeline records should be stored even on failure"
 
     def test_pipeline_record_has_model_id(self, aws_resources):
         """Pipeline records should store the modelId used."""
@@ -549,35 +572,38 @@ class TestFinalizeLineItems:
             assert "totalPrice" in item
 
     def test_no_line_items_when_extraction_empty(self, aws_resources):
-        """If extraction has no line items, no ITEM# records should be created."""
+        """If winning extraction has no line items, no ITEM# records should be created."""
         table, _ = aws_resources
+        empty_extraction = _make_extraction_result(line_items=[], confidence=0.95)
         event = _make_event(
-            main_result=_make_success_pipeline_result(
-                extraction=_make_extraction_result(line_items=[])
-            ),
+            ocr_ai_result=_make_success_pipeline_result(extraction=empty_extraction),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_error_pipeline_result(),
         )
         _invoke_handler(event)
 
         items = _query_line_items(table)
         assert len(items) == 0
 
-    def test_fallback_line_items_created(self, aws_resources):
-        """Line items from shadow result should be created on fallback."""
+    def test_surviving_pipeline_line_items_created(self, aws_resources):
+        """Line items from the highest-scoring surviving pipeline should be created."""
         table, _ = aws_resources
-        shadow_items = [
-            {"name": "Shadow Item 1", "quantity": 1, "unitPrice": 5.00, "totalPrice": 5.00},
+        v2_items = [
+            {"name": "V2 Item 1", "quantity": 1, "unitPrice": 5.00, "totalPrice": 5.00},
         ]
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_success_pipeline_result(
-                extraction=_make_extraction_result(line_items=shadow_items)
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(line_items=v2_items),
+                model_id="us.amazon.nova-2-lite-v1:0",
             ),
         )
         _invoke_handler(event)
 
         items = _query_line_items(table)
         assert len(items) == 1
-        assert items[0]["name"] == "Shadow Item 1"
+        assert items[0]["name"] == "V2 Item 1"
 
 
 # ---------------------------------------------------------------------------
@@ -603,11 +629,12 @@ class TestFinalizeS3Metadata:
         assert "processed-at" in metadata
 
     def test_s3_metadata_updated_on_failure(self, aws_resources):
-        """S3 metadata should also be updated when both pipelines fail."""
+        """S3 metadata should also be updated when all pipelines fail."""
         _, s3 = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_error_pipeline_result(),
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_error_pipeline_result(),
         )
         _invoke_handler(event)
 
@@ -622,25 +649,26 @@ class TestFinalizeS3Metadata:
 
 
 class TestFinalizeRankingWinner:
-    """rankingWinner is set based on comparative ranking scores."""
+    """rankingWinner is the pipeline with the highest ranking score."""
 
-    def test_ranking_winner_is_higher_scoring_pipeline(self, aws_resources):
-        """rankingWinner should be the pipeline with the higher ranking score."""
+    def test_ranking_winner_is_highest_scoring_pipeline(self, aws_resources):
+        """rankingWinner should be the pipeline with the highest ranking score."""
         table, _ = aws_resources
-        # Main pipeline has higher confidence -> should score higher
         event = _make_event(
-            main_result=_make_success_pipeline_result(
-                extraction=_make_extraction_result(confidence=0.98)
-            ),
-            shadow_result=_make_success_pipeline_result(
+            ocr_ai_result=_make_success_pipeline_result(
                 extraction=_make_extraction_result(confidence=0.50)
+            ),
+            ai_multimodal_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(confidence=0.60)
+            ),
+            ai_vision_v2_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(confidence=0.98),
+                model_id="us.amazon.nova-2-lite-v1:0",
             ),
         )
         result = _invoke_handler(event)
 
-        # The default pipeline order is ocr-ai (main), ai-multimodal (shadow)
-        # Main has much higher confidence, so ocr-ai should win
-        assert result["rankingWinner"] == "ocr-ai"
+        assert result["rankingWinner"] == "ai-vision-v2"
 
     def test_ranking_winner_stored_in_receipt(self, aws_resources):
         """rankingWinner should be persisted on the receipt record."""
@@ -649,32 +677,30 @@ class TestFinalizeRankingWinner:
 
         receipt = _get_receipt(table)
         assert "rankingWinner" in receipt
-        assert receipt["rankingWinner"] in ("ocr-ai", "ai-multimodal")
+        assert receipt["rankingWinner"] in ("ocr-ai", "ai-multimodal", "ai-vision-v2")
 
-    def test_ranking_winner_independent_of_selection(self, aws_resources):
-        """rankingWinner is about scoring, NOT about which result was selected.
-        Even on fallback, the winner should reflect the higher score."""
+    def test_sole_survivor_is_winner(self, aws_resources):
+        """When only one pipeline succeeds, it is the ranking winner."""
         table, _ = aws_resources
-
-        # Shadow is the only one that succeeds, but we still set rankingWinner
-        # based on the shadow's score (only one with a score)
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_success_pipeline_result(
-                extraction=_make_extraction_result(confidence=0.85)
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_success_pipeline_result(
+                extraction=_make_extraction_result(confidence=0.85),
+                model_id="us.amazon.nova-2-lite-v1:0",
             ),
         )
         result = _invoke_handler(event)
 
-        # Only shadow has a score, so it should be the winner
-        assert result["rankingWinner"] == "ai-multimodal"
+        assert result["rankingWinner"] == "ai-vision-v2"
 
-    def test_ranking_winner_none_when_both_fail(self, aws_resources):
-        """When both fail, rankingWinner should be None."""
+    def test_ranking_winner_none_when_all_fail(self, aws_resources):
+        """When all fail, rankingWinner should be None."""
         table, _ = aws_resources
         event = _make_event(
-            main_result=_make_error_pipeline_result(),
-            shadow_result=_make_error_pipeline_result(),
+            ocr_ai_result=_make_error_pipeline_result(),
+            ai_multimodal_result=_make_error_pipeline_result(),
+            ai_vision_v2_result=_make_error_pipeline_result(),
         )
         result = _invoke_handler(event)
 
@@ -709,4 +735,4 @@ class TestFinalizeReturnValue:
     def test_return_has_selected_pipeline(self, aws_resources):
         result = _invoke_handler(_make_event())
         assert "selectedPipeline" in result
-        assert result["selectedPipeline"] in ("ocr-ai", "ai-multimodal")
+        assert result["selectedPipeline"] in ("ocr-ai", "ai-multimodal", "ai-vision-v2")

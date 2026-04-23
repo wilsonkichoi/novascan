@@ -107,6 +107,26 @@ function makePipelineResults(
         textractPages: 0,
         costUsd: 0.0003,
       },
+      "ai-vision-v2": {
+        extractedData: {
+          merchant: { name: "Whole Foods Market", address: "123 Main St" },
+          receiptDate: "2026-03-25",
+          lineItems: [],
+          total: 30.39,
+          category: "groceries-food",
+          subcategory: "supermarket-grocery",
+          confidence: 0.91,
+        },
+        confidence: 0.91,
+        rankingScore: 0.87,
+        processingTimeMs: 1800,
+        modelId: "us.amazon.nova-2-lite-v1:0",
+        createdAt: "2026-03-25T14:30:44Z",
+        inputTokens: 2200,
+        outputTokens: 800,
+        textractPages: 0,
+        costUsd: 0.0027,
+      },
     },
     ...overrides,
   };
@@ -186,7 +206,7 @@ describe("PipelineComparison", () => {
 
   // ---- Displaying both pipeline results ----
 
-  it("displays Textract + AI Categorization and AI Vision pipeline labels", async () => {
+  it("displays all three pipeline labels", async () => {
     const user = userEvent.setup();
     mockFetchPipelineResults.mockResolvedValue(makePipelineResults());
     renderPipeline();
@@ -198,6 +218,7 @@ describe("PipelineComparison", () => {
       const allText = document.body.textContent;
       expect(allText).toContain("Textract + AI Categorization");
       expect(allText).toContain("AI Vision");
+      expect(allText).toContain("AI Vision v2");
     });
   });
 
@@ -256,9 +277,10 @@ describe("PipelineComparison", () => {
     await user.click(toggle);
 
     await waitFor(() => {
-      // rankingScore 0.91 = 91.0%, 0.82 = 82.0%
-      expect(screen.getByText("91.0%")).toBeInTheDocument();
-      expect(screen.getByText("82.0%")).toBeInTheDocument();
+      // rankingScore 0.91 = 91.0%, 0.82 = 82.0%, 0.87 = 87.0%
+      expect(screen.getAllByText("91.0%").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("82.0%").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("87.0%").length).toBeGreaterThan(0);
     });
   });
 
@@ -354,7 +376,7 @@ describe("PipelineComparison", () => {
 
   // ---- Merchant data displayed in comparison ----
 
-  it("displays extracted merchant names from both pipelines", async () => {
+  it("displays extracted merchant names from all pipelines", async () => {
     const user = userEvent.setup();
     mockFetchPipelineResults.mockResolvedValue(makePipelineResults());
     renderPipeline();
@@ -363,8 +385,10 @@ describe("PipelineComparison", () => {
     await user.click(toggle);
 
     await waitFor(() => {
-      expect(screen.getByText("Whole Foods Market")).toBeInTheDocument();
-      expect(screen.getByText("Whole Foods")).toBeInTheDocument();
+      // "Whole Foods Market" appears in ocr-ai and ai-vision-v2
+      expect(screen.getAllByText("Whole Foods Market").length).toBeGreaterThanOrEqual(1);
+      // "Whole Foods" appears in ai-multimodal
+      expect(screen.getAllByText("Whole Foods").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

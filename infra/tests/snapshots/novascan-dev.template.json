@@ -74,7 +74,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "cfff3f405a06eb6f4f3d3489f09d26d533d568259ff7c1ab6993136043bf83e0.zip"
+          "S3Key": "2119a9a577807a153fe1c6b3c885c216295b26792e4eb927fd5dc41d3fadafc4.zip"
         },
         "Description": "NovaScan API Lambda \u2014 all REST routes via Powertools resolver",
         "Environment": {
@@ -1200,163 +1200,6 @@
       },
       "Type": "AWS::CloudFront::ResponseHeadersPolicy"
     },
-    "PipelineBedrockExtractFn9B7F32EE": {
-      "DependsOn": [
-        "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34",
-        "PipelineBedrockExtractFnServiceRole526F9951"
-      ],
-      "Properties": {
-        "Code": {
-          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "432166e4f6e1907b79d3d78d6e4d6c533ef0f3e29a26c83a18aa72deb3d1c908.zip"
-        },
-        "Description": "Pipeline: direct multimodal extraction via Bedrock Nova",
-        "Environment": {
-          "Variables": {
-            "LOG_LEVEL": "DEBUG",
-            "POWERTOOLS_LOG_LEVEL": "DEBUG",
-            "POWERTOOLS_SERVICE_NAME": "novascan-bedrock-extract",
-            "RECEIPTS_BUCKET": {
-              "Ref": "StorageReceiptsBucket73106E11"
-            },
-            "STAGE": "dev",
-            "TABLE_NAME": {
-              "Ref": "StorageTableB43FDCE7"
-            }
-          }
-        },
-        "FunctionName": "novascan-dev-bedrock-extract",
-        "Handler": "pipeline.bedrock_extract.handler",
-        "MemorySize": 512,
-        "Role": {
-          "Fn::GetAtt": [
-            "PipelineBedrockExtractFnServiceRole526F9951",
-            "Arn"
-          ]
-        },
-        "Runtime": "python3.13",
-        "Timeout": 120,
-        "TracingConfig": {
-          "Mode": "Active"
-        }
-      },
-      "Type": "AWS::Lambda::Function"
-    },
-    "PipelineBedrockExtractFnServiceRole526F9951": {
-      "Properties": {
-        "AssumeRolePolicyDocument": {
-          "Statement": [
-            {
-              "Action": "sts:AssumeRole",
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "lambda.amazonaws.com"
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "ManagedPolicyArns": [
-          {
-            "Fn::Join": [
-              "",
-              [
-                "arn:",
-                {
-                  "Ref": "AWS::Partition"
-                },
-                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-              ]
-            ]
-          }
-        ]
-      },
-      "Type": "AWS::IAM::Role"
-    },
-    "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34": {
-      "Properties": {
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": [
-                "xray:PutTraceSegments",
-                "xray:PutTelemetryRecords"
-              ],
-              "Effect": "Allow",
-              "Resource": "*"
-            },
-            {
-              "Action": [
-                "s3:GetObject*",
-                "s3:GetBucket*",
-                "s3:List*"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "StorageReceiptsBucket73106E11",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "StorageReceiptsBucket73106E11",
-                          "Arn"
-                        ]
-                      },
-                      "/*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Action": "bedrock:InvokeModel",
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:bedrock:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "::foundation-model/amazon.nova-lite-v1:0"
-                    ]
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:bedrock:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "::foundation-model/amazon.nova-pro-v1:0"
-                    ]
-                  ]
-                }
-              ]
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "PolicyName": "PipelineBedrockExtractFnServiceRoleDefaultPolicy8706CE34",
-        "Roles": [
-          {
-            "Ref": "PipelineBedrockExtractFnServiceRole526F9951"
-          }
-        ]
-      },
-      "Type": "AWS::IAM::Policy"
-    },
     "PipelineFinalizeFnD257D684": {
       "DependsOn": [
         "PipelineFinalizeFnServiceRoleDefaultPolicy8D90BE39",
@@ -1365,12 +1208,11 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "432166e4f6e1907b79d3d78d6e4d6c533ef0f3e29a26c83a18aa72deb3d1c908.zip"
+          "S3Key": "18d9a3c4a906151c9fb993eae7ddcbf1f96773b55dce7ce21445fc3f86d9c8c2.zip"
         },
-        "Description": "Pipeline: finalize \u2014 select result, rank, persist to DynamoDB/S3",
+        "Description": "Pipeline: finalize \u2014 rank, select best result, persist to DynamoDB/S3",
         "Environment": {
           "Variables": {
-            "DEFAULT_PIPELINE": "ocr-ai",
             "LOG_LEVEL": "DEBUG",
             "POWERTOOLS_LOG_LEVEL": "DEBUG",
             "POWERTOOLS_SERVICE_NAME": "novascan-finalize",
@@ -1576,7 +1418,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "432166e4f6e1907b79d3d78d6e4d6c533ef0f3e29a26c83a18aa72deb3d1c908.zip"
+          "S3Key": "18d9a3c4a906151c9fb993eae7ddcbf1f96773b55dce7ce21445fc3f86d9c8c2.zip"
         },
         "Description": "Pipeline: load user's custom categories from DynamoDB",
         "Environment": {
@@ -1694,6 +1536,307 @@
       },
       "Type": "AWS::IAM::Policy"
     },
+    "PipelineNovaLiteV1ExtractFnFE3E10AE": {
+      "DependsOn": [
+        "PipelineNovaLiteV1ExtractFnServiceRoleDefaultPolicy79AF8632",
+        "PipelineNovaLiteV1ExtractFnServiceRoleC4D0F9F3"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "18d9a3c4a906151c9fb993eae7ddcbf1f96773b55dce7ce21445fc3f86d9c8c2.zip"
+        },
+        "Description": "Pipeline: direct multimodal extraction via Nova Lite v1",
+        "Environment": {
+          "Variables": {
+            "LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-nova-lite-v1-extract",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-nova-lite-v1-extract",
+        "Handler": "pipeline.bedrock_extract.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PipelineNovaLiteV1ExtractFnServiceRoleC4D0F9F3",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 120,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "PipelineNovaLiteV1ExtractFnServiceRoleC4D0F9F3": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelineNovaLiteV1ExtractFnServiceRoleDefaultPolicy79AF8632": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "bedrock:InvokeModel",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/amazon.nova-lite-v1:0"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/amazon.nova-pro-v1:0"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelineNovaLiteV1ExtractFnServiceRoleDefaultPolicy79AF8632",
+        "Roles": [
+          {
+            "Ref": "PipelineNovaLiteV1ExtractFnServiceRoleC4D0F9F3"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
+    "PipelineNovaLiteV2ExtractFnFE02EE35": {
+      "DependsOn": [
+        "PipelineNovaLiteV2ExtractFnServiceRoleDefaultPolicy093DA6AD",
+        "PipelineNovaLiteV2ExtractFnServiceRole35D804DA"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
+          "S3Key": "18d9a3c4a906151c9fb993eae7ddcbf1f96773b55dce7ce21445fc3f86d9c8c2.zip"
+        },
+        "Description": "Pipeline: direct multimodal extraction via Nova 2 Lite",
+        "Environment": {
+          "Variables": {
+            "LOG_LEVEL": "DEBUG",
+            "NOVA_MODEL_ID": "us.amazon.nova-2-lite-v1:0",
+            "POWERTOOLS_LOG_LEVEL": "DEBUG",
+            "POWERTOOLS_SERVICE_NAME": "novascan-nova-lite-v2-extract",
+            "RECEIPTS_BUCKET": {
+              "Ref": "StorageReceiptsBucket73106E11"
+            },
+            "STAGE": "dev",
+            "TABLE_NAME": {
+              "Ref": "StorageTableB43FDCE7"
+            }
+          }
+        },
+        "FunctionName": "novascan-dev-nova-lite-v2-extract",
+        "Handler": "pipeline.bedrock_extract.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PipelineNovaLiteV2ExtractFnServiceRole35D804DA",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 120,
+        "TracingConfig": {
+          "Mode": "Active"
+        }
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "PipelineNovaLiteV2ExtractFnServiceRole35D804DA": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "PipelineNovaLiteV2ExtractFnServiceRoleDefaultPolicy093DA6AD": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "StorageReceiptsBucket73106E11",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "StorageReceiptsBucket73106E11",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "bedrock:InvokeModel",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:bedrock:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "::foundation-model/amazon.nova-2-lite-v1:0"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PipelineNovaLiteV2ExtractFnServiceRoleDefaultPolicy093DA6AD",
+        "Roles": [
+          {
+            "Ref": "PipelineNovaLiteV2ExtractFnServiceRole35D804DA"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Policy"
+    },
     "PipelineNovaStructureFn588D4B5B": {
       "DependsOn": [
         "PipelineNovaStructureFnServiceRoleDefaultPolicy33DF19BC",
@@ -1702,7 +1845,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "432166e4f6e1907b79d3d78d6e4d6c533ef0f3e29a26c83a18aa72deb3d1c908.zip"
+          "S3Key": "18d9a3c4a906151c9fb993eae7ddcbf1f96773b55dce7ce21445fc3f86d9c8c2.zip"
         },
         "Description": "Pipeline: structure Textract output via Bedrock Nova",
         "Environment": {
@@ -1962,14 +2105,21 @@
                   "Arn"
                 ]
               },
-              "\",\"Parameters\":{\"textractResult.$\":\"$.textractResult\",\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"customCategories.$\":\"$.customCategories\"}},\"NovaStructureError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"NovaStructure failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$\",\"End\":true},\"TextractExtractError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"TextractExtract failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$.textractResult\",\"End\":true}}},{\"StartAt\":\"BedrockExtract\",\"States\":{\"BedrockExtract\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$\",\"Next\":\"BedrockExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
+              "\",\"Parameters\":{\"textractResult.$\":\"$.textractResult\",\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"customCategories.$\":\"$.customCategories\"}},\"NovaStructureError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"NovaStructure failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$\",\"End\":true},\"TextractExtractError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"TextractExtract failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$.textractResult\",\"End\":true}}},{\"StartAt\":\"NovaLiteV1Extract\",\"States\":{\"NovaLiteV1Extract\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$\",\"Next\":\"NovaLiteV1ExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
               {
                 "Fn::GetAtt": [
-                  "PipelineBedrockExtractFn9B7F32EE",
+                  "PipelineNovaLiteV1ExtractFnFE3E10AE",
                   "Arn"
                 ]
               },
-              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"customCategories.$\":\"$.customCategories\"}},\"BedrockExtractError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"BedrockExtract failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$\",\"End\":true}}}]},\"Finalize\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"Resource\":\"",
+              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"customCategories.$\":\"$.customCategories\"}},\"NovaLiteV1ExtractError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"NovaLiteV1Extract failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$\",\"End\":true}}},{\"StartAt\":\"NovaLiteV2Extract\",\"States\":{\"NovaLiteV2Extract\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$\",\"Next\":\"NovaLiteV2ExtractError\"}],\"Type\":\"Task\",\"ResultPath\":\"$\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "PipelineNovaLiteV2ExtractFnFE02EE35",
+                  "Arn"
+                ]
+              },
+              "\",\"Parameters\":{\"bucket.$\":\"$.bucket\",\"key.$\":\"$.key\",\"customCategories.$\":\"$.customCategories\"}},\"NovaLiteV2ExtractError\":{\"Type\":\"Pass\",\"Result\":{\"error\":\"NovaLiteV2Extract failed\",\"errorType\":\"CatchAll\"},\"ResultPath\":\"$\",\"End\":true}}}]},\"Finalize\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"Resource\":\"",
               {
                 "Fn::GetAtt": [
                   "PipelineFinalizeFnD257D684",
@@ -2140,7 +2290,7 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
-                    "PipelineBedrockExtractFn9B7F32EE",
+                    "PipelineNovaLiteV1ExtractFnFE3E10AE",
                     "Arn"
                   ]
                 },
@@ -2150,7 +2300,33 @@
                     [
                       {
                         "Fn::GetAtt": [
-                          "PipelineBedrockExtractFn9B7F32EE",
+                          "PipelineNovaLiteV1ExtractFnFE3E10AE",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PipelineNovaLiteV2ExtractFnFE02EE35",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PipelineNovaLiteV2ExtractFnFE02EE35",
                           "Arn"
                         ]
                       },
@@ -2401,7 +2577,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-123456789012-us-east-1",
-          "S3Key": "432166e4f6e1907b79d3d78d6e4d6c533ef0f3e29a26c83a18aa72deb3d1c908.zip"
+          "S3Key": "18d9a3c4a906151c9fb993eae7ddcbf1f96773b55dce7ce21445fc3f86d9c8c2.zip"
         },
         "Description": "Pipeline: extract expense data via Textract AnalyzeExpense",
         "Environment": {

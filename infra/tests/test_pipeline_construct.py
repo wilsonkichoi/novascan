@@ -5,9 +5,9 @@ Verifies:
 - EventBridge Pipe exists and routes SQS to Step Functions
 - Step Functions state machine exists with correct structure
   (LoadCustomCategories -> Parallel -> Finalize)
-- 5 pipeline Lambda functions exist with correct handlers
+- 6 pipeline Lambda functions exist with correct handlers
 - Lambda environment variables include TABLE_NAME, LOG_LEVEL, STAGE
-- Finalize Lambda has DEFAULT_PIPELINE env var
+- Nova Lite v2 Lambda has NOVA_MODEL_ID env var
 - IAM policies: textract:AnalyzeExpense, bedrock:InvokeModel scoped
   to amazon.nova-*, cloudwatch:PutMetricData on finalize
 - S3 event notification configured on receipts bucket
@@ -193,14 +193,10 @@ class TestStepFunctionsStateMachine:
                 "to execute in parallel."
             )
 
-    def test_parallel_state_has_two_branches(
+    def test_parallel_state_has_three_branches(
         self, dev_template: Template
     ) -> None:
-        """Parallel state must have exactly 2 branches (main + shadow).
-
-        Spec Section 3: 'Main pipeline (default: OCR-AI)' and
-        'Shadow pipeline (default: AI-multimodal)'
-        """
+        """Parallel state must have exactly 3 branches (OCR-AI, Nova Lite v1, Nova 2 Lite)."""
         sm_resources = dev_template.find_resources(
             "AWS::StepFunctions::StateMachine"
         )
@@ -211,10 +207,9 @@ class TestStepFunctionsStateMachine:
             for state_name, state in states.items():
                 if state.get("Type") == "Parallel":
                     branches = state.get("Branches", [])
-                    assert len(branches) == 2, (
+                    assert len(branches) == 3, (
                         f"Parallel state '{state_name}' has {len(branches)} "
-                        "branch(es), expected 2 (OCR-AI main + AI-multimodal shadow). "
-                        "Spec Section 3: 'Both pipelines execute in parallel'."
+                        "branch(es), expected 3 (OCR-AI, Nova Lite v1, Nova 2 Lite)."
                     )
 
     def test_parallel_branches_have_catch_blocks(
@@ -330,11 +325,10 @@ class TestPipelineLambdaFunctions:
         """The pipeline requires 5 Lambda functions.
 
         Spec Section 3 + Section 11 (CloudWatch Resources):
-        - textract_extract, nova_structure, bedrock_extract, finalize,
-          load_custom_categories
+        - textract_extract, nova_structure, nova_lite_v1_extract,
+          nova_lite_v2_extract, finalize, load_custom_categories
         """
         lambdas = dev_template.find_resources("AWS::Lambda::Function")
-        # Filter to pipeline-related Lambdas by checking for pipeline handler paths
         pipeline_handlers = [
             "pipeline.textract_extract.handler",
             "pipeline.nova_structure.handler",
@@ -343,17 +337,21 @@ class TestPipelineLambdaFunctions:
             "pipeline.load_custom_categories.handler",
         ]
         found_handlers = set()
+        pipeline_lambda_count = 0
         for _id, resource in lambdas.items():
             handler = resource.get("Properties", {}).get("Handler", "")
             if handler in pipeline_handlers:
                 found_handlers.add(handler)
+                pipeline_lambda_count += 1
 
         missing = set(pipeline_handlers) - found_handlers
         assert not missing, (
             f"Missing pipeline Lambda handler(s): {missing}. "
-            "Spec Section 3 requires 5 pipeline Lambdas: "
-            "textract_extract, nova_structure, bedrock_extract, finalize, "
-            "load_custom_categories."
+            "All pipeline handler types must be present."
+        )
+        assert pipeline_lambda_count >= 6, (
+            f"Expected at least 6 pipeline Lambdas (bedrock_extract.handler "
+            f"is used by 2 Lambdas), got {pipeline_lambda_count}."
         )
 
     def test_pipeline_lambdas_have_table_name_env_var(
@@ -433,31 +431,22 @@ class TestPipelineLambdaFunctions:
                     "STAGE environment variable."
                 )
 
-    def test_finalize_lambda_has_default_pipeline_env_var(
+    def test_nova_lite_v2_lambda_has_model_id_env_var(
         self, dev_template: Template
     ) -> None:
-        """Finalize Lambda must have DEFAULT_PIPELINE environment variable.
-
-        Spec Section 9: 'defaultPipeline: Finalize Lambda - which pipeline
-        is main vs shadow (ocr-ai or ai-multimodal)'
-        """
+        """Nova Lite v2 Lambda must have NOVA_MODEL_ID=us.amazon.nova-2-lite-v1:0."""
         lambdas = dev_template.find_resources("AWS::Lambda::Function")
-        for logical_id, resource in lambdas.items():
+        found = False
+        for _logical_id, resource in lambdas.items():
             props = resource.get("Properties", {})
-            handler = props.get("Handler", "")
-            if handler == "pipeline.finalize.handler":
-                env_vars = props.get("Environment", {}).get("Variables", {})
-                assert "DEFAULT_PIPELINE" in env_vars, (
-                    f"Finalize Lambda '{logical_id}' is missing "
-                    "DEFAULT_PIPELINE environment variable. "
-                    "Spec Section 9: defaultPipeline controls main/shadow selection."
-                )
-                assert env_vars["DEFAULT_PIPELINE"] in ("ocr-ai", "ai-multimodal"), (
-                    f"Finalize Lambda DEFAULT_PIPELINE is "
-                    f"'{env_vars['DEFAULT_PIPELINE']}', expected 'ocr-ai' or "
-                    "'ai-multimodal'. Spec Section 9: defaultPipeline must be "
-                    "one of these two values."
-                )
+            env_vars = props.get("Environment", {}).get("Variables", {})
+            if env_vars.get("NOVA_MODEL_ID") == "us.amazon.nova-2-lite-v1:0":
+                found = True
+                break
+        assert found, (
+            "No Lambda found with NOVA_MODEL_ID=us.amazon.nova-2-lite-v1:0. "
+            "The Nova Lite v2 extract Lambda must set this env var."
+        )
 
     def test_pipeline_lambdas_use_python_runtime(
         self, dev_template: Template

@@ -1,7 +1,7 @@
-"""Finalize Lambda — main/shadow selection, ranking, and DynamoDB/S3 updates.
+"""Finalize Lambda — ranking-based selection and DynamoDB/S3 updates.
 
-Receives the parallel pipeline results from Step Functions, applies main/shadow
-selection logic, ranks both results, updates the receipt record in DynamoDB,
+Receives parallel pipeline results from Step Functions, selects the result
+with the highest ranking score, updates the receipt record in DynamoDB,
 creates line item and pipeline result records, and updates S3 object metadata.
 
 This is the final step in the OCR pipeline state machine.
@@ -10,7 +10,6 @@ This is the final step in the OCR pipeline state machine.
 from __future__ import annotations
 
 import json
-import os
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -32,17 +31,19 @@ metrics = Metrics(namespace="NovaScan")
 
 s3_client = boto3.client("s3")
 
-# Which pipeline is "main" — determined by CDK config (defaultPipeline).
-# The other pipeline is "shadow".
-DEFAULT_PIPELINE = os.environ.get("DEFAULT_PIPELINE", "ocr-ai")
-
 # Pipeline type labels matching DynamoDB SK pattern: RECEIPT#{ulid}#PIPELINE#{type}
 PIPELINE_OCR_AI = "ocr-ai"
 PIPELINE_AI_MULTIMODAL = "ai-multimodal"
+PIPELINE_AI_VISION_V2 = "ai-vision-v2"
 
-# Pricing constants (USD per unit) — Nova Lite as of 2026-04
+# Pipeline types in Step Functions Parallel branch order (indices 0, 1, 2)
+PIPELINE_TYPES = [PIPELINE_OCR_AI, PIPELINE_AI_MULTIMODAL, PIPELINE_AI_VISION_V2]
+
+# Pricing constants (USD per unit)
 NOVA_LITE_INPUT_COST_PER_TOKEN = Decimal("0.00000006")   # $0.06 / 1M tokens
 NOVA_LITE_OUTPUT_COST_PER_TOKEN = Decimal("0.00000024")  # $0.24 / 1M tokens
+NOVA_2_LITE_INPUT_COST_PER_TOKEN = Decimal("0.0000003")  # $0.30 / 1M tokens
+NOVA_2_LITE_OUTPUT_COST_PER_TOKEN = Decimal("0.0000025") # $2.50 / 1M tokens
 TEXTRACT_EXPENSE_COST_PER_PAGE = Decimal("0.01")         # $0.01 / page
 
 
@@ -50,7 +51,7 @@ TEXTRACT_EXPENSE_COST_PER_PAGE = Decimal("0.01")         # $0.01 / page
 @tracer.capture_lambda_handler
 @metrics.log_metrics(capture_cold_start_metric=True)
 def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
-    """Finalize receipt processing — select result, rank, and persist.
+    """Finalize receipt processing — rank all pipelines, select best, persist.
 
     Expected event shape (from Step Functions):
         {
@@ -61,76 +62,62 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
             "customCategories": [...],
             "pipelineResults": [
                 {"extractionResult": {...}, "modelId": "...", "processingTimeMs": 123},
-                {"extractionResult": {...}, "modelId": "...", "processingTimeMs": 456}
+                {"extractionResult": {...}, "modelId": "...", "processingTimeMs": 456},
+                {"extractionResult": {...}, "modelId": "...", "processingTimeMs": 789}
             ]
         }
 
-    pipelineResults[0] is the main pipeline result, [1] is the shadow pipeline.
-    Either element may be an error payload: {"error": "...", "errorType": "..."}
+    pipelineResults indices match PIPELINE_TYPES order: [ocr-ai, ai-multimodal, ai-vision-v2].
+    Any element may be an error payload: {"error": "...", "errorType": "..."}
     """
     user_id = event["userId"]
     receipt_id = event["receiptId"]
     bucket = event["bucket"]
     key = event["key"]
-    pipeline_results = event["pipelineResults"]
+    raw_results = event["pipelineResults"]
 
     logger.info(
         "Finalizing receipt",
-        extra={
-            "user_id": user_id,
-            "receipt_id": receipt_id,
-            "default_pipeline": DEFAULT_PIPELINE,
-        },
+        extra={"user_id": user_id, "receipt_id": receipt_id},
     )
 
-    # Determine which position is which pipeline type
-    main_type, shadow_type = _get_pipeline_types()
-    main_raw = pipeline_results[0]
-    shadow_raw = pipeline_results[1]
+    # Parse all pipeline results (index matches PIPELINE_TYPES order)
+    parsed: list[tuple[dict[str, Any], ExtractionResult | None, str]] = []
+    for idx, pipeline_type in enumerate(PIPELINE_TYPES):
+        raw = raw_results[idx]
+        result = _parse_pipeline_result(raw, pipeline_type)
+        parsed.append((raw, result, pipeline_type))
 
-    # Parse results — None if the pipeline errored
-    main_result = _parse_pipeline_result(main_raw, main_type)
-    shadow_result = _parse_pipeline_result(shadow_raw, shadow_type)
-
-    # Main/shadow selection
-    selected_result, selected_type, used_fallback, status = _select_result(
-        main_result, main_type, shadow_result, shadow_type
-    )
+    # Ranking-based selection: pick the result with the highest ranking score
+    selected_result, selected_type, status = _select_by_ranking(parsed)
 
     # Publish pipeline completion metrics
-    _emit_pipeline_metrics(main_raw, main_type, shadow_raw, shadow_type)
+    _emit_pipeline_metrics(parsed)
 
-    # Ranking — run on both results regardless of selection
-    ranking_winner = _rank_and_get_winner(main_result, shadow_result, main_type, shadow_type)
+    # Determine ranking winner (same as selected_type when selection succeeds)
+    ranking_winner = selected_type
 
     # Persist everything to DynamoDB
     now = datetime.now(UTC).isoformat()
     table = get_table()
 
-    _store_pipeline_results(
-        table, user_id, receipt_id, main_raw, main_result, main_type,
-        shadow_raw, shadow_result, shadow_type, now,
-    )
+    _store_pipeline_results(table, user_id, receipt_id, parsed, now)
 
     failure_reason = None
     if status == "failed":
         # H4 — Generic failure_reason in DynamoDB; raw error details logged only
         logger.error(
-            "Both pipelines failed",
+            "All pipelines failed",
             extra={
-                "main_type": main_type,
-                "main_error": main_raw.get("error", "unknown"),
-                "main_error_type": main_raw.get("errorType", "unknown"),
-                "shadow_type": shadow_type,
-                "shadow_error": shadow_raw.get("error", "unknown"),
-                "shadow_error_type": shadow_raw.get("errorType", "unknown"),
+                p_type: {"error": raw.get("error", "unknown"), "errorType": raw.get("errorType", "unknown")}
+                for raw, _, p_type in parsed
             },
         )
         failure_reason = "Pipeline processing failed. Check CloudWatch logs for details."
 
     _update_receipt(
         table, user_id, receipt_id, selected_result, status,
-        used_fallback, ranking_winner, failure_reason, now,
+        False, ranking_winner, failure_reason, now,
     )
 
     if selected_result is not None:
@@ -140,36 +127,25 @@ def handler(event: dict[str, Any], context: LambdaContext) -> dict[str, Any]:
     _update_s3_metadata(bucket, key, receipt_id, status, now)
 
     # Emit receipt status metrics
-    _emit_receipt_metrics(status, used_fallback)
+    _emit_receipt_metrics(status)
 
     logger.info(
         "Finalize completed",
         extra={
             "receipt_id": receipt_id,
             "status": status,
-            "used_fallback": used_fallback,
             "ranking_winner": ranking_winner,
             "selected_pipeline": selected_type,
         },
     )
 
-    # L8 — selectedPipeline, rankingWinner, usedFallback are internal-only
-    # fields retained for observability and pipeline tuning. They are NOT
-    # exposed via the public API and should not be relied upon by clients.
     return {
         "receiptId": receipt_id,
         "status": status,
-        "usedFallback": used_fallback,
+        "usedFallback": False,
         "rankingWinner": ranking_winner,
         "selectedPipeline": selected_type,
     }
-
-
-def _get_pipeline_types() -> tuple[str, str]:
-    """Return (main_type, shadow_type) based on DEFAULT_PIPELINE config."""
-    if DEFAULT_PIPELINE == PIPELINE_AI_MULTIMODAL:
-        return PIPELINE_AI_MULTIMODAL, PIPELINE_OCR_AI
-    return PIPELINE_OCR_AI, PIPELINE_AI_MULTIMODAL
 
 
 def _parse_pipeline_result(
@@ -197,82 +173,41 @@ def _parse_pipeline_result(
         return None
 
 
-def _select_result(
-    main_result: ExtractionResult | None,
-    main_type: str,
-    shadow_result: ExtractionResult | None,
-    shadow_type: str,
-) -> tuple[ExtractionResult | None, str | None, bool, str]:
-    """Apply main/shadow selection logic.
+def _select_by_ranking(
+    parsed: list[tuple[dict[str, Any], ExtractionResult | None, str]],
+) -> tuple[ExtractionResult | None, str | None, str]:
+    """Select the result with the highest ranking score.
 
     Returns:
-        (selected_result, selected_type, used_fallback, status)
+        (selected_result, selected_type, status)
     """
-    if main_result is not None:
-        return main_result, main_type, False, "confirmed"
+    scored: list[tuple[ExtractionResult, str, float]] = []
+    for _raw, result, pipeline_type in parsed:
+        if result is not None:
+            score = rank_results(result)
+            scored.append((result, pipeline_type, score))
 
-    if shadow_result is not None:
-        logger.info(
-            "Main pipeline failed, using shadow fallback",
-            extra={"main_type": main_type, "shadow_type": shadow_type},
-        )
-        return shadow_result, shadow_type, True, "confirmed"
+    if not scored:
+        logger.error("All pipelines failed — receipt marked as failed")
+        return None, None, "failed"
 
-    logger.error("Both pipelines failed — receipt marked as failed")
-    return None, None, False, "failed"
+    scored.sort(key=lambda x: x[2], reverse=True)
+    winner_result, winner_type, winner_score = scored[0]
 
+    scores_extra: dict[str, Any] = {f"{p_type}_score": s for _, p_type, s in scored}
+    scores_extra["winner"] = winner_type
+    scores_extra["winner_score"] = winner_score
+    logger.info("Ranking-based selection", extra=scores_extra)
 
-@tracer.capture_method
-def _rank_and_get_winner(
-    main_result: ExtractionResult | None,
-    shadow_result: ExtractionResult | None,
-    main_type: str,
-    shadow_type: str,
-) -> str | None:
-    """Rank both results and return the winner pipeline type.
+    with single_metric(
+        name="RankingDecision",
+        unit=MetricUnit.Count,
+        value=1,
+        namespace="NovaScan",
+    ) as metric:
+        metric.add_dimension(name="Winner", value=winner_type)
 
-    Returns None if neither result is available for ranking.
-    """
-    main_score = rank_results(main_result) if main_result else None
-    shadow_score = rank_results(shadow_result) if shadow_result else None
-
-    if main_score is not None and shadow_score is not None:
-        winner = main_type if main_score >= shadow_score else shadow_type
-        delta = abs(main_score - shadow_score)
-
-        logger.info(
-            "Ranking computed",
-            extra={
-                f"{main_type}_score": main_score,
-                f"{shadow_type}_score": shadow_score,
-                "winner": winner,
-                "delta": delta,
-            },
-        )
-
-        with single_metric(
-            name="RankingDecision",
-            unit=MetricUnit.Count,
-            value=1,
-            namespace="NovaScan",
-        ) as metric:
-            metric.add_dimension(name="Winner", value=winner)
-        with single_metric(
-            name="RankingScoreDelta",
-            unit=MetricUnit.NoUnit,
-            value=delta,
-            namespace="NovaScan",
-        ) as metric:
-            metric.add_dimension(name="Winner", value=winner)
-
-        return winner
-
-    if main_score is not None:
-        return main_type
-    if shadow_score is not None:
-        return shadow_type
-
-    return None
+    return winner_result, winner_type, "confirmed"
 
 
 @tracer.capture_method
@@ -280,17 +215,12 @@ def _store_pipeline_results(
     table: Any,
     user_id: str,
     receipt_id: str,
-    main_raw: dict[str, Any],
-    main_result: ExtractionResult | None,
-    main_type: str,
-    shadow_raw: dict[str, Any],
-    shadow_result: ExtractionResult | None,
-    shadow_type: str,
+    parsed: list[tuple[dict[str, Any], ExtractionResult | None, str]],
     now: str,
 ) -> None:
-    """Store both pipeline results as PIPELINE# entities in DynamoDB."""
-    _write_pipeline_record(table, user_id, receipt_id, main_raw, main_result, main_type, now)
-    _write_pipeline_record(table, user_id, receipt_id, shadow_raw, shadow_result, shadow_type, now)
+    """Store all pipeline results as PIPELINE# entities in DynamoDB."""
+    for raw, result, pipeline_type in parsed:
+        _write_pipeline_record(table, user_id, receipt_id, raw, result, pipeline_type, now)
 
 
 def _compute_cost(
@@ -298,11 +228,19 @@ def _compute_cost(
     input_tokens: int,
     output_tokens: int,
     textract_pages: int,
+    model_id: str = "",
 ) -> Decimal:
     """Compute the USD cost for a single pipeline execution."""
+    if "nova-2-lite" in model_id:
+        input_rate = NOVA_2_LITE_INPUT_COST_PER_TOKEN
+        output_rate = NOVA_2_LITE_OUTPUT_COST_PER_TOKEN
+    else:
+        input_rate = NOVA_LITE_INPUT_COST_PER_TOKEN
+        output_rate = NOVA_LITE_OUTPUT_COST_PER_TOKEN
+
     nova_cost = (
-        Decimal(str(input_tokens)) * NOVA_LITE_INPUT_COST_PER_TOKEN
-        + Decimal(str(output_tokens)) * NOVA_LITE_OUTPUT_COST_PER_TOKEN
+        Decimal(str(input_tokens)) * input_rate
+        + Decimal(str(output_tokens)) * output_rate
     )
     if pipeline_type == PIPELINE_OCR_AI:
         return nova_cost + Decimal(str(textract_pages)) * TEXTRACT_EXPENSE_COST_PER_PAGE
@@ -335,7 +273,10 @@ def _write_pipeline_record(
         "inputTokens": input_tokens,
         "outputTokens": output_tokens,
         "textractPages": textract_pages,
-        "costUsd": _compute_cost(pipeline_type, input_tokens, output_tokens, textract_pages),
+        "costUsd": _compute_cost(
+            pipeline_type, input_tokens, output_tokens, textract_pages,
+            model_id=raw.get("modelId", ""),
+        ),
     }
 
     if parsed is not None:
@@ -545,17 +486,10 @@ def _update_s3_metadata(
 
 
 def _emit_pipeline_metrics(
-    main_raw: dict[str, Any],
-    main_type: str,
-    shadow_raw: dict[str, Any],
-    shadow_type: str,
+    parsed: list[tuple[dict[str, Any], ExtractionResult | None, str]],
 ) -> None:
-    """Publish PipelineCompleted and PipelineLatency metrics.
-
-    Uses single_metric context manager to emit each metric with its own
-    isolated dimensions, avoiding dimension overwrite across loop iterations.
-    """
-    for raw, pipeline_type in [(main_raw, main_type), (shadow_raw, shadow_type)]:
+    """Publish PipelineCompleted and PipelineLatency metrics."""
+    for raw, _result, pipeline_type in parsed:
         succeeded = "error" not in raw
         outcome = "success" if succeeded else "failure"
 
@@ -578,12 +512,8 @@ def _emit_pipeline_metrics(
                 metric.add_dimension(name="PipelineType", value=pipeline_type)
 
 
-def _emit_receipt_metrics(status: str, used_fallback: bool) -> None:
-    """Publish ReceiptStatus and UsedFallback metrics.
-
-    Uses single_metric context manager to isolate dimensions from other
-    metric emissions in the same Lambda invocation.
-    """
+def _emit_receipt_metrics(status: str) -> None:
+    """Publish ReceiptStatus metric."""
     with single_metric(
         name="ReceiptStatus",
         unit=MetricUnit.Count,
@@ -591,15 +521,6 @@ def _emit_receipt_metrics(status: str, used_fallback: bool) -> None:
         namespace="NovaScan",
     ) as metric:
         metric.add_dimension(name="Status", value=status)
-
-    if used_fallback:
-        with single_metric(
-            name="UsedFallback",
-            unit=MetricUnit.Count,
-            value=1,
-            namespace="NovaScan",
-        ) as metric:
-            metric.add_dimension(name="Status", value=status)
 
 
 def _convert_floats_to_decimal(obj: Any) -> Any:

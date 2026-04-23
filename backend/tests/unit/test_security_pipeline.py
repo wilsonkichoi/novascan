@@ -194,6 +194,10 @@ class TestModelIdValidation:
         """amazon.nova-pro-v1:0 must be accepted."""
         assert validate_model_id("amazon.nova-pro-v1:0")
 
+    def test_nova_2_lite_accepted(self):
+        """us.amazon.nova-2-lite-v1:0 must be accepted."""
+        assert validate_model_id("us.amazon.nova-2-lite-v1:0")
+
     def test_unknown_model_rejected(self):
         """Unknown model IDs must be rejected."""
         assert not validate_model_id("amazon.nova-mega-v1:0")

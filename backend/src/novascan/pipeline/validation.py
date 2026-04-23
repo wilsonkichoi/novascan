@@ -23,6 +23,7 @@ MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 ALLOWED_MODEL_IDS = frozenset({
     "amazon.nova-lite-v1:0",
     "amazon.nova-pro-v1:0",
+    "us.amazon.nova-2-lite-v1:0",
 })
 
 
@@ -54,7 +55,7 @@ def validate_s3_key(key: str, bucket: str, expected_bucket: str) -> bool:
 def validate_model_id(model_id: str) -> bool:
     """Validate that the model ID is in the allowlist.
 
-    M8 — Only amazon.nova-lite-v1:0 and amazon.nova-pro-v1:0 are allowed.
+    M8 — Only allowlisted Nova model IDs are accepted.
     """
     return model_id in ALLOWED_MODEL_IDS
 

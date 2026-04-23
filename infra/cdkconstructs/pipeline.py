@@ -5,8 +5,8 @@ Creates:
 - S3 event notification on receipts bucket for receipts/ prefix -> SQS
 - EventBridge Pipe: SQS -> Step Functions (with input transformer)
 - Step Functions state machine (LoadCustomCategories -> Parallel -> Finalize)
-- Five pipeline Lambda functions (load_custom_categories, textract_extract,
-  nova_structure, bedrock_extract, finalize)
+- Six pipeline Lambda functions (load_custom_categories, textract_extract,
+  nova_structure, nova_lite_v1_extract, nova_lite_v2_extract, finalize)
 - IAM roles for EventBridge Pipe and all Lambdas
 
 See: SPEC.md Section 3 (Processing Flow), Section 4 (Pipeline State Machine).
@@ -265,28 +265,50 @@ class PipelineConstruct(Construct):
             )
         )
 
-        self.bedrock_extract_fn = lambda_.Function(
+        self.nova_lite_v1_extract_fn = lambda_.Function(
             self,
-            "BedrockExtractFn",
-            function_name=f"novascan-{stage}-bedrock-extract",
+            "NovaLiteV1ExtractFn",
+            function_name=f"novascan-{stage}-nova-lite-v1-extract",
             handler="pipeline.bedrock_extract.handler",
-            description="Pipeline: direct multimodal extraction via Bedrock Nova",
+            description="Pipeline: direct multimodal extraction via Nova Lite v1",
             environment={
                 **common_lambda_props["environment"],
-                "POWERTOOLS_SERVICE_NAME": "novascan-bedrock-extract",
+                "POWERTOOLS_SERVICE_NAME": "novascan-nova-lite-v1-extract",
                 "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
             },
             **{k: v for k, v in common_lambda_props.items() if k != "environment"},
         )
-        # Bedrock extract needs S3 read + Bedrock invoke
-        receipts_bucket.grant_read(self.bedrock_extract_fn)
-        self.bedrock_extract_fn.add_to_role_policy(
+        receipts_bucket.grant_read(self.nova_lite_v1_extract_fn)
+        self.nova_lite_v1_extract_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["bedrock:InvokeModel"],
-                # M10 — Bedrock ARN scoped to deployment region
                 resources=[
                     f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-lite-v1:0",
                     f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-pro-v1:0",
+                ],
+            )
+        )
+
+        self.nova_lite_v2_extract_fn = lambda_.Function(
+            self,
+            "NovaLiteV2ExtractFn",
+            function_name=f"novascan-{stage}-nova-lite-v2-extract",
+            handler="pipeline.bedrock_extract.handler",
+            description="Pipeline: direct multimodal extraction via Nova 2 Lite",
+            environment={
+                **common_lambda_props["environment"],
+                "POWERTOOLS_SERVICE_NAME": "novascan-nova-lite-v2-extract",
+                "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
+                "NOVA_MODEL_ID": "us.amazon.nova-2-lite-v1:0",
+            },
+            **{k: v for k, v in common_lambda_props.items() if k != "environment"},
+        )
+        receipts_bucket.grant_read(self.nova_lite_v2_extract_fn)
+        self.nova_lite_v2_extract_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["bedrock:InvokeModel"],
+                resources=[
+                    f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-2-lite-v1:0",
                 ],
             )
         )
@@ -296,12 +318,11 @@ class PipelineConstruct(Construct):
             "FinalizeFn",
             function_name=f"novascan-{stage}-finalize",
             handler="pipeline.finalize.handler",
-            description="Pipeline: finalize — select result, rank, persist to DynamoDB/S3",
+            description="Pipeline: finalize — rank, select best result, persist to DynamoDB/S3",
             timeout=cdk.Duration.seconds(60),
             environment={
                 **common_lambda_props["environment"],
                 "POWERTOOLS_SERVICE_NAME": "novascan-finalize",
-                "DEFAULT_PIPELINE": config.get("defaultPipeline", "ocr-ai"),
                 "RECEIPTS_BUCKET": receipts_bucket.bucket_name,
             },
             **{
@@ -335,7 +356,7 @@ class PipelineConstruct(Construct):
         """Build the receipt processing state machine.
 
         Flow:
-            LoadCustomCategories -> Parallel(Main, Shadow) -> Finalize
+            LoadCustomCategories -> Parallel(OCR-AI, NovaLiteV1, NovaLiteV2) -> Finalize
         """
 
         # Step 1: LoadCustomCategories
@@ -408,11 +429,11 @@ class PipelineConstruct(Construct):
 
         main_branch = textract_extract.next(nova_structure)
 
-        # Step 2b: Shadow pipeline (AI-multimodal) — BedrockExtract
-        bedrock_extract = tasks.LambdaInvoke(
+        # Step 2b: Nova Lite v1 multimodal extraction
+        nova_lite_v1_extract = tasks.LambdaInvoke(
             self,
-            "BedrockExtract",
-            lambda_function=self.bedrock_extract_fn,
+            "NovaLiteV1Extract",
+            lambda_function=self.nova_lite_v1_extract_fn,
             payload=sfn.TaskInput.from_object({
                 "bucket": sfn.JsonPath.string_at("$.bucket"),
                 "key": sfn.JsonPath.string_at("$.key"),
@@ -421,12 +442,12 @@ class PipelineConstruct(Construct):
             payload_response_only=True,
             result_path="$",
         )
-        bedrock_extract.add_catch(
+        nova_lite_v1_extract.add_catch(
             handler=sfn.Pass(
                 self,
-                "BedrockExtractError",
+                "NovaLiteV1ExtractError",
                 result=sfn.Result.from_object({
-                    "error": "BedrockExtract failed",
+                    "error": "NovaLiteV1Extract failed",
                     "errorType": "CatchAll",
                 }),
                 result_path="$",
@@ -435,16 +456,47 @@ class PipelineConstruct(Construct):
             result_path="$",
         )
 
-        shadow_branch = bedrock_extract
+        nova_lite_v1_branch = nova_lite_v1_extract
 
-        # Parallel state — runs main and shadow concurrently
+        # Step 2c: Nova 2 Lite multimodal extraction
+        nova_lite_v2_extract = tasks.LambdaInvoke(
+            self,
+            "NovaLiteV2Extract",
+            lambda_function=self.nova_lite_v2_extract_fn,
+            payload=sfn.TaskInput.from_object({
+                "bucket": sfn.JsonPath.string_at("$.bucket"),
+                "key": sfn.JsonPath.string_at("$.key"),
+                "customCategories": sfn.JsonPath.object_at("$.customCategories"),
+            }),
+            payload_response_only=True,
+            result_path="$",
+        )
+        nova_lite_v2_extract.add_catch(
+            handler=sfn.Pass(
+                self,
+                "NovaLiteV2ExtractError",
+                result=sfn.Result.from_object({
+                    "error": "NovaLiteV2Extract failed",
+                    "errorType": "CatchAll",
+                }),
+                result_path="$",
+            ),
+            errors=["States.ALL"],
+            result_path="$",
+        )
+
+        nova_lite_v2_branch = nova_lite_v2_extract
+
+        # Parallel state — runs all three pipelines concurrently
+        # Branch order must match PIPELINE_TYPES in finalize.py: [ocr-ai, ai-multimodal, ai-vision-v2]
         parallel = sfn.Parallel(
             self,
             "ParallelPipelines",
             result_path="$.pipelineResults",
         )
         parallel.branch(main_branch)
-        parallel.branch(shadow_branch)
+        parallel.branch(nova_lite_v1_branch)
+        parallel.branch(nova_lite_v2_branch)
 
         # Step 3: Finalize
         finalize = tasks.LambdaInvoke(
