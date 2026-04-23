@@ -1829,18 +1829,7 @@
                     ]
                   ]
                 },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:bedrock:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "::foundation-model/amazon.nova-2-lite-v1:0"
-                    ]
-                  ]
-                }
+                "arn:aws:bedrock:*::foundation-model/amazon.nova-2-lite-v1:0"
               ]
             }
           ],

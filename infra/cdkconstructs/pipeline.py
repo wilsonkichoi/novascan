@@ -309,7 +309,7 @@ class PipelineConstruct(Construct):
                 actions=["bedrock:InvokeModel"],
                 resources=[
                     f"arn:aws:bedrock:{cdk.Aws.REGION}:{cdk.Aws.ACCOUNT_ID}:inference-profile/us.amazon.nova-2-lite-v1:0",
-                    f"arn:aws:bedrock:{cdk.Aws.REGION}::foundation-model/amazon.nova-2-lite-v1:0",
+                    f"arn:aws:bedrock:*::foundation-model/amazon.nova-2-lite-v1:0",
                 ],
             )
         )

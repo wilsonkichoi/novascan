@@ -598,10 +598,18 @@ class TestIAMPermissions:
                 "amazon.nova-* foundation models only."
             )
             # M10: Verify no wildcard region (should use AWS::Region reference)
-            assert "bedrock:*:" not in resource_str, (
-                f"Bedrock ARN uses wildcard region: {resource_str}. "
-                "M10: Must be scoped to deployment region."
-            )
+            # Exception: foundation-model ARNs backing cross-region inference
+            # profiles (us.*) must use wildcard region since Bedrock routes to
+            # any region in the profile and checks IAM against the target region.
+            resources = resource if isinstance(resource, list) else [resource]
+            for r in resources:
+                r_str = json.dumps(r) if isinstance(r, dict) else str(r)
+                if "foundation-model" in r_str and "inference-profile" in resource_str:
+                    continue
+                assert "bedrock:*:" not in r_str, (
+                    f"Bedrock ARN uses wildcard region: {r_str}. "
+                    "M10: Must be scoped to deployment region."
+                )
 
 
 class TestS3EventNotification:
