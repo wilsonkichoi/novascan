@@ -3,8 +3,8 @@
 Computes a composite rankingScore (0-1) for each pipeline based on:
 - confidence (from ExtractionResult) — weighted most heavily
 - field_completeness — fraction of non-null fields
-- line_item_count — more items = better, normalized and capped
-- total_consistency — do line items sum close to subtotal/total?
+- line_item_quality — fraction of items with valid unit prices and consistent math
+- total_consistency — do line items sum close to subtotal/total? (quadratic decay)
 
 Used by Finalize Lambda for data collection only. The ranking does NOT
 affect which pipeline result is displayed to the user — that is determined
@@ -16,10 +16,10 @@ from __future__ import annotations
 from novascan.models.extraction import ExtractionResult
 
 # Weights for composite score (must sum to 1.0)
-WEIGHT_CONFIDENCE = 0.40
-WEIGHT_COMPLETENESS = 0.25
-WEIGHT_LINE_ITEMS = 0.15
-WEIGHT_CONSISTENCY = 0.20
+WEIGHT_CONFIDENCE = 0.20
+WEIGHT_COMPLETENESS = 0.30
+WEIGHT_LINE_ITEMS = 0.10
+WEIGHT_CONSISTENCY = 0.40
 
 # Fields checked for completeness scoring
 _COMPLETENESS_FIELDS = [
@@ -34,13 +34,9 @@ _COMPLETENESS_FIELDS = [
     "currency",
 ]
 
-# Cap for line item normalization — receipts with >= this many items
-# get full marks. Prevents a receipt with 100 items from dominating.
-_LINE_ITEM_CAP = 20
-
 # Tolerance for total consistency check (fraction of total).
 # If |sum(lineItems) - subtotal| / total <= tolerance, it's consistent.
-_CONSISTENCY_TOLERANCE = 0.05
+_CONSISTENCY_TOLERANCE = 0.02
 
 
 def rank_results(result: ExtractionResult) -> float:
@@ -93,11 +89,24 @@ def _compute_field_completeness(result: ExtractionResult) -> float:
 
 
 def _compute_line_item_score(result: ExtractionResult) -> float:
-    """Score based on number of line items, normalized and capped."""
-    count = len(result.lineItems)
-    if count == 0:
+    """Quality score: fraction of line items with valid pricing.
+
+    An item is "valid" when unitPrice > 0 and qty * unitPrice is within
+    5% of totalPrice. Items with unitPrice=0 but totalPrice>0 indicate
+    the model failed to extract pricing detail.
+    """
+    if not result.lineItems:
         return 0.0
-    return min(count / _LINE_ITEM_CAP, 1.0)
+
+    valid = 0
+    for item in result.lineItems:
+        if item.unitPrice <= 0:
+            continue
+        expected = item.quantity * item.unitPrice
+        if item.totalPrice <= 0 or abs(expected - item.totalPrice) / item.totalPrice <= 0.05:
+            valid += 1
+
+    return valid / len(result.lineItems)
 
 
 def _compute_total_consistency(result: ExtractionResult) -> float:
@@ -125,10 +134,10 @@ def _compute_total_consistency(result: ExtractionResult) -> float:
     if discrepancy <= _CONSISTENCY_TOLERANCE:
         return 1.0
 
-    # Linear degradation: at 50%+ discrepancy, score is 0.0
-    # Scale: tolerance -> 1.0, 0.5 -> 0.0
-    max_discrepancy = 0.5
+    # Quadratic decay: small overages penalized meaningfully, 30%+ → 0.0
+    max_discrepancy = 0.30
     if discrepancy >= max_discrepancy:
         return 0.0
 
-    return float(1.0 - (discrepancy - _CONSISTENCY_TOLERANCE) / (max_discrepancy - _CONSISTENCY_TOLERANCE))
+    t = (discrepancy - _CONSISTENCY_TOLERANCE) / (max_discrepancy - _CONSISTENCY_TOLERANCE)
+    return float(1.0 - t * t)

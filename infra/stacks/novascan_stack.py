@@ -59,6 +59,12 @@ class NovascanStack(cdk.Stack):
             receipts_bucket=self.storage.receipts_bucket,
         )
 
+        # Allow API Lambda to start Step Functions executions for reprocessing
+        self.api.api_function.add_environment(
+            "STATE_MACHINE_ARN", self.pipeline.state_machine.state_machine_arn
+        )
+        self.pipeline.state_machine.grant_start_execution(self.api.api_function)
+
         # --- Stack Outputs ---
         cdk.CfnOutput(self, "ApiUrl", value=self.api.api_url, description="API Gateway URL")
         cdk.CfnOutput(

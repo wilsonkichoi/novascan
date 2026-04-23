@@ -110,8 +110,8 @@ class TestRankingMinimalResult:
     def test_minimal_result_scores_low(self):
         """Only merchant name, all defaults -> score near 0.0."""
         score = rank_results(_minimal_result())
-        assert score <= 0.35, (
-            f"Minimal result should score <= 0.35, got {score}. "
+        assert score <= 0.45, (
+            f"Minimal result should score <= 0.45, got {score}. "
             "SPEC says: empty result -> near 0.0"
         )
 
@@ -203,28 +203,53 @@ class TestRankingTotalConsistency:
 class TestRankingComponents:
     """Individual ranking components affect the composite score."""
 
-    def test_more_line_items_increases_score(self):
-        """More line items should contribute to a higher score, per SPEC."""
-        few_items = ExtractionResult(
+    def test_having_line_items_increases_score(self):
+        """Having valid line items vs none should contribute to a higher score."""
+        no_items = ExtractionResult(
             merchant=Merchant(name="Store"),
-            lineItems=[LineItem(name="A", totalPrice=10)],
             subtotal=10.00,
             total=10.80,
             confidence=0.85,
         )
 
-        many_items = ExtractionResult(
+        with_items = ExtractionResult(
             merchant=Merchant(name="Store"),
-            lineItems=[
-                LineItem(name=f"Item {i}", totalPrice=2.00) for i in range(10)
-            ],
-            subtotal=20.00,
-            total=21.60,
+            lineItems=[LineItem(name="A", unitPrice=10.00, totalPrice=10.00)],
+            subtotal=10.00,
+            total=10.80,
             confidence=0.85,
         )
 
-        assert rank_results(many_items) > rank_results(few_items), (
-            "More line items should increase the ranking score"
+        assert rank_results(with_items) > rank_results(no_items), (
+            "Having line items should increase the ranking score vs having none"
+        )
+
+    def test_zero_unit_price_penalizes_score(self):
+        """Items with unitPrice=0 but totalPrice>0 should lower the score."""
+        good_prices = ExtractionResult(
+            merchant=Merchant(name="Store"),
+            lineItems=[
+                LineItem(name="A", quantity=2, unitPrice=5.00, totalPrice=10.00),
+                LineItem(name="B", quantity=1, unitPrice=5.00, totalPrice=5.00),
+            ],
+            subtotal=15.00,
+            total=15.00,
+            confidence=0.90,
+        )
+
+        bad_prices = ExtractionResult(
+            merchant=Merchant(name="Store"),
+            lineItems=[
+                LineItem(name="A", quantity=2, unitPrice=5.00, totalPrice=10.00),
+                LineItem(name="B", quantity=1, unitPrice=0.00, totalPrice=5.00),
+            ],
+            subtotal=15.00,
+            total=15.00,
+            confidence=0.90,
+        )
+
+        assert rank_results(good_prices) > rank_results(bad_prices), (
+            "Items with unitPrice=0 should penalize the line item quality score"
         )
 
     def test_more_fields_populated_increases_score(self):
@@ -250,10 +275,41 @@ class TestRankingComponents:
             "More populated fields should increase the ranking score"
         )
 
-    def test_confidence_is_dominant_factor(self):
-        """Confidence is weighted most heavily per SPEC — a large confidence
-        difference should outweigh moderate differences in other components."""
+    def test_confidence_affects_score(self):
+        """Higher confidence should increase score, all else equal."""
         low_confidence = ExtractionResult(
+            merchant=Merchant(name="Store"),
+            lineItems=[LineItem(name="A", totalPrice=10.00)],
+            subtotal=10.00,
+            total=10.80,
+            confidence=0.10,
+        )
+
+        high_confidence = ExtractionResult(
+            merchant=Merchant(name="Store"),
+            lineItems=[LineItem(name="A", totalPrice=10.00)],
+            subtotal=10.00,
+            total=10.80,
+            confidence=0.95,
+        )
+
+        assert rank_results(high_confidence) > rank_results(low_confidence)
+
+    def test_consistency_outweighs_confidence(self):
+        """A consistent result with lower confidence should beat an
+        inconsistent result with higher confidence."""
+        high_conf_inconsistent = ExtractionResult(
+            merchant=Merchant(name="Store"),
+            lineItems=[
+                LineItem(name="A", totalPrice=10.00),
+                LineItem(name="B", totalPrice=15.00),
+            ],
+            subtotal=50.00,
+            total=54.00,
+            confidence=0.99,
+        )
+
+        low_conf_consistent = ExtractionResult(
             merchant=Merchant(name="Store"),
             lineItems=[
                 LineItem(name="A", totalPrice=10.00),
@@ -261,21 +317,10 @@ class TestRankingComponents:
             ],
             subtotal=25.00,
             total=27.00,
-            confidence=0.10,
+            confidence=0.80,
         )
 
-        high_confidence = ExtractionResult(
-            merchant=Merchant(name="Store"),
-            lineItems=[
-                LineItem(name="A", totalPrice=10.00),
-            ],
-            subtotal=10.00,
-            total=10.80,
-            confidence=0.95,
-        )
-
-        # High confidence should win even with fewer line items
-        assert rank_results(high_confidence) > rank_results(low_confidence)
+        assert rank_results(low_conf_consistent) > rank_results(high_conf_inconsistent)
 
     def test_no_line_items_gets_neutral_consistency(self):
         """With zero line items, consistency is unknown — should not penalize."""
@@ -331,7 +376,7 @@ class TestRankingEdgeCases:
             confidence=0.0,
         )
         score = rank_results(result)
-        assert score <= 0.30, f"Zero everything should score <= 0.30, got {score}"
+        assert score <= 0.45, f"Zero everything should score <= 0.45, got {score}"
 
     def test_single_line_item_consistent(self):
         """A single line item that matches the subtotal should not crash."""
@@ -346,7 +391,7 @@ class TestRankingEdgeCases:
         score = rank_results(result)
         assert 0.0 <= score <= 1.0
 
-    def test_many_line_items_capped(self):
+    def test_many_line_items_does_not_exceed_one(self):
         """Having 100 line items should not produce a score above 1.0."""
         items = [LineItem(name=f"Item {i}", totalPrice=1.00) for i in range(100)]
         result = ExtractionResult(

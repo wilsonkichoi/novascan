@@ -4,6 +4,7 @@ import {
   Loader2,
   ArrowLeft,
   Trash2,
+  RotateCw,
   Clock,
   CheckCircle2,
   XCircle,
@@ -27,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useReceipt, useDeleteReceipt, useUpdateItems, useUpdateReceipt } from "@/hooks/useReceipt";
+import { useReceipt, useDeleteReceipt, useUpdateItems, useUpdateReceipt, useReprocessReceipt } from "@/hooks/useReceipt";
 import { useCategories, usePipelineResults } from "@/hooks/useCategories";
 import { NotFoundError } from "@/api/receipts";
 import type { PipelineExtractedData, PipelineLineItem } from "@/api/categories";
@@ -79,6 +80,7 @@ export default function ReceiptDetailPage() {
   const { data: receipt, isLoading, error } = useReceipt(id ?? "");
   const updateReceipt = useUpdateReceipt(id ?? "");
   const deleteReceipt = useDeleteReceipt();
+  const reprocessReceipt = useReprocessReceipt(id ?? "");
   const updateItems = useUpdateItems(id ?? "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -195,6 +197,19 @@ export default function ReceiptDetailPage() {
             <StatusIcon className="size-3" />
             {config.label}
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => reprocessReceipt.mutate()}
+            disabled={reprocessReceipt.isPending || receipt.status === "processing"}
+          >
+            {reprocessReceipt.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RotateCw className="size-4" />
+            )}
+            Re-process
+          </Button>
           <Button
             variant="outline"
             size="icon-sm"

@@ -40,6 +40,7 @@ logger = Logger()
 tracer = Tracer()
 router = Router()  # type: ignore[no-untyped-call]
 s3_client = boto3.client("s3")
+sfn_client = boto3.client("stepfunctions")
 
 
 def _decimal_to_float(val: Any) -> float | None:
@@ -566,4 +567,71 @@ def update_items(receipt_id: str) -> Response[Any]:
     )
 
     # Return the full receipt with new line items
+    return get_receipt(receipt_id)
+
+
+@router.post("/api/receipts/<receipt_id>/reprocess")
+@tracer.capture_method
+def reprocess_receipt(receipt_id: str) -> Response[Any]:
+    """Re-run the OCR pipeline on an existing receipt.
+
+    Resets the receipt status to 'processing', deletes old pipeline result
+    entities, and starts a new Step Functions execution.
+    """
+    if err := _validate_receipt_id(receipt_id):
+        return err
+    user_id = _get_user_id()
+    table = get_table()
+    pk = f"USER#{user_id}"
+    sk = f"RECEIPT#{receipt_id}"
+
+    # Verify the receipt exists and get imageKey
+    receipt_response = table.get_item(
+        Key={"PK": pk, "SK": sk},
+        ProjectionExpression="imageKey, #s",
+        ExpressionAttributeNames={"#s": "status"},
+    )
+    receipt_item = receipt_response.get("Item")
+    if not receipt_item:
+        return error_response(404, "NOT_FOUND", "Receipt not found")
+
+    if receipt_item.get("status") == "processing":
+        return error_response(409, "CONFLICT", "Receipt is already being processed")
+
+    image_key = str(receipt_item.get("imageKey", ""))
+    if not image_key:
+        return error_response(400, "VALIDATION_ERROR", "Receipt has no image to reprocess")
+
+    bucket = os.environ["RECEIPTS_BUCKET"]
+    state_machine_arn = os.environ.get("STATE_MACHINE_ARN", "")
+    if not state_machine_arn:
+        logger.error("STATE_MACHINE_ARN not configured")
+        return error_response(500, "INTERNAL_ERROR", "Pipeline not configured")
+
+    now_iso = datetime.now(UTC).isoformat()
+
+    # Reset receipt status to processing
+    table.update_item(
+        Key={"PK": pk, "SK": sk},
+        UpdateExpression="SET #s = :status, #updatedAt = :updatedAt REMOVE failureReason",
+        ExpressionAttributeNames={"#s": "status", "#updatedAt": "updatedAt"},
+        ExpressionAttributeValues={":status": "processing", ":updatedAt": now_iso},
+    )
+
+    # Delete old pipeline result entities (RECEIPT#{id}#PIPELINE#*)
+    pipeline_items = table.query(
+        KeyConditionExpression=Key("PK").eq(pk)
+        & Key("SK").begins_with(f"RECEIPT#{receipt_id}#PIPELINE#"),
+    )
+    for item in pipeline_items.get("Items", []):
+        table.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+
+    # Start Step Functions execution
+    sfn_client.start_execution(
+        stateMachineArn=state_machine_arn,
+        input=json.dumps({"bucket": bucket, "key": image_key}),
+    )
+
+    logger.info("Reprocess triggered", extra={"receipt_id": receipt_id})
+
     return get_receipt(receipt_id)

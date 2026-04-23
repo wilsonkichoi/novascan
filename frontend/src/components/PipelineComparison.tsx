@@ -249,7 +249,7 @@ function PipelineCard({ pipelineType, result, isWinner }: PipelineCardProps) {
         <div className="flex items-center justify-between">
           <dt className="flex items-center gap-1.5 text-muted-foreground">
             Ranking Score
-            <Tooltip text="Composite score: 40% confidence + 25% field completeness + 20% line-item-to-total consistency + 15% line item count. Used for pipeline quality comparison only." />
+            <Tooltip text="Composite score: 40% line-item-to-total consistency + 30% field completeness + 20% confidence + 10% line item quality (valid unit prices). Used for pipeline quality comparison only." />
           </dt>
           <dd className="font-medium">{formatPercent(result.rankingScore)}</dd>
         </div>
@@ -317,10 +317,24 @@ function PipelineCard({ pipelineType, result, isWinner }: PipelineCardProps) {
               </div>
             )}
             {extracted.lineItems && extracted.lineItems.length > 0 && (
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Line Items</dt>
-                <dd>{extracted.lineItems.length}</dd>
-              </div>
+              <>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Line Items</dt>
+                  <dd>{extracted.lineItems.length}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Items Total</dt>
+                  <dd className="font-medium">
+                    {formatCurrency(
+                      extracted.lineItems.reduce(
+                        (sum: number, item: { totalPrice?: number }) =>
+                          sum + (item.totalPrice ?? 0),
+                        0,
+                      ),
+                    )}
+                  </dd>
+                </div>
+              </>
             )}
           </>
         )}

@@ -4,6 +4,7 @@ import {
   deleteReceipt,
   updateItems,
   updateReceipt,
+  reprocessReceipt,
   type ReceiptDetail,
   type LineItemInput,
   type ReceiptUpdatePayload,
@@ -37,6 +38,19 @@ export function useDeleteReceipt() {
     onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: ["receipt", id] });
       void queryClient.invalidateQueries({ queryKey: ["receipts"] });
+    },
+  });
+}
+
+export function useReprocessReceipt(receiptId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => reprocessReceipt(receiptId),
+    onSuccess: (updatedReceipt) => {
+      queryClient.setQueryData(["receipt", receiptId], updatedReceipt);
+      void queryClient.invalidateQueries({ queryKey: ["receipts"] });
+      void queryClient.invalidateQueries({ queryKey: ["pipeline-results", receiptId] });
     },
   });
 }

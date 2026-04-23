@@ -127,6 +127,14 @@ subcategory (e.g., "Chicken Breast" -> meat-seafood, "Milk" -> dairy-cheese-eggs
 7. receiptDate is the date printed on the receipt, not today's date. Use \
 YYYY-MM-DD format. Set null if unreadable.
 8. confidence is your overall confidence in the extraction accuracy (0.0-1.0).
+9. Each printed product line on the receipt is a SEPARATE line item. On grocery \
+receipts, multi-quantity items often use a two-line format: the item name and \
+total price on one line, then "N @ $X.XX" (quantity x unit price) indented on \
+the line below. Do NOT merge adjacent items into one. Parse each product line \
+independently.
+10. Verify that the number of line items you extract matches the item count \
+printed on the receipt (if shown). If the sum of line item totals does not \
+match the subtotal, re-examine the receipt for missed items.
 """
 
 

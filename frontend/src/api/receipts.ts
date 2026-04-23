@@ -254,6 +254,28 @@ export async function updateItems(
   return (await res.json()) as ReceiptDetail;
 }
 
+export async function reprocessReceipt(id: string): Promise<ReceiptDetail> {
+  const token = await getValidIdToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(
+    `${API_URL}/api/receipts/${encodeURIComponent(id)}/reprocess`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as ApiError | null;
+    const message =
+      errorBody?.error?.message ?? `Failed to reprocess receipt (${res.status})`;
+    throw new Error(message);
+  }
+
+  return (await res.json()) as ReceiptDetail;
+}
+
 /** Error thrown when a resource is not found (404). */
 export class NotFoundError extends Error {
   constructor(message: string) {

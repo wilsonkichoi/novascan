@@ -502,6 +502,27 @@ Delete a custom category. Predefined categories cannot be deleted.
 
 ---
 
+### POST /api/receipts/{id}/reprocess
+
+Re-run the OCR pipeline on an existing receipt. Resets the receipt status to `processing`, deletes old pipeline result entities, and starts a new Step Functions execution.
+
+**Path Parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | string | Receipt ULID |
+
+**Request:** Empty body.
+
+**Response:** `200 OK` — full receipt object (same shape as GET /api/receipts/{id}) with `status: "processing"`
+
+**Errors:**
+- `404 NOT_FOUND`
+- `409 CONFLICT` — receipt is already being processed
+- `400 VALIDATION_ERROR` — receipt has no image to reprocess
+
+---
+
 ### GET /api/receipts/{id}/pipeline-results
 
 Get extraction results from both pipeline paths. For A/B comparison and debugging. Available to all authenticated users.
@@ -557,7 +578,7 @@ Get extraction results from both pipeline paths. For A/B comparison and debuggin
 - Available to all authenticated users (staff gate removed)
 - `usedFallback` — `true` if main pipeline failed and shadow result was used for this receipt
 - `rankingWinner` — which pipeline the ranking algorithm scored higher, independent of main/shadow selection
-- `rankingScore` — composite score (0–1) per pipeline based on confidence, field completeness, line item count, and total consistency. For studying pipeline performance only.
+- `rankingScore` — composite score (0–1) per pipeline based on total consistency (40%), field completeness (30%), confidence (20%), and line item quality (10%). For studying pipeline performance only.
 - `extractedData` follows the Receipt Extraction Schema (SPEC.md Section 7)
 - Either `ocr-ai` or `ai-multimodal` may be null if that pipeline path failed
 - The frontend receipt detail page uses this endpoint for the pipeline source toggle (Final / OCR + AI / AI Vision) and the pipeline comparison accordion
