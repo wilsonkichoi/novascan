@@ -2,6 +2,12 @@
 
 AI-powered receipt scanner and spending tracker.
 
+## Purpose
+
+This project is the primary testbed for the [Agentic Development Workflow](https://github.com/wilsonkichoi/agentic_development_workflow) — a structured, multi-phase AI-assisted development process. NovaScan exists to exercise every phase of that workflow (research → spec → plan → execute → review → verify) on a non-trivial, full-stack application and feed improvements back into the workflow itself.
+
+If you're here to understand the agentic workflow in practice, the `workflow/` directory contains the complete trail: research notes, specs, task plans, review files, and retrospectives generated across milestones.
+
 ## Overview
 
 NovaScan is a mobile-optimized web application that lets users photograph or bulk-upload receipt images. The system extracts merchant, date, line items, and totals using a dual OCR pipeline (Amazon Textract + Bedrock Nova for OCR-AI, and Bedrock Nova multimodal for AI-multimodal) and presents spending data through a receipt management interface.
