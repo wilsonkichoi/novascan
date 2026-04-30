@@ -10,6 +10,8 @@ If you're here to understand the agentic workflow in practice, the `workflow/` d
 
 ## Overview
 
+![NovaScan AWS Architecture](workflow/spec/diagrams/novascan-architecture.drawio.png)
+
 NovaScan is a mobile-optimized web application that lets users photograph or bulk-upload receipt images. The system extracts merchant, date, line items, and totals using a dual OCR pipeline (Amazon Textract + Bedrock Nova for OCR-AI, and Bedrock Nova multimodal for AI-multimodal) and presents spending data through a receipt management interface.
 
 ### Current Capabilities
